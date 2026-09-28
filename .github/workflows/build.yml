@@ -30,7 +30,8 @@ jobs:
         continue-on-error: true
         run: |
           set -o pipefail
-          swift build -c release --arch arm64 --arch x86_64 2>&1 | tee build.log
+          swift build 2>&1 | tee build.log
+          swift build -c release --arch arm64 --arch x86_64 2>&1 | tee -a build.log
 
       - name: Test
         id: test
