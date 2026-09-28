@@ -45,45 +45,43 @@ jobs:
           cache: pip
           cache-dependency-path: .github/workflows/build.yml
 
+      - name: Cache calibration faces (LFW)
+        uses: actions/cache@v4
+        with:
+          path: ~/scikit_learn_data
+          key: lfw-v1
+
+      - name: Calibration photo sample (LFW, CI only — never shipped)
+        continue-on-error: true
+        run: |
+          pip install "numpy<2" scikit-learn pillow 2>&1 | tail -1
+          python tools/lfw_sample.py build/lfw 12 8 2>&1 | tee lfw.log
+
       - name: Cache converted models
         id: modelcache
         uses: actions/cache@v4
         with:
           path: Resources/Models
-          key: coreml-models-v2-${{ hashFiles('tools/convert_*.py') }}
+          key: coreml-models-v3-${{ hashFiles('tools/convert_*.py') }}
 
-      - name: Prepare models (SFace + Real-ESRGAN → Core ML)
-        id: facemodel
+      - name: Prepare models (SFace, FSRCNN, Real-ESRGAN → Core ML)
+        id: models
         if: steps.modelcache.outputs.cache-hit != 'true'
         continue-on-error: true
         run: |
-          set -o pipefail
-          pip install "numpy<2" "torch==2.4.1" "coremltools==8.1" onnx onnx2torch onnxruntime 2>&1 | tail -3
+          pip install "numpy<2" "torch==2.4.1" "coremltools==8.1" onnx onnx2torch onnxruntime \
+                      "opencv-contrib-python-headless==4.10.0.84" 2>&1 | tail -2
           mkdir -p Resources/Models
-          python tools/convert_sface.py build/models 2>&1 | tee facemodel.log
-          xcrun coremlcompiler compile build/models/SFace.mlpackage Resources/Models 2>&1 | tee -a facemodel.log
-          python tools/convert_realesrgan.py build/models 2>&1 | tee -a facemodel.log
-          xcrun coremlcompiler compile build/models/RealESRGANx4v3.mlpackage Resources/Models 2>&1 | tee -a facemodel.log
-          ls -la Resources/Models | tee -a facemodel.log
-
-      - name: Cache super-resolution models
-        id: srcache
-        uses: actions/cache@v4
-        with:
-          path: Resources/Models/FSRCNN_x*.mlmodelc
-          key: fsrcnn-coreml-v1-${{ hashFiles('tools/convert_fsrcnn.py') }}
-
-      - name: Prepare super-resolution models (FSRCNN → Core ML)
-        id: srmodel
-        if: steps.srcache.outputs.cache-hit != 'true'
-        continue-on-error: true
-        run: |
-          set -o pipefail
-          pip install "numpy<2" "torch==2.4.1" "coremltools==8.1" "opencv-contrib-python-headless==4.10.0.84" 2>&1 | tail -2
-          python tools/convert_fsrcnn.py build/sr build/lfw 2>&1 | tee srmodel.log
-          mkdir -p Resources/Models
-          for s in 2 3 4; do xcrun coremlcompiler compile build/sr/FSRCNN_x$s.mlpackage Resources/Models 2>&1 | tee -a srmodel.log; done
-          ls Resources/Models | tee -a srmodel.log
+          ok=0
+          python tools/convert_sface.py build/models > sface.log 2>&1 \
+            && xcrun coremlcompiler compile build/models/SFace.mlpackage Resources/Models >> sface.log 2>&1 || ok=1
+          python tools/convert_fsrcnn.py build/sr build/lfw > srmodel.log 2>&1 \
+            && for s in 2 3 4; do xcrun coremlcompiler compile build/sr/FSRCNN_x$s.mlpackage Resources/Models >> srmodel.log 2>&1; done || ok=1
+          python tools/convert_realesrgan.py build/models > esrgan.log 2>&1 \
+            && xcrun coremlcompiler compile build/models/RealESRGANx4v3.mlpackage Resources/Models >> esrgan.log 2>&1 || ok=1
+          ls -la Resources/Models | tee models.log
+          tail -5 sface.log srmodel.log esrgan.log
+          exit $ok
 
       - name: Package app
         id: package
@@ -129,9 +127,8 @@ jobs:
             echo "test: ${{ steps.test.outcome }}"
             echo "package: ${{ steps.package.outcome }}"
             echo "selftest: ${{ steps.selftest.outcome }}"
-            echo "facemodel: ${{ steps.facemodel.outcome }} (cache hit: ${{ steps.modelcache.outputs.cache-hit }})"
+            echo "models: ${{ steps.models.outcome }} (cache hit: ${{ steps.modelcache.outputs.cache-hit }})"
             echo "facecal: ${{ steps.facecal.outcome }}"
-            echo "srmodel: ${{ steps.srmodel.outcome }} (cache hit: ${{ steps.srcache.outputs.cache-hit }})"
             echo "run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           } > /tmp/results/summary.txt
           # Keep only compiler diagnostics for quick reading.
