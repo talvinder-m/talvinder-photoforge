@@ -243,6 +243,47 @@ public final class PhotoLibraryService: NSObject, PHPhotoLibraryChangeObserver, 
         }
     }
 
+    /// Grid thumbnail. Uses PhotoKit's local derivatives; never downloads.
+    public func thumbnail(for localIdentifier: String, side: CGFloat) async -> NSImage? {
+        guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil).firstObject else { return nil }
+        let opts = PHImageRequestOptions()
+        opts.deliveryMode = .highQualityFormat
+        opts.resizeMode = .fast
+        opts.isNetworkAccessAllowed = false
+        return await withCheckedContinuation { cont in
+            imageManager.requestImage(for: asset, targetSize: CGSize(width: side, height: side),
+                                      contentMode: .aspectFill, options: opts) { image, _ in
+                cont.resume(returning: image)
+            }
+        }
+    }
+
+    /// Full-resolution image data (current version, incl. Photos edits) for the editor.
+    /// Downloads from iCloud if needed because the user explicitly opened the photo.
+    public func fullImageData(for localIdentifier: String) async throws -> Data {
+        guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil).firstObject else {
+            throw PhotoForgeError.assetUnavailable(localIdentifier: localIdentifier)
+        }
+        let opts = PHImageRequestOptions()
+        opts.deliveryMode = .highQualityFormat
+        opts.version = .current
+        opts.isNetworkAccessAllowed = true
+        return try await withCheckedThrowingContinuation { cont in
+            imageManager.requestImageDataAndOrientation(for: asset, options: opts) { data, _, _, info in
+                if let data { cont.resume(returning: data) }
+                else if let err = info?[PHImageErrorKey] as? Error { cont.resume(throwing: err) }
+                else { cont.resume(throwing: PhotoForgeError.assetUnavailable(localIdentifier: localIdentifier)) }
+            }
+        }
+    }
+
+    /// Size in bytes of the original resource, when PhotoKit reports it.
+    public func originalFileSize(_ localIdentifier: String) -> Int? {
+        guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil).firstObject,
+              let res = PHAssetResource.assetResources(for: asset).first(where: { $0.type == .photo }) else { return nil }
+        return (res.value(forKey: "fileSize") as? NSNumber)?.intValue   // KVC: not formally documented
+    }
+
     /// Thumbnail warm-up for the visible grid window.
     public func startCaching(_ ids: [String], size: CGSize) {
         let result = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: nil)

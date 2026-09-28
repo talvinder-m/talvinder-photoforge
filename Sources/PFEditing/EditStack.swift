@@ -92,12 +92,18 @@ public struct Adjustments: Codable, Sendable, Equatable {
     public var toneCurve: [CurvePoint]? = nil
     public init() {}
 }
-public struct CurvePoint: Codable, Sendable, Equatable { public var x: Double; public var y: Double }
+public struct CurvePoint: Codable, Sendable, Equatable {
+    public var x: Double; public var y: Double
+    public init(x: Double, y: Double) { self.x = x; self.y = y }
+}
 
 public struct CropSpec: Codable, Sendable, Equatable {
-    public var rect: [Double]            // normalized x, y, w, h
-    public var angle: Double
+    public var rect: [Double]            // normalized x, y, w, h (top-left origin)
+    public var angle: Double             // radians
     public var flipH: Bool, flipV: Bool
+    public init(rect: [Double], angle: Double, flipH: Bool, flipV: Bool) {
+        self.rect = rect; self.angle = angle; self.flipH = flipH; self.flipV = flipV
+    }
 }
 
 public enum AITool: String, Codable, Sendable {

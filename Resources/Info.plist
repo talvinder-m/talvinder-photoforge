@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key><string>en</string>
+	<key>CFBundleExecutable</key><string>PhotoForge</string>
+	<key>CFBundleIdentifier</key><string>com.talvinder.photoforge</string>
+	<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+	<key>CFBundleName</key><string>PhotoForge</string>
+	<key>CFBundleDisplayName</key><string>PhotoForge</string>
+	<key>CFBundlePackageType</key><string>APPL</string>
+	<key>CFBundleShortVersionString</key><string>__VERSION__</string>
+	<key>CFBundleVersion</key><string>__VERSION__</string>
+	<key>CFBundleIconFile</key><string>AppIcon</string>
+	<key>LSMinimumSystemVersion</key><string>14.0</string>
+	<key>LSApplicationCategoryType</key><string>public.app-category.photography</string>
+	<key>NSHighResolutionCapable</key><true/>
+	<key>NSPrincipalClass</key><string>NSApplication</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>PhotoForge reads your photo library on this Mac to find duplicates, group faces into people, and let you edit photos. Nothing is uploaded.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>PhotoForge saves edited photos to your library as new photos. Your originals are never changed.</string>
+</dict>
+</plist>

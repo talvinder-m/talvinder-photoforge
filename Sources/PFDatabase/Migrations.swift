@@ -297,4 +297,24 @@ INSERT INTO settings(key, value) VALUES
     ('cloudProvidersEnabled', 'false'),
     ('adultWorkflowEnabled',  'false');
 """
+
+    /// Raw quality metrics shown in the comparison view, and face pixel size used by
+    /// the clusterer's small-face penalty.
+    static let v0002_metrics = """
+    ALTER TABLE assets ADD COLUMN laplacianVariance REAL;
+    ALTER TABLE assets ADD COLUMN noiseSigma REAL;
+    ALTER TABLE assets ADD COLUMN meanLuma REAL;
+    ALTER TABLE assets ADD COLUMN clippedFraction REAL;
+    ALTER TABLE faces ADD COLUMN pixelSize REAL;
+    """
+
+    /// Photos the user marked for removal wait here until they confirm deletion.
+    static let v0003_removal_queue = """
+    CREATE TABLE removal_queue (
+        assetID  INTEGER PRIMARY KEY REFERENCES assets(id) ON DELETE CASCADE,
+        reason   TEXT NOT NULL,
+        groupID  TEXT,
+        addedAt  REAL NOT NULL
+    );
+    """
 }

@@ -25,13 +25,12 @@ jobs:
           swift --version | tee -a toolchain.log
           sw_vers | tee -a toolchain.log
 
-      - name: Build (universal)
+      - name: Build (debug)
         id: build
         continue-on-error: true
         run: |
           set -o pipefail
           swift build 2>&1 | tee build.log
-          swift build -c release --arch arm64 --arch x86_64 2>&1 | tee -a build.log
 
       - name: Test
         id: test
@@ -46,7 +45,7 @@ jobs:
         continue-on-error: true
         run: |
           set -o pipefail
-          if [ -x scripts/package_app.sh ]; then scripts/package_app.sh 2>&1 | tee package.log; else echo "no packaging script yet" | tee package.log; fi
+          scripts/package_app.sh 2>&1 | tee package.log
 
       - name: Publish logs to ci-results branch
         if: always()
@@ -62,6 +61,7 @@ jobs:
           } > /tmp/results/summary.txt
           # Keep only compiler diagnostics for quick reading.
           grep -E "error:|warning: .*(Sendable|concurrency|actor)" /tmp/results/build.log | sort -u > /tmp/results/errors.txt || true
+          grep -E "error:" /tmp/results/package.log 2>/dev/null | sort -u >> /tmp/results/errors.txt || true
           grep -E "error:|✘|failed|recorded an issue" /tmp/results/test.log | sort -u > /tmp/results/test-failures.txt || true
           cd /tmp/results
           git init -q -b ci-results
