@@ -386,6 +386,12 @@ public extension AppDatabase {
         }
     }
 
+    func faceEmbeddingModels() throws -> Set<String> {
+        try writer.read { db in
+            Set(try String.fetchAll(db, sql: "SELECT DISTINCT modelName FROM embeddings WHERE entityType = 'face'"))
+        }
+    }
+
     func storedFaces(cipher: VectorCipher) throws -> [StoredFace] {
         try writer.read { db in
             try Row.fetchAll(db, sql: """

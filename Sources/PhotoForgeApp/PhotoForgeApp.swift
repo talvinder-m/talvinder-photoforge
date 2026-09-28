@@ -8,7 +8,11 @@ struct PhotoForgeApp: App {
     @State private var model = AppModel()
 
     init() {
-        if CommandLine.arguments.contains("--selftest") { SelfTest.runAndExit() }
+        let args = CommandLine.arguments
+        if args.contains("--selftest") { SelfTest.runAndExit() }
+        if let i = args.firstIndex(of: "--facecal"), i + 1 < args.count {
+            FaceCalibrationRun.runAndExit(dir: URL(fileURLWithPath: args[i + 1]))
+        }
     }
 
     var body: some Scene {

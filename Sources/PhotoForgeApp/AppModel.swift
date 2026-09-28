@@ -67,6 +67,7 @@ final class AppModel {
     let jobs = JobManager(maxConcurrentJobs: 1)
     let renderer = EditRenderer()
     let policy = GenerativeEditPolicy()
+    let faceModel = FaceEmbedding.load()
 
     // State
     var startupError: String?
@@ -112,6 +113,11 @@ final class AppModel {
             self.db = db
             cipher = try VectorCipher(store: .file(Self.supportDir.appendingPathComponent("vector.key")))
             loadSettings()
+            // Embeddings from different models can't be compared: rebuild face data if the model changed.
+            if let inUse = try? db.faceEmbeddingModels(), !inUse.isEmpty, inUse != [faceModel.name] {
+                _ = try? await db.deleteAllFaceData(faceCropDirectory: Self.faceCropDir, keepAnalysisEnabled: true)
+                banner = "Face grouping was upgraded to a more accurate model. Run Analyze Photos to rebuild People."
+            }
             await jobs.startMonitoringSystem()
             Task { await self.consumeJobEvents() }
         } catch {
@@ -199,7 +205,7 @@ final class AppModel {
         guard let db, let cipher, currentJob == nil else { return }
         let options = AnalysisOptions(faceAnalysis: faceAnalysisEnabled, storeFaceCrops: storeFaceCrops,
                                       sceneSimilarity: sceneSimilarityEnabled, allowICloudDownloads: allowICloudDownloads,
-                                      faceCropDirectory: Self.faceCropDir)
+                                      faceCropDirectory: Self.faceCropDir, face: faceModel)
         let job = AnalysisJob(db: db, photos: photos, cipher: cipher, options: options)
         status = IndexStatus(running: true, message: "Starting…")
         currentJob = await jobs.enqueue(job)
@@ -263,9 +269,11 @@ final class AppModel {
             // Strictness 0…1 moves thresholds between permissive and strict.
             grouper.thresholds.nearMaxPHash = Int((8 - 4 * strict).rounded())
             grouper.thresholds.nearLoosePHash = Int((14 - 6 * strict).rounded())
-            grouper.thresholds.nearEmbeddingMin = Float(0.88 + 0.08 * strict)
-            grouper.thresholds.burstEmbeddingMin = Float(0.70 + 0.2 * strict)
-            grouper.thresholds.similarEmbeddingMin = Float(0.80 + 0.15 * strict)
+            // Feature-print cosines are high even for different scenes (~0.94 in the self-test),
+            // so "similar" needs a high bar; the time windows do the rest.
+            grouper.thresholds.nearEmbeddingMin = Float(0.95 + 0.04 * strict)
+            grouper.thresholds.burstEmbeddingMin = Float(0.88 + 0.08 * strict)
+            grouper.thresholds.similarEmbeddingMin = Float(0.93 + 0.05 * strict)
 
             let byID = Dictionary(uniqueKeysWithValues: rows.map { ($0.id, $0) })
             let features: [AssetFeatures] = rows.map { r in
@@ -345,7 +353,7 @@ final class AppModel {
 
     func rebuildPeople() async {
         guard let db, let cipher else { return }
-        let strict = faceStrictness
+        let base = Float(faceModel.threshold(strictness: faceStrictness))
         let result = await Task.detached(priority: .userInitiated) { () -> ([StoredFace], [PersonRow], ClusteringResult)? in
             guard let faces = try? db.storedFaces(cipher: cipher), let persons = try? db.persons(),
                   let (must, cannot) = try? db.faceConstraints() else { return nil }
@@ -358,8 +366,8 @@ final class AppModel {
                            pixelSize: $0.pixelSize, yaw: $0.yaw, captureDate: $0.captureDate)
             }
             var clusterer = FaceClusterer()
-            // Strictness maps onto the base cosine threshold for the built-in embedder.
-            clusterer.config.baseThreshold = Float(0.35 + 0.35 * strict)
+            // Strictness maps onto the calibrated cosine threshold range of the active face model.
+            clusterer.config.baseThreshold = base
             clusterer.config.minClusterSize = 2
             let r = clusterer.cluster(samples, index: BruteForceIndex(samples), constraints: constraints)
             return (faces, persons, r)

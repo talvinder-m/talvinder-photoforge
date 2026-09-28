@@ -22,6 +22,12 @@ lipo -info "$APP/Contents/MacOS/PhotoForge"
 sed "s/__VERSION__/${VERSION}/g" Resources/Info.plist > "$APP/Contents/Info.plist"
 plutil -lint "$APP/Contents/Info.plist"
 [ -f Resources/AppIcon.icns ] && cp Resources/AppIcon.icns "$APP/Contents/Resources/"
+if [ -d Resources/Models ]; then
+  cp -R Resources/Models "$APP/Contents/Resources/Models"
+  echo "Bundled models:"; ls "$APP/Contents/Resources/Models"
+else
+  echo "WARNING: no Resources/Models — app will fall back to Vision feature prints for faces"
+fi
 
 # Ad-hoc signature: required for the Photos permission prompt to work.
 # (A Developer ID + notarization would remove the first-launch Gatekeeper warning.)

@@ -72,10 +72,16 @@ public final class CoreMLFaceEmbedder: ImageEmbeddingModel, @unchecked Sendable 
     private let outputName: String
     private let side: Int
     private let flipAugment: Bool
+    private let pixelMean: Float
+    private let pixelScale: Float
 
+    /// - Parameters:
+    ///   - pixelMean/pixelScale: input = (pixel − mean) / scale. ArcFace-style models use
+    ///     127.5/127.5; OpenCV SFace takes raw 0–255 (mean 0, scale 1).
     public init(compiledModelURL: URL, descriptor: ModelDescriptor,
                 inputName: String = "input", outputName: String = "embedding",
-                batchSize: Int = 32, flipAugment: Bool = true) throws {
+                batchSize: Int = 32, flipAugment: Bool = true,
+                pixelMean: Float = 127.5, pixelScale: Float = 127.5) throws {
         let cfg = MLModelConfiguration()
         cfg.computeUnits = .all          // ANE + GPU + CPU; Core ML chooses per layer
         self.model = try MLModel(contentsOf: compiledModelURL, configuration: cfg)
@@ -85,6 +91,8 @@ public final class CoreMLFaceEmbedder: ImageEmbeddingModel, @unchecked Sendable 
         self.side = descriptor.inputSize ?? 112
         self.preferredBatchSize = batchSize
         self.flipAugment = flipAugment
+        self.pixelMean = pixelMean
+        self.pixelScale = pixelScale
     }
 
     public func embed(_ images: [CGImage]) async throws -> [[Float]] {
@@ -106,7 +114,7 @@ public final class CoreMLFaceEmbedder: ImageEmbeddingModel, @unchecked Sendable 
 
     private func predict(_ batch: [CGImage], flipped: Bool) throws -> [[Float]] {
         let providers: [MLFeatureProvider] = try batch.map { img in
-            let arr = try Self.preprocess(img, side: side, flipped: flipped)
+            let arr = try Self.preprocess(img, side: side, flipped: flipped, mean: pixelMean, scale: pixelScale)
             return try MLDictionaryFeatureProvider(dictionary: [inputName: MLFeatureValue(multiArray: arr)])
         }
         let results = try model.predictions(fromBatch: MLArrayBatchProvider(array: providers))
@@ -116,8 +124,9 @@ public final class CoreMLFaceEmbedder: ImageEmbeddingModel, @unchecked Sendable 
         }
     }
 
-    /// RGBA8 → planar Float32 [1,3,side,side], normalised to [-1, 1].
-    static func preprocess(_ image: CGImage, side: Int, flipped: Bool) throws -> MLMultiArray {
+    /// RGBA8 → planar RGB Float32 [1,3,side,side], (x − mean) / scale.
+    static func preprocess(_ image: CGImage, side: Int, flipped: Bool,
+                           mean: Float = 127.5, scale: Float = 127.5) throws -> MLMultiArray {
         var rgba = [UInt8](repeating: 0, count: side * side * 4)
         // The buffer pointer must outlive the context, so do all drawing inside the closure.
         let drew = rgba.withUnsafeMutableBytes { buf -> Bool in
@@ -134,9 +143,9 @@ public final class CoreMLFaceEmbedder: ImageEmbeddingModel, @unchecked Sendable 
         let plane = side * side
         arr.withUnsafeMutableBufferPointer(ofType: Float32.self) { dst, _ in
             for i in 0..<plane {
-                dst[i]             = (Float(rgba[i * 4])     - 127.5) / 127.5
-                dst[plane + i]     = (Float(rgba[i * 4 + 1]) - 127.5) / 127.5
-                dst[2 * plane + i] = (Float(rgba[i * 4 + 2]) - 127.5) / 127.5
+                dst[i]             = (Float(rgba[i * 4])     - mean) / scale
+                dst[plane + i]     = (Float(rgba[i * 4 + 1]) - mean) / scale
+                dst[2 * plane + i] = (Float(rgba[i * 4 + 2]) - mean) / scale
             }
         }
         return arr

@@ -16,6 +16,7 @@ struct AnalysisOptions: Sendable {
     var sceneSimilarity: Bool
     var allowICloudDownloads: Bool
     var faceCropDirectory: URL
+    var face: FaceEmbedding
 }
 
 /// The whole local analysis pipeline as one resumable background job.
@@ -86,7 +87,8 @@ struct AnalysisJob: BackgroundJob {
     private func faceStage(_ ctx: JobContext) async throws {
         let todo = try db.pending(stage: .faces, includeCloudOnly: options.allowICloudDownloads)
         guard !todo.isEmpty else { return }
-        db.log("model", "Detecting faces in \(todo.count) photos", assetCount: todo.count, model: "Apple Vision")
+        db.log("model", "Detecting faces in \(todo.count) photos", assetCount: todo.count,
+               model: "Apple Vision + \(options.face.name)")
         if options.storeFaceCrops {
             try? FileManager.default.createDirectory(at: options.faceCropDirectory, withIntermediateDirectories: true)
         }
@@ -101,7 +103,7 @@ struct AnalysisJob: BackgroundJob {
                     var embedding: [Float]? = nil
                     var cropPath: String? = nil
                     if let crop = f.alignedCrop {
-                        embedding = try? VisionFeaturePrintEmbedder.featurePrint(crop)
+                        embedding = try? await options.face.model.embed([crop]).first
                         if options.storeFaceCrops {
                             let url = options.faceCropDirectory.appendingPathComponent("\(item.id)-\(i).jpg")
                             if Self.writeJPEG(crop, to: url) { cropPath = url.lastPathComponent }
@@ -111,8 +113,8 @@ struct AnalysisJob: BackgroundJob {
                                          yaw: f.yaw, pitch: f.pitch, roll: f.roll, pixelSize: Double(f.pixelSize),
                                          cropPath: cropPath, embedding: embedding))
                 }
-                try db.replaceFaces(assetID: item.id, faces: faces, modelName: "vision-featureprint",
-                                    modelVersion: "2-face", cipher: cipher)
+                try db.replaceFaces(assetID: item.id, faces: faces, modelName: options.face.name,
+                                    modelVersion: options.face.version, cipher: cipher)
             } catch PhotoForgeError.iCloudDownloadRequired {
                 try? db.setAvailability(assetID: item.id, .cloudOnly)
             }

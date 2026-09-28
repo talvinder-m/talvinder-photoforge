@@ -48,7 +48,7 @@ public final class AppDatabase: Sendable {
 
     /// Settings › Privacy › "Delete all face data". Removes embeddings, clusters,
     /// crops, labels and constraints. Does NOT re-run analysis unless asked.
-    public func deleteAllFaceData(faceCropDirectory: URL) async throws -> Int {
+    public func deleteAllFaceData(faceCropDirectory: URL, keepAnalysisEnabled: Bool = false) async throws -> Int {
         let removed = try await writer.write { db -> Int in
             let n = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM faces") ?? 0
             try db.execute(sql: """
@@ -59,7 +59,7 @@ public final class AppDatabase: Sendable {
                 DELETE FROM faces;
                 DELETE FROM user_decisions WHERE subjectType IN ('face','person');
                 UPDATE assets SET analysisStage = analysisStage & ~(\(IndexStage.faces.rawValue) | \(IndexStage.faceEmbeddings.rawValue));
-                UPDATE settings SET value = 'false' WHERE key = 'faceAnalysisEnabled';
+                \(keepAnalysisEnabled ? "" : "UPDATE settings SET value = 'false' WHERE key = 'faceAnalysisEnabled';")
                 INSERT INTO activity_log(category, message, execution, createdAt)
                     VALUES ('privacy', 'All face data deleted by user', 'local', \(Date().timeIntervalSince1970));
                 """)

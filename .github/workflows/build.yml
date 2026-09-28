@@ -39,6 +39,31 @@ jobs:
           set -o pipefail
           swift test 2>&1 | tee test.log
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: .github/workflows/build.yml
+
+      - name: Cache converted face model
+        id: modelcache
+        uses: actions/cache@v4
+        with:
+          path: Resources/Models
+          key: sface-coreml-v1-${{ hashFiles('tools/convert_sface.py') }}
+
+      - name: Prepare face model (SFace → Core ML)
+        id: facemodel
+        if: steps.modelcache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          pip install "numpy<2" "torch==2.4.1" "coremltools==8.1" onnx onnx2torch onnxruntime 2>&1 | tail -3
+          python tools/convert_sface.py build/models 2>&1 | tee facemodel.log
+          mkdir -p Resources/Models
+          xcrun coremlcompiler compile build/models/SFace.mlpackage Resources/Models 2>&1 | tee -a facemodel.log
+          ls -la Resources/Models | tee -a facemodel.log
+
       - name: Package app
         id: package
         if: steps.build.outcome == 'success'
@@ -63,6 +88,22 @@ jobs:
             echo "Rosetta not available on this runner; x86_64 slice not executed" | tee -a selftest.log
           fi
 
+      - name: Cache calibration faces (LFW)
+        uses: actions/cache@v4
+        with:
+          path: ~/scikit_learn_data
+          key: lfw-v1
+
+      - name: Face calibration
+        id: facecal
+        if: steps.package.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          pip install "numpy<2" scikit-learn pillow 2>&1 | tail -1
+          python tools/lfw_sample.py build/lfw 12 8 2>&1 | tee facecal.log
+          dist/PhotoForge.app/Contents/MacOS/PhotoForge --facecal build/lfw 2>&1 | grep -v "FBBA\|IOService" | tee -a facecal.log
+
       - name: Publish logs to ci-results branch
         if: always()
         run: |
@@ -74,6 +115,8 @@ jobs:
             echo "test: ${{ steps.test.outcome }}"
             echo "package: ${{ steps.package.outcome }}"
             echo "selftest: ${{ steps.selftest.outcome }}"
+            echo "facemodel: ${{ steps.facemodel.outcome }} (cache hit: ${{ steps.modelcache.outputs.cache-hit }})"
+            echo "facecal: ${{ steps.facecal.outcome }}"
             echo "run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           } > /tmp/results/summary.txt
           # Keep only compiler diagnostics for quick reading.

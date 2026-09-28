@@ -63,6 +63,19 @@ enum SelfTest {
         // 4. Face detection runs (synthetic image has no faces)
         attempt("Vision face detector runs") { try FaceDetector().detect(in: scene).isEmpty }
 
+        // 4b. Face embedder (bundled SFace Core ML model when present)
+        let face = FaceEmbedding.load()
+        print("     face model: \(face.summary)")
+        check(face.isDedicatedFaceModel, "SFace model bundled and loads")
+        if let crop = FaceAligner.align(scene, points: FaceAligner.arcFaceTemplate.map { CGPoint(x: $0.x * 4, y: $0.y * 4) }) {
+            let sem = DispatchSemaphore(value: 0)
+            var v: [Float] = []
+            Task.detached { v = (try? await face.model.embed([crop]).first) ?? []; sem.signal() }
+            sem.wait()
+            let norm = v.reduce(0) { $0 + $1 * $1 }.squareRoot()
+            check(!v.isEmpty && abs(norm - 1) < 1e-3, "face embedding runs (\(v.count)-d, |v|=\(String(format: "%.4f", norm)))")
+        }
+
         // 5. Database: migrations + repository round-trips
         attempt("database end-to-end") {
             let db = try AppDatabase.open(at: dir.appendingPathComponent("t.sqlite"))

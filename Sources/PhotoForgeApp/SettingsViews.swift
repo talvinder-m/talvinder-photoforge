@@ -63,10 +63,13 @@ struct SettingsView: View {
 
             Section("Models in use") {
                 LabeledContent("Face detection", value: "Apple Vision · on-device")
-                LabeledContent("Face & scene similarity", value: "Apple Vision feature prints · on-device")
+                LabeledContent("Face grouping", value: model.faceModel.summary)
+                LabeledContent("Scene similarity", value: "Apple Vision feature prints · on-device")
                 LabeledContent("Duplicate matching", value: "Perceptual hashes (pHash/dHash) + SHA-256")
                 LabeledContent("Editing", value: "Core Image · on-device")
-                Text("No third-party AI models or cloud services are used in this version.")
+                Text(model.faceModel.isDedicatedFaceModel
+                     ? "The only third-party model is SFace (Apache-2.0), bundled and run locally. No cloud services are used."
+                     : "No third-party AI models or cloud services are used in this version.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 
