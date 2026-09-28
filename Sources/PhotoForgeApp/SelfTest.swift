@@ -90,7 +90,7 @@ enum SelfTest {
                             hidden: false, burstIdentifier: nil)
             }
             try db.upsert(items, sourceID: src, scanStamp: now)
-            let pending = try db.pending(stage: .thumbnailHashes, includeCloudOnly: false)
+            let pending = try db.pending(stage: .thumbnailHashes, sourceID: src, includeCloudOnly: false)
             guard pending.count == 3 else { return false }
             let emb = [e1, e2, e3]
             let hs = [h1!, h2!, h3!]
@@ -99,7 +99,7 @@ enum SelfTest {
                                     noiseSigma: 2, meanLuma: 120, clipped: 0, sharpness: 0.5, noise: 0.8, exposure: 0.9,
                                     sceneEmbedding: emb[i].isEmpty ? nil : emb[i], cipher: cipher)
             }
-            guard try db.pending(stage: .thumbnailHashes, includeCloudOnly: false).isEmpty else { return false }
+            guard try db.pending(stage: .thumbnailHashes, sourceID: src, includeCloudOnly: false).isEmpty else { return false }
             let rows = try db.assets()
             let back = try db.sceneEmbeddings(cipher: cipher)
             guard rows.count == 3, back.count == (e1.isEmpty ? 0 : 3) else { return false }

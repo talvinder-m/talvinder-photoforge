@@ -124,11 +124,12 @@ class FSRCNN(nn.Module):
         else:
             # conv → s² channels → pixel shuffle. With one output channel, TF DepthToSpace and
             # torch PixelShuffle use the same channel order (dy·s + dx).
+            # The graph adds its final bias *after* DepthToSpace (one output channel).
             k, cin, cout = D.shape[0], D.shape[2], D.shape[3]
-            self.up = nn.Conv2d(cin, cout, k, padding=k // 2)
+            self.up = nn.Conv2d(cin, cout, k, padding=k // 2, bias=False)
             self.up.weight.data = torch.from_numpy(np.ascontiguousarray(D.transpose(3, 2, 0, 1)))
-            self.up.bias.data = torch.from_numpy(biases[-1].copy())
             self.shuffle = nn.PixelShuffle(scale)
+            self.post_bias = nn.Parameter(torch.from_numpy(biases[-1].reshape(1, -1, 1, 1).copy()))
 
     def forward(self, x):
         H, Wd = x.shape[2], x.shape[3]
@@ -136,7 +137,7 @@ class FSRCNN(nn.Module):
             x = c(x)
             x = F.relu(x) + a * torch.clamp(x, max=0)      # PReLU
         if self.mode == "shuffle":
-            return self.shuffle(self.up(x))
+            return self.shuffle(self.up(x)) + self.post_bias
         y = self.deconv(x)
         return y[:, :, self.crop:self.crop + H * self.scale, self.crop:self.crop + Wd * self.scale]
 
@@ -178,7 +179,7 @@ for scale in (2, 3, 4):
 
     # 1. PyTorch rebuild == TensorFlow original
     x = np.random.default_rng(scale).random((1, 64, 80, 1)).astype(np.float32)
-    ref = sess.run(y_out, {x_in: x})[0, ..., 0]
+    ref = np.squeeze(sess.run(y_out, {x_in: x}))          # output may be NHWC or NCHW
     got = model(torch.from_numpy(x.transpose(0, 3, 1, 2))).detach().numpy()[0, 0]
     err = float(np.abs(ref - got).max())
     print(f"  PyTorch vs TensorFlow: shapes {ref.shape} / {got.shape}, max abs diff {err:.2e}")

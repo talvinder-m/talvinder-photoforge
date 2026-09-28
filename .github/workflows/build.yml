@@ -69,13 +69,15 @@ jobs:
         if: steps.modelcache.outputs.cache-hit != 'true'
         continue-on-error: true
         run: |
-          pip install "numpy<2" "torch==2.4.1" "coremltools==8.1" onnx onnx2torch onnxruntime \
-                      "tensorflow==2.16.2" scikit-learn pillow 2>&1 | tail -2
+          pip install "numpy<2" "torch==2.4.1" "coremltools==8.1" onnx onnx2torch onnxruntime 2>&1 | tail -2
+          # FSRCNN needs TensorFlow, whose dependencies conflict with ONNX: separate environment.
+          python -m venv /tmp/tfenv
+          /tmp/tfenv/bin/pip install "numpy<2" "torch==2.4.1" "coremltools==8.1" "tensorflow==2.16.2" scikit-learn pillow 2>&1 | tail -2
           mkdir -p Resources/Models
           ok=0
           python tools/convert_sface.py build/models > sface.log 2>&1 \
             && xcrun coremlcompiler compile build/models/SFace.mlpackage Resources/Models >> sface.log 2>&1 || ok=1
-          python tools/convert_fsrcnn.py build/sr > srmodel.log 2>&1 \
+          /tmp/tfenv/bin/python tools/convert_fsrcnn.py build/sr > srmodel.log 2>&1 \
             && for s in 2 3 4; do xcrun coremlcompiler compile build/sr/SR_x$s.mlpackage Resources/Models >> srmodel.log 2>&1; done || ok=1
           python tools/convert_realesrgan.py build/models > esrgan.log 2>&1 \
             && xcrun coremlcompiler compile build/models/RealESRGANx4v3.mlpackage Resources/Models >> esrgan.log 2>&1 || ok=1
