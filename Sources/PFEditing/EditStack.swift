@@ -31,13 +31,13 @@ public struct EditStack: Codable, Sendable, Equatable {
     public func encoded() throws -> String {
         let enc = JSONEncoder()
         enc.outputFormatting = [.sortedKeys]
-        enc.dateEncodingStrategy = .iso8601
+        enc.dateEncodingStrategy = .deferredToDate   // lossless (ISO-8601 drops sub-second precision)
         return String(decoding: try enc.encode(self), as: UTF8.self)
     }
 
     public static func decode(_ json: String) throws -> EditStack {
         let dec = JSONDecoder()
-        dec.dateDecodingStrategy = .iso8601
+        dec.dateDecodingStrategy = .deferredToDate
         var stack = try dec.decode(EditStack.self, from: Data(json.utf8))
         stack = try migrate(stack)
         return stack
