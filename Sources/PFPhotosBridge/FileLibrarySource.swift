@@ -388,7 +388,8 @@ public final class FileLibrarySource: MediaSource, @unchecked Sendable {
         let top = Dir()
         for a in assets {
             guard let u = a.url else { continue }
-            var rel = u.deletingLastPathComponent().path.replacingOccurrences(of: root.path, with: "")
+            var rel = "/" + Self.relativePath(u.deletingLastPathComponent(), to: root)
+            if rel == "/" { rel = "" }
             for prefix in ["/Masters", "/originals", "/resources/derivatives/masters", "/resources/derivatives"] where rel.hasPrefix(prefix) {
                 rel = String(rel.dropFirst(prefix.count)); break
             }
@@ -411,6 +412,14 @@ public final class FileLibrarySource: MediaSource, @unchecked Sendable {
         return nodes.compactMap { $0.rolledUp() }
     }
 
+    /// Path of `url` inside `root`, with symlinks resolved on both sides.
+    static func relativePath(_ url: URL, to root: URL) -> String {
+        let r = root.resolvingSymlinksInPath().standardizedFileURL.path
+        let p = url.resolvingSymlinksInPath().standardizedFileURL.path
+        if p == r { return "" }
+        return p.hasPrefix(r + "/") ? String(p.dropFirst(r.count + 1)) : p
+    }
+
     static let imageExtensions: Set<String> = ["jpg", "jpeg", "heic", "heif", "png", "tif", "tiff", "gif", "bmp", "webp",
                                                "dng", "cr2", "cr3", "nef", "arw", "raf", "orf", "rw2"]
 
@@ -426,7 +435,8 @@ public final class FileLibrarySource: MediaSource, @unchecked Sendable {
         exif.dateFormat = "yyyy:MM:dd HH:mm:ss"
         exif.locale = Locale(identifier: "en_US_POSIX")
         for case let f as URL in e where Self.imageExtensions.contains(f.pathExtension.lowercased()) {
-            let rel = f.path.replacingOccurrences(of: root.path + "/", with: "")
+            // Compare resolved paths: /var → /private/var style symlinks must not change the key.
+            let rel = Self.relativePath(f, to: root)
             let values = try? f.resourceValues(forKeys: [.contentModificationDateKey, .creationDateKey])
             var w = 0, h = 0
             var taken: Date? = nil
