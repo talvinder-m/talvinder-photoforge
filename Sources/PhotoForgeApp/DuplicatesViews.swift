@@ -1,4 +1,5 @@
 import SwiftUI
+import PFCore
 import PFDatabase
 import PFSimilarity
 

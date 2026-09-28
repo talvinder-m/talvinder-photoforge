@@ -9,6 +9,11 @@ public struct QualityMetrics: Sendable, Equatable, Codable {
     public let meanLuma: Double
     public let clippedFraction: Double     // share of pixels at ≤2 or ≥253
 
+    public init(laplacianVariance: Double, noiseSigma: Double, meanLuma: Double, clippedFraction: Double) {
+        self.laplacianVariance = laplacianVariance; self.noiseSigma = noiseSigma
+        self.meanLuma = meanLuma; self.clippedFraction = clippedFraction
+    }
+
     public var sharpnessScore: Double { 1 - exp(-laplacianVariance / 300) }            // ~0.63 at var=300
     public var noiseScore: Double { max(0, 1 - noiseSigma / 12) }                       // σ≥12 → 0
     public var exposureScore: Double {

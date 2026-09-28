@@ -86,6 +86,7 @@ public struct PersonRow: Sendable, Identifiable, Hashable {
 public struct LibraryStats: Sendable {
     public var photos = 0, videos = 0, screenshots = 0, livePhotos = 0, favorites = 0
     public var hashed = 0, facesScanned = 0, faces = 0, cloudOnly = 0, namedPeople = 0
+    public init() {}
 }
 
 public struct ActivityEntry: Sendable, Identifiable {
