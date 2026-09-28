@@ -23,6 +23,18 @@ public struct ModelDescriptor: Sendable, Hashable, Codable {
     public let dataHandling: String             // plain-language: what leaves the Mac, if anything
     public let safetyRestrictions: [String]
     public let modelCardURL: URL?
+
+    public init(name: String, version: String, purpose: Purpose, license: String,
+                licenseAllowsRedistribution: Bool, licenseAllowsCommercialUse: Bool,
+                execution: ExecutionLocation, outputDimension: Int?, inputSize: Int?,
+                minimumMemoryGB: Double, dataHandling: String, safetyRestrictions: [String], modelCardURL: URL?) {
+        self.name = name; self.version = version; self.purpose = purpose; self.license = license
+        self.licenseAllowsRedistribution = licenseAllowsRedistribution
+        self.licenseAllowsCommercialUse = licenseAllowsCommercialUse
+        self.execution = execution; self.outputDimension = outputDimension; self.inputSize = inputSize
+        self.minimumMemoryGB = minimumMemoryGB; self.dataHandling = dataHandling
+        self.safetyRestrictions = safetyRestrictions; self.modelCardURL = modelCardURL
+    }
 }
 
 public enum ModelRegistryError: Error, Sendable {
