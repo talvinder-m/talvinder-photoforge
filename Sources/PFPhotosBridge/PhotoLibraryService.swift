@@ -20,6 +20,10 @@ public struct AssetSnapshot: Sendable, Hashable {
     public let burstIdentifier: String?
     public let latitude: Double?
     public let longitude: Double?
+    /// From an iCloud Shared Album rather than the user's own library.
+    public let isShared: Bool
+    /// Whether the full-size original is stored on this Mac. nil = PhotoKit didn't say.
+    public let locallyAvailable: Bool?
 
     public enum MediaKind: String, Sendable { case image, video, audio, unknown }
 
@@ -47,6 +51,12 @@ public struct AssetSnapshot: Sendable, Hashable {
         // Location is only read when the user has enabled location indexing.
         latitude = includeLocation ? a.location?.coordinate.latitude : nil
         longitude = includeLocation ? a.location?.coordinate.longitude : nil
+        isShared = a.sourceType.contains(.typeCloudShared)
+        // PHAssetResource exposes this through key-value coding (not a documented property);
+        // if it ever disappears we simply report "unknown".
+        let resources = PHAssetResource.assetResources(for: a)
+        let original = resources.first { $0.type == .photo || $0.type == .video || $0.type == .fullSizePhoto }
+        locallyAvailable = original.flatMap { ($0.value(forKey: "locallyAvailable") as? NSNumber)?.boolValue }
     }
 }
 

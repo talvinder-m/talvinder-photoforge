@@ -317,4 +317,15 @@ INSERT INTO settings(key, value) VALUES
         addedAt  REAL NOT NULL
     );
     """
+
+    /// Multiple libraries + iCloud separation.
+    static let v0004_libraries = """
+    ALTER TABLE assets ADD COLUMN assetSource TEXT NOT NULL DEFAULT 'library';
+    ALTER TABLE assets ADD COLUMN filePath TEXT;
+    ALTER TABLE source_libraries ADD COLUMN path TEXT;
+    ALTER TABLE source_libraries ADD COLUMN lastOpenedAt REAL;
+    ALTER TABLE persons ADD COLUMN sourceLibraryID INTEGER REFERENCES source_libraries(id) ON DELETE CASCADE;
+    UPDATE persons SET sourceLibraryID = (SELECT id FROM source_libraries WHERE kind = 'photokit_system' LIMIT 1);
+    CREATE INDEX idx_assets_source ON assets(sourceLibraryID, isDeletedInSource, mediaType);
+    """
 }

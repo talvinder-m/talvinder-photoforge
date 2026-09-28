@@ -41,6 +41,9 @@ public final class AppDatabase: Sendable {
         m.registerMigration("0003_removal_queue") { db in
             try db.execute(sql: Migrations.v0003_removal_queue)
         }
+        m.registerMigration("0004_libraries") { db in
+            try db.execute(sql: Migrations.v0004_libraries)
+        }
         return m
     }
 

@@ -70,13 +70,13 @@ jobs:
         continue-on-error: true
         run: |
           pip install "numpy<2" "torch==2.4.1" "coremltools==8.1" onnx onnx2torch onnxruntime \
-                      "opencv-contrib-python-headless==4.10.0.84" 2>&1 | tail -2
+                      "tensorflow==2.16.2" scikit-learn pillow 2>&1 | tail -2
           mkdir -p Resources/Models
           ok=0
           python tools/convert_sface.py build/models > sface.log 2>&1 \
             && xcrun coremlcompiler compile build/models/SFace.mlpackage Resources/Models >> sface.log 2>&1 || ok=1
-          python tools/convert_fsrcnn.py build/sr build/lfw > srmodel.log 2>&1 \
-            && for s in 2 3 4; do xcrun coremlcompiler compile build/sr/FSRCNN_x$s.mlpackage Resources/Models >> srmodel.log 2>&1; done || ok=1
+          python tools/convert_fsrcnn.py build/sr > srmodel.log 2>&1 \
+            && for s in 2 3 4; do xcrun coremlcompiler compile build/sr/SR_x$s.mlpackage Resources/Models >> srmodel.log 2>&1; done || ok=1
           python tools/convert_realesrgan.py build/models > esrgan.log 2>&1 \
             && xcrun coremlcompiler compile build/models/RealESRGANx4v3.mlpackage Resources/Models >> esrgan.log 2>&1 || ok=1
           ls -la Resources/Models | tee models.log

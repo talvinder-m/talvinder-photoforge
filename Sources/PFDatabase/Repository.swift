@@ -16,9 +16,14 @@ public struct AssetUpsert: Sendable {
     public var favorite: Bool
     public var hidden: Bool
     public var burstIdentifier: String?
+    public var assetSource: String          // library | shared
+    public var filePath: String?            // on-disk libraries only
+    public var availability: String?        // local | cloud_only | nil (unknown / keep previous)
     public init(localIdentifier: String, mediaType: String, subtypeMask: Int, creationDate: Date?,
                 modificationDate: Date?, pixelWidth: Int, pixelHeight: Int, duration: Double,
-                favorite: Bool, hidden: Bool, burstIdentifier: String?) {
+                favorite: Bool, hidden: Bool, burstIdentifier: String?,
+                assetSource: String = "library", filePath: String? = nil, availability: String? = nil) {
+        self.assetSource = assetSource; self.filePath = filePath; self.availability = availability
         self.localIdentifier = localIdentifier; self.mediaType = mediaType; self.subtypeMask = subtypeMask
         self.creationDate = creationDate; self.modificationDate = modificationDate
         self.pixelWidth = pixelWidth; self.pixelHeight = pixelHeight; self.duration = duration
@@ -46,6 +51,9 @@ public struct AssetRow: Sendable, Hashable, Identifiable {
     public let noiseSigma: Double?
     public let meanLuma: Double?
     public let availability: String
+    public let assetSource: String
+    public let filePath: String?
+    public let sourceLibraryID: Int64
 }
 
 public struct StoredFace: Sendable, Identifiable {
@@ -85,8 +93,18 @@ public struct PersonRow: Sendable, Identifiable, Hashable {
 
 public struct LibraryStats: Sendable {
     public var photos = 0, videos = 0, screenshots = 0, livePhotos = 0, favorites = 0
-    public var hashed = 0, facesScanned = 0, faces = 0, cloudOnly = 0, namedPeople = 0
+    public var hashed = 0, facesScanned = 0, faces = 0, cloudOnly = 0, namedPeople = 0, shared = 0
     public init() {}
+}
+
+public struct LibraryRow: Sendable, Identifiable, Hashable {
+    public let id: Int64
+    public let kind: String            // photokit_system | photoslibrary_readonly | import_folder
+    public let name: String
+    public let path: String?
+    public let assetCount: Int
+    public let lastOpened: Date?
+    public var isSystem: Bool { kind == "photokit_system" }
 }
 
 public struct ActivityEntry: Sendable, Identifiable {
@@ -122,8 +140,8 @@ public extension AppDatabase {
             let stmt = try db.cachedStatement(sql: """
                 INSERT INTO assets(photoKitLocalIdentifier, sourceLibraryID, mediaType, mediaSubtypeMask, creationDate,
                     modificationDate, pixelWidth, pixelHeight, duration, favorite, hidden, burstIdentifier,
-                    analysisStage, isDeletedInSource, indexedAt, updatedAt)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?, 1, 0, ?, ?)
+                    analysisStage, isDeletedInSource, indexedAt, updatedAt, assetSource, filePath, localAvailabilityState)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?, 1, 0, ?, ?, ?, ?, COALESCE(?, 'unknown'))
                 ON CONFLICT(sourceLibraryID, photoKitLocalIdentifier) DO UPDATE SET
                     mediaType = excluded.mediaType, mediaSubtypeMask = excluded.mediaSubtypeMask,
                     creationDate = excluded.creationDate, pixelWidth = excluded.pixelWidth,
@@ -132,13 +150,17 @@ public extension AppDatabase {
                     analysisStage = CASE WHEN assets.modificationDate IS NOT excluded.modificationDate THEN 1
                                          ELSE assets.analysisStage END,
                     modificationDate = excluded.modificationDate,
-                    isDeletedInSource = 0, indexedAt = excluded.indexedAt, updatedAt = excluded.updatedAt
+                    isDeletedInSource = 0, indexedAt = excluded.indexedAt, updatedAt = excluded.updatedAt,
+                    assetSource = excluded.assetSource, filePath = excluded.filePath,
+                    localAvailabilityState = CASE WHEN ? IS NULL THEN assets.localAvailabilityState
+                                                  ELSE excluded.localAvailabilityState END
                 """)
             for a in items {
                 try stmt.execute(arguments: [a.localIdentifier, sourceID, a.mediaType, a.subtypeMask,
                                              a.creationDate?.timeIntervalSince1970, a.modificationDate?.timeIntervalSince1970,
                                              a.pixelWidth, a.pixelHeight, a.duration, a.favorite, a.hidden,
-                                             a.burstIdentifier, stamp, stamp])
+                                             a.burstIdentifier, stamp, stamp, a.assetSource, a.filePath,
+                                             a.availability, a.availability])
             }
         }
     }
@@ -162,14 +184,14 @@ public extension AppDatabase {
     }
 
     /// Image assets still missing `stage`, newest first (what users look at first).
-    func pending(stage: IndexStage, includeCloudOnly: Bool, limit: Int = 1_000_000) throws -> [(id: Int64, localIdentifier: String)] {
+    func pending(stage: IndexStage, sourceID: Int64, includeCloudOnly: Bool, limit: Int = 1_000_000) throws -> [(id: Int64, localIdentifier: String)] {
         try writer.read { db in
             try Row.fetchAll(db, sql: """
                 SELECT id, photoKitLocalIdentifier FROM assets
-                WHERE isDeletedInSource = 0 AND mediaType = 'image' AND (analysisStage & ?) = 0
-                  AND (? OR localAvailabilityState != 'cloud_only')
+                WHERE sourceLibraryID = ? AND isDeletedInSource = 0 AND mediaType = 'image' AND (analysisStage & ?) = 0
+                  AND (? OR localAvailabilityState != 'cloud_only' OR filePath IS NOT NULL)
                 ORDER BY creationDate DESC LIMIT ?
-                """, arguments: [stage.rawValue, includeCloudOnly, limit])
+                """, arguments: [sourceID, stage.rawValue, includeCloudOnly, limit])
             .map { ($0["id"], $0["photoKitLocalIdentifier"]) }
         }
     }
@@ -210,13 +232,13 @@ public extension AppDatabase {
         }
     }
 
-    func assets(includeHidden: Bool = true) throws -> [AssetRow] {
+    func assets(sourceID: Int64? = nil, includeHidden: Bool = true) throws -> [AssetRow] {
         try writer.read { db in
             try Row.fetchAll(db, sql: """
                 SELECT * FROM assets a
-                WHERE a.isDeletedInSource = 0 AND (? OR a.hidden = 0)
+                WHERE a.isDeletedInSource = 0 AND (? OR a.hidden = 0) AND (? IS NULL OR a.sourceLibraryID = ?)
                 ORDER BY a.creationDate DESC
-                """, arguments: [includeHidden]).map(Self.assetRow)
+                """, arguments: [includeHidden, sourceID, sourceID]).map(Self.assetRow)
         }
     }
 
@@ -231,7 +253,8 @@ public extension AppDatabase {
                         pHash: p.map { UInt64(bitPattern: $0) }, dHash: dh.map { UInt64(bitPattern: $0) },
                         fileHash: r["fileHash"], sharpness: r["sharpnessScore"], noise: r["noiseScore"],
                         exposure: r["exposureScore"], laplacianVariance: lap, noiseSigma: sigma, meanLuma: luma,
-                        availability: r["localAvailabilityState"])
+                        availability: r["localAvailabilityState"], assetSource: r["assetSource"] ?? "library",
+                        filePath: r["filePath"], sourceLibraryID: r["sourceLibraryID"])
     }
 
     /// Scene embeddings keyed by asset id.
@@ -261,6 +284,61 @@ public extension AppDatabase {
             SELECT id FROM embeddings WHERE entityType = ? AND entityID = ? AND modelName = ? AND modelVersion = ?
             """, arguments: [entityType, entityID, model.name, model.version])!
         try db.execute(sql: "INSERT OR REPLACE INTO embedding_vectors(embeddingID, vector) VALUES (?, ?)", arguments: [eid, sealed])
+    }
+
+    // --- libraries --------------------------------------------------------------------
+
+    func libraries() throws -> [LibraryRow] {
+        try writer.read { db in
+            try Row.fetchAll(db, sql: """
+                SELECT s.*, (SELECT COUNT(*) FROM assets a WHERE a.sourceLibraryID = s.id AND a.isDeletedInSource = 0) AS n
+                FROM source_libraries s ORDER BY (s.kind != 'photokit_system'), COALESCE(s.lastOpenedAt, 0) DESC
+                """).map {
+                LibraryRow(id: $0["id"], kind: $0["kind"], name: $0["displayName"], path: $0["path"],
+                           assetCount: $0["n"], lastOpened: ($0["lastOpenedAt"] as Double?).map(Date.init(timeIntervalSince1970:)))
+            }
+        }
+    }
+
+    /// Adds (or returns the existing) on-disk library by path.
+    func addLibrary(kind: String, name: String, path: String) throws -> Int64 {
+        try writer.write { db in
+            if let id = try Int64.fetchOne(db, sql: "SELECT id FROM source_libraries WHERE path = ?", arguments: [path]) { return id }
+            try db.execute(sql: "INSERT INTO source_libraries(kind, displayName, path, createdAt) VALUES (?,?,?,?)",
+                           arguments: [kind, name, path, Date().timeIntervalSince1970])
+            return db.lastInsertedRowID
+        }
+    }
+
+    func touchLibrary(_ id: Int64) throws {
+        try writer.write { db in
+            try db.execute(sql: "UPDATE source_libraries SET lastOpenedAt = ? WHERE id = ?", arguments: [Date().timeIntervalSince1970, id])
+        }
+    }
+
+    /// Forgets a library: removes everything PhotoForge stored about it (the library itself is untouched).
+    func removeLibrary(_ id: Int64) throws {
+        try writer.write { db in
+            try db.execute(sql: "DELETE FROM embeddings WHERE entityType = 'asset' AND entityID IN (SELECT id FROM assets WHERE sourceLibraryID = ?)",
+                           arguments: [id])
+            try db.execute(sql: """
+                DELETE FROM embeddings WHERE entityType = 'face' AND entityID IN
+                    (SELECT f.id FROM faces f JOIN assets a ON a.id = f.assetID WHERE a.sourceLibraryID = ?)
+                """, arguments: [id])
+            // Cascades to its assets, faces, removal-queue entries and people.
+            try db.execute(sql: "DELETE FROM source_libraries WHERE id = ? AND kind != 'photokit_system'", arguments: [id])
+        }
+    }
+
+    func filePaths(sourceID: Int64) throws -> [String: String] {
+        try writer.read { db in
+            var out: [String: String] = [:]
+            for r in try Row.fetchAll(db, sql: "SELECT photoKitLocalIdentifier, filePath FROM assets WHERE sourceLibraryID = ? AND filePath IS NOT NULL",
+                                      arguments: [sourceID]) {
+                if let k: String = r["photoKitLocalIdentifier"], let p: String = r["filePath"] { out[k] = p }
+            }
+            return out
+        }
     }
 
     // --- duplicate feedback -------------------------------------------------------
@@ -322,12 +400,12 @@ public extension AppDatabase {
         }
     }
 
-    func removalQueue() throws -> [(assetID: Int64, reason: String)] {
+    func removalQueue(sourceID: Int64? = nil) throws -> [(assetID: Int64, reason: String)] {
         try writer.read { db in
             try Row.fetchAll(db, sql: """
                 SELECT q.assetID, q.reason FROM removal_queue q JOIN assets a ON a.id = q.assetID
-                WHERE a.isDeletedInSource = 0 ORDER BY q.addedAt DESC
-                """).map { ($0["assetID"], $0["reason"]) }
+                WHERE a.isDeletedInSource = 0 AND (? IS NULL OR a.sourceLibraryID = ?) ORDER BY q.addedAt DESC
+                """, arguments: [sourceID, sourceID]).map { ($0["assetID"], $0["reason"]) }
         }
     }
 
@@ -392,17 +470,17 @@ public extension AppDatabase {
         }
     }
 
-    func storedFaces(cipher: VectorCipher) throws -> [StoredFace] {
+    func storedFaces(cipher: VectorCipher, sourceID: Int64? = nil) throws -> [StoredFace] {
         try writer.read { db in
             try Row.fetchAll(db, sql: """
                 SELECT f.id, f.assetID, a.photoKitLocalIdentifier, f.bboxX, f.bboxY, f.bboxW, f.bboxH,
                        f.faceQualityScore, f.pixelSize, f.yaw, f.faceCropPath, a.creationDate, v.vector
                 FROM faces f
-                JOIN assets a ON a.id = f.assetID AND a.isDeletedInSource = 0
+                JOIN assets a ON a.id = f.assetID AND a.isDeletedInSource = 0 AND (?1 IS NULL OR a.sourceLibraryID = ?1)
                 JOIN embeddings e ON e.id = f.embeddingID
                 JOIN embedding_vectors v ON v.embeddingID = e.id
                 WHERE f.isIgnored = 0
-                """).compactMap { r in
+                """, arguments: [sourceID]).compactMap { r in
                     let blob: Data = r["vector"]
                     guard let v = try? cipher.open(blob) else { return nil }
                     let created: Double? = r["creationDate"]
@@ -416,12 +494,13 @@ public extension AppDatabase {
         }
     }
 
-    func persons() throws -> [PersonRow] {
+    func persons(sourceID: Int64? = nil) throws -> [PersonRow] {
         try writer.read { db in
             let members = try Row.fetchAll(db, sql: "SELECT personID, faceID FROM person_face_membership WHERE userConfirmed = 1")
             var byPerson: [Int64: [Int64]] = [:]
             for m in members { byPerson[m["personID"], default: []].append(m["faceID"]) }
-            return try Row.fetchAll(db, sql: "SELECT * FROM persons ORDER BY displayName COLLATE NOCASE").map { r in
+            return try Row.fetchAll(db, sql: "SELECT * FROM persons WHERE (? IS NULL OR sourceLibraryID = ?) ORDER BY displayName COLLATE NOCASE",
+                                    arguments: [sourceID, sourceID]).map { r in
                 PersonRow(id: r["id"], displayName: r["displayName"], confidence: r["confidenceState"],
                           isHidden: r["isHidden"], confirmedFaceIDs: byPerson[r["id"]] ?? [])
             }
@@ -441,11 +520,11 @@ public extension AppDatabase {
 
     /// Naming a group confirms its current faces as that person.
     @discardableResult
-    func createPerson(named name: String, faceIDs: [Int64]) throws -> Int64 {
+    func createPerson(named name: String, faceIDs: [Int64], sourceID: Int64? = nil) throws -> Int64 {
         try writer.write { db in
             let now = Date().timeIntervalSince1970
-            try db.execute(sql: "INSERT INTO persons(displayName, coverFaceID, confidenceState, createdAt, updatedAt) VALUES (?,?,'confirmed',?,?)",
-                           arguments: [name, faceIDs.first, now, now])
+            try db.execute(sql: "INSERT INTO persons(displayName, coverFaceID, confidenceState, createdAt, updatedAt, sourceLibraryID) VALUES (?,?,'confirmed',?,?,?)",
+                           arguments: [name, faceIDs.first, now, now, sourceID])
             let pid = db.lastInsertedRowID
             try Self.confirm(db, person: pid, faces: faceIDs)
             return pid
@@ -556,10 +635,10 @@ public extension AppDatabase {
 
     func clearActivity() throws { try writer.write { try $0.execute(sql: "DELETE FROM activity_log") } }
 
-    func stats() throws -> LibraryStats {
+    func stats(sourceID: Int64? = nil) throws -> LibraryStats {
         try writer.read { db in
             var s = LibraryStats()
-            let base = "FROM assets WHERE isDeletedInSource = 0"
+            let base = "FROM assets WHERE isDeletedInSource = 0" + (sourceID.map { " AND sourceLibraryID = \($0)" } ?? "")
             s.photos = try Int.fetchOne(db, sql: "SELECT COUNT(*) \(base) AND mediaType = 'image'") ?? 0
             s.videos = try Int.fetchOne(db, sql: "SELECT COUNT(*) \(base) AND mediaType = 'video'") ?? 0
             s.screenshots = try Int.fetchOne(db, sql: "SELECT COUNT(*) \(base) AND (mediaSubtypeMask & 4) != 0") ?? 0
@@ -568,8 +647,10 @@ public extension AppDatabase {
             s.hashed = try Int.fetchOne(db, sql: "SELECT COUNT(*) \(base) AND (analysisStage & 2) != 0") ?? 0
             s.facesScanned = try Int.fetchOne(db, sql: "SELECT COUNT(*) \(base) AND (analysisStage & 8) != 0") ?? 0
             s.cloudOnly = try Int.fetchOne(db, sql: "SELECT COUNT(*) \(base) AND localAvailabilityState = 'cloud_only'") ?? 0
-            s.faces = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM faces WHERE isIgnored = 0") ?? 0
-            s.namedPeople = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM persons WHERE displayName IS NOT NULL") ?? 0
+            let src = sourceID.map { " AND a.sourceLibraryID = \($0)" } ?? ""
+            s.faces = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM faces f JOIN assets a ON a.id = f.assetID WHERE f.isIgnored = 0\(src)") ?? 0
+            s.namedPeople = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM persons WHERE displayName IS NOT NULL" + (sourceID.map { " AND sourceLibraryID = \($0)" } ?? "")) ?? 0
+            s.shared = try Int.fetchOne(db, sql: "SELECT COUNT(*) \(base) AND assetSource = 'shared'") ?? 0
             return s
         }
     }
