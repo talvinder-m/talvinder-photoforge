@@ -142,6 +142,29 @@ class FSRCNN(nn.Module):
         return y[:, :, self.crop:self.crop + H * self.scale, self.crop:self.crop + Wd * self.scale]
 
 
+def diagnose(sess, x_in, x, ops, model):
+    """Layer-by-layer comparison to find where the rebuild diverges from TensorFlow."""
+    print("  --- diagnosis: TF graph in execution order ---")
+    for o in ops:
+        if o.type in ("Const", "Identity", "NoOp"):
+            continue
+        ins = [f"{i.op.name}({i.op.type})" for i in o.inputs]
+        attrs = {k: o.get_attr(k) for k in ("data_format", "padding", "block_size") if k in o.node_def.attr}
+        print(f"   {o.type:14s} {o.name:40s} <- {ins} {attrs}")
+    convs = [o for o in ops if o.type == "Conv2D"]
+    tf_vals = sess.run([c.outputs[0] for c in convs], {x_in: x})
+    t = torch.from_numpy(x.transpose(0, 3, 1, 2))
+    with torch.no_grad():
+        h = t
+        for i, c in enumerate(model.convs):
+            raw = F.conv2d(h, c.weight, None, padding=c.padding)
+            tv = tf_vals[i]
+            tv = tv if tv.shape[1] == raw.shape[1] else tv.transpose(0, 3, 1, 2)
+            print(f"   conv{i}: max|tf - torch| (pre-bias) = {float(np.abs(tv - raw.numpy()).max()):.3e}")
+            h = c(h)
+            h = F.relu(h) + model.alphas[i] * torch.clamp(h, max=0)
+
+
 def psnr(a, b):
     mse = np.mean((a.astype(np.float64) - b.astype(np.float64)) ** 2)
     return 99.0 if mse == 0 else 10 * math.log10(255.0 ** 2 / mse)
@@ -183,6 +206,8 @@ for scale in (2, 3, 4):
     got = model(torch.from_numpy(x.transpose(0, 3, 1, 2))).detach().numpy()[0, 0]
     err = float(np.abs(ref - got).max())
     print(f"  PyTorch vs TensorFlow: shapes {ref.shape} / {got.shape}, max abs diff {err:.2e}")
+    if not (ref.shape == got.shape and err < 1e-4):
+        diagnose(sess, x_in, x, ops, model)
     assert ref.shape == got.shape and err < 1e-4, "rebuild mismatch"
 
     # 2. Core ML conversion (fixed 128×128 tile)

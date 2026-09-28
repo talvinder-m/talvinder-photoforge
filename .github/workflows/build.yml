@@ -57,12 +57,12 @@ jobs:
           pip install "numpy<2" scikit-learn pillow 2>&1 | tail -1
           python tools/lfw_sample.py build/lfw 12 8 2>&1 | tee lfw.log
 
-      - name: Cache converted models
+      - name: Restore converted models
         id: modelcache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: Resources/Models
-          key: coreml-models-v3-${{ hashFiles('tools/convert_*.py') }}
+          key: coreml-models-v4-${{ hashFiles('tools/convert_*.py') }}
 
       - name: Prepare models (SFace, FSRCNN, Real-ESRGAN → Core ML)
         id: models
@@ -84,6 +84,13 @@ jobs:
           ls -la Resources/Models | tee models.log
           tail -5 sface.log srmodel.log esrgan.log
           exit $ok
+
+      - name: Save converted models (only when every conversion succeeded)
+        if: steps.models.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: Resources/Models
+          key: coreml-models-v4-${{ hashFiles('tools/convert_*.py') }}
 
       - name: Package app
         id: package
