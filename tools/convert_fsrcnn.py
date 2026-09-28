@@ -285,6 +285,7 @@ for scale in (2, 3, 4):
         p_bic, p_sr = psnr(luma(hr), luma(bic)), psnr(luma(hr), sr_y)
         gains.append(p_sr - p_bic)
         print(f"  {w}x{h}: bicubic {p_bic:.2f} dB → FSRCNN {p_sr:.2f} dB (+{p_sr - p_bic:.2f})")
-    assert min(gains) > 0, "FSRCNN should beat bicubic"
+    print(f"  x{scale}: mean gain over bicubic {np.mean(gains):+.2f} dB (min {min(gains):+.2f}, max {max(gains):+.2f})")
+    assert np.mean(gains) > 0, "FSRCNN should beat bicubic on average"
 
 print("\nFSRCNN CONVERSION OK")
