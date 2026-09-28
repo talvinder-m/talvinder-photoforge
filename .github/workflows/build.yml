@@ -45,23 +45,25 @@ jobs:
           cache: pip
           cache-dependency-path: .github/workflows/build.yml
 
-      - name: Cache converted face model
+      - name: Cache converted models
         id: modelcache
         uses: actions/cache@v4
         with:
           path: Resources/Models
-          key: sface-coreml-v1-${{ hashFiles('tools/convert_sface.py') }}
+          key: coreml-models-v2-${{ hashFiles('tools/convert_*.py') }}
 
-      - name: Prepare face model (SFace → Core ML)
+      - name: Prepare models (SFace + Real-ESRGAN → Core ML)
         id: facemodel
         if: steps.modelcache.outputs.cache-hit != 'true'
         continue-on-error: true
         run: |
           set -o pipefail
           pip install "numpy<2" "torch==2.4.1" "coremltools==8.1" onnx onnx2torch onnxruntime 2>&1 | tail -3
-          python tools/convert_sface.py build/models 2>&1 | tee facemodel.log
           mkdir -p Resources/Models
+          python tools/convert_sface.py build/models 2>&1 | tee facemodel.log
           xcrun coremlcompiler compile build/models/SFace.mlpackage Resources/Models 2>&1 | tee -a facemodel.log
+          python tools/convert_realesrgan.py build/models 2>&1 | tee -a facemodel.log
+          xcrun coremlcompiler compile build/models/RealESRGANx4v3.mlpackage Resources/Models 2>&1 | tee -a facemodel.log
           ls -la Resources/Models | tee -a facemodel.log
 
       - name: Package app
