@@ -7,6 +7,10 @@ import PFPhotosBridge
 struct PhotoForgeApp: App {
     @State private var model = AppModel()
 
+    init() {
+        if CommandLine.arguments.contains("--selftest") { SelfTest.runAndExit() }
+    }
+
     var body: some Scene {
         WindowGroup("PhotoForge") {
             RootView()
