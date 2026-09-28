@@ -166,14 +166,21 @@ struct EditorView: View {
                     }.controlSize(.small)
                 }
                 Button("Revert to Original") { state.revert() }.disabled(!state.isModified)
+                Button { model.editingAsset = nil; model.upscaleRequest = asset } label: {
+                    Label("Upscale to 2K…", systemImage: "arrow.up.left.and.arrow.down.right")
+                }
+                .disabled(max(asset.pixelWidth, asset.pixelHeight) >= 2048)
+                .help("AI upscaling of the original photo")
 
                 Divider()
                 section("Save") {
                     Button {
                         Task { await saveToPhotos() }
                     } label: { Label("Save as New Photo", systemImage: "square.and.arrow.down.on.square").frame(maxWidth: .infinity) }
-                    .buttonStyle(.borderedProminent).disabled(!state.isModified || state.busy)
-                    Text("Adds the edited version to Photos (album “PhotoForge Edits”). The original is kept.")
+                    .buttonStyle(.borderedProminent).disabled(!state.isModified || state.busy || !model.canSaveToLibrary)
+                    Text(model.canSaveToLibrary
+                         ? "Adds the edited version to Photos (album “PhotoForge Edits”). The original is kept."
+                         : "This library is opened read-only. Use Export to File to save your edit.")
                         .font(.caption).foregroundStyle(.secondary)
                     Toggle("Keep camera metadata", isOn: $keepMetadata)
                     Toggle("Remove location", isOn: $removeGPS).disabled(!keepMetadata)
@@ -229,7 +236,7 @@ struct EditorView: View {
 
     private func load() async {
         do {
-            let data = try await model.photos.fullImageData(for: asset.localIdentifier)
+            let data = try await model.mediaSource.fullImageData(for: asset.localIdentifier)
             guard let full = EditRenderer.image(from: data) else { throw CocoaError(.fileReadCorruptFile) }
             state.sourceData = data
             state.fullSource = full

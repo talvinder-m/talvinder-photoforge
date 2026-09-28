@@ -46,10 +46,14 @@ struct RootView: View {
                 ContentUnavailableView("PhotoForge couldn't start", systemImage: "exclamationmark.triangle",
                                        description: Text(err))
             } else {
-                switch model.access {
-                case .authorized, .limited: MainView()
-                case .notDetermined: ConnectView()
-                case .denied, .restricted: DeniedView()
+                if !model.isSystemLibrary {
+                    MainView()                 // an on-disk library doesn't need Photos permission
+                } else {
+                    switch model.access {
+                    case .authorized, .limited: MainView()
+                    case .notDetermined: ConnectView()
+                    case .denied, .restricted: DeniedView()
+                    }
                 }
             }
         }
@@ -93,12 +97,15 @@ struct ConnectView: View {
             }
             .controlSize(.large).buttonStyle(.borderedProminent)
             Text("macOS will ask for permission to access your photo library.").font(.footnote).foregroundStyle(.secondary)
+            Button("Open Another Library or Folder…") { Task { await model.chooseLibraryWithPanel() } }
+                .buttonStyle(.link)
         }
         .padding(40)
     }
 }
 
 struct DeniedView: View {
+    @Environment(AppModel.self) private var model
     var body: some View {
         ContentUnavailableView {
             Label("Photos access is off", systemImage: "hand.raised")
@@ -108,6 +115,7 @@ struct DeniedView: View {
             Button("Open Privacy Settings") {
                 NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Photos")!)
             }
+            Button("Open Another Library or Folder…") { Task { await model.chooseLibraryWithPanel() } }
         }
     }
 }
@@ -119,12 +127,26 @@ struct MainView: View {
         @Bindable var model = model
         NavigationSplitView {
             List(selection: $model.selection) {
-                Section("Library") {
+                Section {
                     Label("Dashboard", systemImage: "gauge.with.dots.needle.50percent").tag(SidebarItem.dashboard)
-                    Label("All Photos", systemImage: "photo.on.rectangle").tag(SidebarItem.allPhotos)
+                    Label(model.isSystemLibrary ? "On This Mac" : "All Photos", systemImage: "photo.on.rectangle")
+                        .tag(SidebarItem.allPhotos)
                     Label("Favorites", systemImage: "heart").tag(SidebarItem.favorites)
                     Label("Screenshots", systemImage: "camera.viewfinder").tag(SidebarItem.screenshots)
                     Label("Blurry Photos", systemImage: "camera.metering.unknown").tag(SidebarItem.blurry)
+                } header: {
+                    LibrarySwitcher()
+                }
+                if model.isSystemLibrary || model.stats.cloudOnly > 0 {
+                    Section("iCloud") {
+                        Label("iCloud Photos", systemImage: "icloud")
+                            .badge(model.stats.cloudOnly).tag(SidebarItem.iCloudOnly)
+                            .help("Photos stored in iCloud but not downloaded to this Mac")
+                        if model.isSystemLibrary {
+                            Label("Shared Albums", systemImage: "person.2.crop.square.stack")
+                                .badge(model.stats.shared).tag(SidebarItem.sharedAlbums)
+                        }
+                    }
                 }
                 Section("Organize") {
                     Label("Duplicates", systemImage: "square.on.square")
@@ -139,12 +161,14 @@ struct MainView: View {
                     Label("Settings & Privacy", systemImage: "lock.shield").tag(SidebarItem.settings)
                 }
             }
-            .navigationSplitViewColumnWidth(min: 200, ideal: 220)
+            .navigationSplitViewColumnWidth(min: 220, ideal: 240)
             .safeAreaInset(edge: .bottom) { IndexStatusFooter().padding(10) }
         } detail: {
             switch model.selection ?? .dashboard {
             case .dashboard: DashboardView()
-            case .allPhotos: PhotoGridView(filter: .all)
+            case .allPhotos: PhotoGridView(filter: .onThisMac)
+            case .iCloudOnly: PhotoGridView(filter: .iCloudOnly)
+            case .sharedAlbums: PhotoGridView(filter: .sharedAlbums)
             case .favorites: PhotoGridView(filter: .favorites)
             case .screenshots: PhotoGridView(filter: .screenshots)
             case .blurry: PhotoGridView(filter: .blurry)
@@ -157,6 +181,9 @@ struct MainView: View {
         }
         .sheet(item: $model.editingAsset) { asset in
             EditorView(asset: asset).environment(model).frame(minWidth: 1100, minHeight: 720)
+        }
+        .sheet(item: $model.upscaleRequest) { asset in
+            UpscaleView(asset: asset).environment(model).frame(minWidth: 980, minHeight: 680)
         }
     }
 }
@@ -281,5 +308,52 @@ struct QuickAction: View {
                 Text(title).font(.caption)
             }.frame(maxWidth: .infinity, minHeight: 60)
         }.buttonStyle(.bordered)
+    }
+}
+
+
+/// Sidebar header: which library PhotoForge is showing, and a menu to switch or add one.
+struct LibrarySwitcher: View {
+    @Environment(AppModel.self) private var model
+    @State private var discovered: [URL] = []
+
+    var body: some View {
+        Menu {
+            ForEach(model.libraries) { lib in
+                Button {
+                    Task { await model.switchLibrary(lib.id) }
+                } label: {
+                    if lib.id == model.activeLibraryID { Label(title(lib), systemImage: "checkmark") } else { Text(title(lib)) }
+                }
+            }
+            if !discovered.isEmpty {
+                Divider()
+                Section("Found on this Mac") {
+                    ForEach(discovered, id: \.self) { url in
+                        Button(url.deletingPathExtension().lastPathComponent + " — " + url.deletingLastPathComponent().path) {
+                            Task { await model.openLibrary(at: url) }
+                        }
+                    }
+                }
+            }
+            Divider()
+            Button("Choose Library or Folder…") { Task { await model.chooseLibraryWithPanel() } }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: model.isSystemLibrary ? "photo.stack" : "externaldrive")
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(model.activeLibrary.map(title) ?? "System Photo Library").font(.callout.bold()).lineLimit(1)
+                    if !model.isSystemLibrary { Text("Read-only").font(.caption2).foregroundStyle(.secondary) }
+                }
+            }
+        }
+        .menuStyle(.borderlessButton)
+        .textCase(nil)
+        .task { discovered = await model.discoverLibraries() }
+        .help("Switch between your System Photo Library and other libraries or folders")
+    }
+
+    private func title(_ lib: LibraryRow) -> String {
+        lib.isSystem ? "System Photo Library" : "\(lib.name) (\(lib.assetCount.formatted()))"
     }
 }

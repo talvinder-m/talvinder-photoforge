@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import AppKit
 import Observation
 import PFCore
 import PFDatabase
@@ -12,7 +13,7 @@ import PFEditing
 import PFSafety
 
 enum SidebarItem: Hashable {
-    case dashboard, allPhotos, favorites, screenshots, blurry
+    case dashboard, allPhotos, favorites, screenshots, blurry, iCloudOnly, sharedAlbums
     case duplicates, removalQueue, people
     case activity, settings
 }
@@ -68,6 +69,7 @@ final class AppModel {
     let renderer = EditRenderer()
     let policy = GenerativeEditPolicy()
     let faceModel = FaceEmbedding.load()
+    let superRes = SuperResolution(modelsDirectory: Bundle.main.resourceURL?.appendingPathComponent("Models"))
 
     // State
     var startupError: String?
@@ -84,7 +86,27 @@ final class AppModel {
     var reviewFaces: [ReviewFaceVM] = []
     var activity: [ActivityEntry] = []
     var editingAsset: AssetRow?
+    var upscaleRequest: AssetRow?
     var banner: String?
+
+    // Libraries: the System Photo Library (PhotoKit) plus any libraries/folders opened from disk.
+    var libraries: [LibraryRow] = []
+    var activeLibraryID: Int64?
+    private var fileSources: [Int64: FileLibrarySource] = [:]
+    var activeLibrary: LibraryRow? { libraries.first { $0.id == activeLibraryID } }
+    var isSystemLibrary: Bool { activeLibrary?.isSystem ?? true }
+    /// Assets of the active library (the database load is already scoped to it).
+    var visibleAssets: [AssetRow] { assets }
+    var mediaSource: any MediaSource {
+        if let id = activeLibraryID, let src = fileSources[id] { return src }
+        return photos
+    }
+    var canDelete: Bool { mediaSource.capabilities.canDelete }
+    var canSaveToLibrary: Bool { mediaSource.capabilities.canAddToLibrary }
+
+    func thumbnail(for key: String, side: Double) async -> NSImage? {
+        await mediaSource.thumbnail(for: key, side: side)
+    }
 
     // Settings (persisted in the settings table)
     var faceAnalysisEnabled = true { didSet { save("faceAnalysisEnabled", faceAnalysisEnabled) } }
@@ -125,12 +147,108 @@ final class AppModel {
             return
         }
         access = photos.accessState
+        refreshLibraries()
+        let saved = db?.setting("activeLibraryID").flatMap(Int64.init)
+        if let saved, let lib = libraries.first(where: { $0.id == saved }), !lib.isSystem, let path = lib.path {
+            // Reopen the on-disk library the user was using last time.
+            if (try? await attachFileLibrary(id: lib.id, url: URL(fileURLWithPath: path))) != nil {
+                activeLibraryID = lib.id
+                await reloadFromDatabase()
+                await syncLibrary()
+            }
+        }
+        if activeLibraryID == nil {
+            activeLibraryID = try? db?.systemSourceID()
+            refreshLibraries()
+        }
         if access == .authorized || access == .limited {
             _ = await photos.requestAccess()          // registers the change observer; no prompt when already decided
-            await reloadFromDatabase()
-            await syncLibrary()
+            if isSystemLibrary {
+                await reloadFromDatabase()
+                await syncLibrary()
+            }
             watchLibraryChanges()
         }
+    }
+
+    // MARK: Libraries
+
+    func refreshLibraries() {
+        libraries = (try? db?.libraries()) ?? []
+    }
+
+    /// Libraries found in the usual places that aren't already listed.
+    func discoverLibraries() async -> [URL] {
+        let known = Set(libraries.compactMap(\.path))
+        return await Task.detached { FileLibrarySource.discoverLibraries() }.value.filter { !known.contains($0.path) }
+    }
+
+    func chooseLibraryWithPanel() async {
+        let panel = NSOpenPanel()
+        panel.title = "Choose a Photos Library or Folder"
+        panel.message = "Pick a Photos library (.photoslibrary), an iPhoto library, or any folder of photos. PhotoForge only reads it."
+        panel.prompt = "Open"
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = true
+        panel.allowsMultipleSelection = false
+        panel.treatsFilePackagesAsDirectories = false
+        panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Pictures")
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        await openLibrary(at: url)
+    }
+
+    func openLibrary(at url: URL) async {
+        guard let db else { return }
+        do {
+            let inspection = try FileLibrarySource.inspect(url)
+            let kind = inspection.kind == .folder ? "import_folder" : "photoslibrary_readonly"
+            let id = try db.addLibrary(kind: kind, name: inspection.name, path: url.path)
+            try await attachFileLibrary(id: id, url: url)
+            db.log("scan", "Opened \(inspection.detail.lowercased()) “\(inspection.name)” (read-only)")
+            await switchLibrary(id)
+        } catch {
+            banner = error.localizedDescription
+        }
+    }
+
+    @discardableResult
+    private func attachFileLibrary(id: Int64, url: URL) async throws -> FileLibrarySource {
+        if let s = fileSources[id] { return s }
+        let src = try FileLibrarySource(url: url)
+        if let saved = try? db?.filePaths(sourceID: id) {
+            src.register(saved.mapValues { URL(fileURLWithPath: $0) })
+        }
+        fileSources[id] = src
+        return src
+    }
+
+    func switchLibrary(_ id: Int64) async {
+        guard id != activeLibraryID || assets.isEmpty else { return }
+        await cancelAnalysis()
+        if let lib = libraries.first(where: { $0.id == id }) ?? (try? db?.libraries())?.first(where: { $0.id == id }),
+           !lib.isSystem, let path = lib.path {
+            do { try await attachFileLibrary(id: id, url: URL(fileURLWithPath: path)) }
+            catch { banner = error.localizedDescription; return }
+        }
+        activeLibraryID = id
+        try? db?.touchLibrary(id)
+        db?.setSetting("activeLibraryID", String(id))
+        refreshLibraries()
+        ThumbnailCache.shared.removeAll()
+        assets = []; assetsByID = [:]; duplicateGroups = []; people = []; reviewFaces = []
+        if selection == .iCloudOnly || selection == .sharedAlbums { selection = .allPhotos }
+        await reloadFromDatabase()
+        if !isSystemLibrary || access == .authorized || access == .limited { await syncLibrary() }
+    }
+
+    /// Removes PhotoForge's data about a library (the library itself is untouched).
+    func forgetLibrary(_ id: Int64) async {
+        guard let lib = libraries.first(where: { $0.id == id }), !lib.isSystem else { return }
+        if id == activeLibraryID, let sys = try? db?.systemSourceID() { await switchLibrary(sys) }
+        fileSources[id] = nil
+        try? db?.removeLibrary(id)
+        db?.log("privacy", "Forgot library “\(lib.name)” and its analysis data")
+        refreshLibraries()
     }
 
     func connectPhotos() async {
@@ -156,6 +274,11 @@ final class AppModel {
 
     func syncLibrary() async {
         guard let db, !syncing else { return }
+        if let id = activeLibraryID, let src = fileSources[id] {
+            await syncFileLibrary(db: db, id: id, source: src)
+            return
+        }
+        guard access == .authorized || access == .limited else { return }
         syncing = true
         defer { syncing = false }
         let stamp = Date()
@@ -168,7 +291,9 @@ final class AppModel {
                                 subtypeMask: Int(a.subtypeMask), creationDate: a.creationDate,
                                 modificationDate: a.modificationDate, pixelWidth: a.pixelWidth,
                                 pixelHeight: a.pixelHeight, duration: a.duration, favorite: a.isFavorite,
-                                hidden: a.isHidden, burstIdentifier: a.burstIdentifier)
+                                hidden: a.isHidden, burstIdentifier: a.burstIdentifier,
+                                assetSource: a.isShared ? "shared" : "library", filePath: nil,
+                                availability: a.locallyAvailable.map { $0 ? "local" : "cloud_only" })
                 }
                 try await Task.detached { try db.upsert(rows, sourceID: source, scanStamp: stamp) }.value
                 count += rows.count
@@ -177,16 +302,49 @@ final class AppModel {
             let removed = try db.markUnseenDeleted(sourceID: source, scanStamp: stamp)
             db.log("scan", "Library synced: \(count) items\(removed > 0 ? ", \(removed) removed from Photos" : "")", assetCount: count)
             if !status.running { status.message = "" }
+            refreshLibraries()
             await reloadFromDatabase()
         } catch {
             banner = "Couldn't read the Photos library: \(error.localizedDescription)"
         }
     }
 
+    private func syncFileLibrary(db: AppDatabase, id: Int64, source: FileLibrarySource) async {
+        syncing = true
+        defer { syncing = false }
+        status.message = "Reading “\(source.inspection.name)”…"
+        let stamp = Date()
+        do {
+            let found = try await Task.detached(priority: .userInitiated) { try source.scan() }.value
+            let rows = found.map { a in
+                AssetUpsert(localIdentifier: a.key, mediaType: a.mediaType, subtypeMask: a.subtypeMask,
+                            creationDate: a.creationDate, modificationDate: a.modificationDate,
+                            pixelWidth: a.pixelWidth, pixelHeight: a.pixelHeight, duration: a.duration,
+                            favorite: a.favorite, hidden: a.hidden, burstIdentifier: a.burstIdentifier,
+                            assetSource: "library", filePath: a.url?.path,
+                            availability: a.isOriginalLocal ? "local" : "cloud_only")
+            }
+            for chunk in stride(from: 0, to: rows.count, by: 1000) {
+                let part = Array(rows[chunk..<min(chunk + 1000, rows.count)])
+                try await Task.detached { try db.upsert(part, sourceID: id, scanStamp: stamp) }.value
+                status.message = "Reading “\(source.inspection.name)”… \(min(chunk + 1000, rows.count).formatted()) items"
+            }
+            _ = try db.markUnseenDeleted(sourceID: id, scanStamp: stamp)
+            db.log("scan", "Read \(rows.count) items from “\(source.inspection.name)” (read-only)", assetCount: rows.count)
+            status.message = ""
+            refreshLibraries()
+            await reloadFromDatabase()
+        } catch {
+            status.message = ""
+            banner = error.localizedDescription
+        }
+    }
+
     func reloadFromDatabase() async {
         guard let db else { return }
+        let sid = activeLibraryID
         let loaded = try? await Task.detached { () -> ([AssetRow], LibraryStats, [(assetID: Int64, reason: String)], [ActivityEntry]) in
-            (try db.assets(), try db.stats(), try db.removalQueue(), try db.activity())
+            (try db.assets(sourceID: sid), try db.stats(sourceID: sid), try db.removalQueue(sourceID: sid), try db.activity())
         }.value
         if let (a, s, q, act) = loaded {
             assets = a
@@ -202,11 +360,11 @@ final class AppModel {
     // MARK: Analysis
 
     func startAnalysis() async {
-        guard let db, let cipher, currentJob == nil else { return }
+        guard let db, let cipher, currentJob == nil, let sid = activeLibraryID else { return }
         let options = AnalysisOptions(faceAnalysis: faceAnalysisEnabled, storeFaceCrops: storeFaceCrops,
                                       sceneSimilarity: sceneSimilarityEnabled, allowICloudDownloads: allowICloudDownloads,
                                       faceCropDirectory: Self.faceCropDir, face: faceModel)
-        let job = AnalysisJob(db: db, photos: photos, cipher: cipher, options: options)
+        let job = AnalysisJob(db: db, source: mediaSource, sourceID: sid, cipher: cipher, options: options)
         status = IndexStatus(running: true, message: "Starting…")
         currentJob = await jobs.enqueue(job)
     }
@@ -333,6 +491,10 @@ final class AppModel {
     /// the in-app confirmation with the exact count; PhotoKit then asks once more.
     func delete(assetIDs: [Int64]) async -> Bool {
         guard let db else { return false }
+        guard canDelete else {
+            banner = "This library is opened read-only. Open it in Photos to delete photos."
+            return false
+        }
         let ids = assetIDs.compactMap { assetsByID[$0]?.localIdentifier }
         guard !ids.isEmpty else { return false }
         do {
@@ -354,8 +516,9 @@ final class AppModel {
     func rebuildPeople() async {
         guard let db, let cipher else { return }
         let base = Float(faceModel.threshold(strictness: faceStrictness))
+        let sid = activeLibraryID
         let result = await Task.detached(priority: .userInitiated) { () -> ([StoredFace], [PersonRow], ClusteringResult)? in
-            guard let faces = try? db.storedFaces(cipher: cipher), let persons = try? db.persons(),
+            guard let faces = try? db.storedFaces(cipher: cipher, sourceID: sid), let persons = try? db.persons(sourceID: sid),
                   let (must, cannot) = try? db.faceConstraints() else { return nil }
             var constraints = ClusteringConstraints()
             constraints.mustLink = must.map { (FaceID($0.0), FaceID($0.1)) }
@@ -411,7 +574,7 @@ final class AppModel {
             try? db.renamePerson(pid, to: trimmed)
             try? db.addFaces(person.faces.map(\.id), toPerson: pid)
         } else {
-            try? db.createPerson(named: trimmed, faceIDs: person.faces.map(\.id))
+            try? db.createPerson(named: trimmed, faceIDs: person.faces.map(\.id), sourceID: activeLibraryID)
         }
         db.log("edit", "Named a person (\(person.faces.count) faces confirmed)")
         await rebuildPeople()
@@ -421,7 +584,7 @@ final class AppModel {
         guard let db else { return }
         let targetID: Int64
         if let t = target.personID { targetID = t }
-        else if let created = try? db.createPerson(named: target.name ?? source.name ?? "Unnamed", faceIDs: target.faces.map(\.id)) {
+        else if let created = try? db.createPerson(named: target.name ?? source.name ?? "Unnamed", faceIDs: target.faces.map(\.id), sourceID: activeLibraryID) {
             targetID = created
         } else { return }
         if let s = source.personID { try? db.mergePerson(s, into: targetID) }
@@ -438,7 +601,7 @@ final class AppModel {
 
     func assign(_ face: StoredFace, to person: PersonVM) async {
         if let pid = person.personID { try? db?.addFaces([face.id], toPerson: pid) }
-        else if let name = person.name { try? db?.createPerson(named: name, faceIDs: person.faces.map(\.id) + [face.id]) }
+        else if let name = person.name { try? db?.createPerson(named: name, faceIDs: person.faces.map(\.id) + [face.id], sourceID: activeLibraryID) }
         await rebuildPeople()
     }
 

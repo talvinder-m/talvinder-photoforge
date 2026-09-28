@@ -28,7 +28,8 @@ struct AnalysisJob: BackgroundJob {
     var maxRetries: Int { 0 }
 
     let db: AppDatabase
-    let photos: PhotoLibraryService
+    let source: any MediaSource       // PhotoKit, or a library/folder read from disk
+    let sourceID: Int64
     let cipher: VectorCipher
     let options: AnalysisOptions
 
@@ -42,13 +43,13 @@ struct AnalysisJob: BackgroundJob {
     // MARK: Stage 2 — thumbnails, hashes, quality, scene embedding
 
     private func hashStage(_ ctx: JobContext) async throws {
-        let todo = try db.pending(stage: .thumbnailHashes, includeCloudOnly: options.allowICloudDownloads)
+        let todo = try db.pending(stage: .thumbnailHashes, sourceID: sourceID, includeCloudOnly: options.allowICloudDownloads)
         guard !todo.isEmpty else { return }
         db.log("scan", "Analyzing \(todo.count) photos (hashes, quality, similarity)", assetCount: todo.count,
                model: options.sceneSimilarity ? "vision-featureprint" : nil)
         try await forEach(todo, ctx: ctx, verb: "Analyzing") { item in
             do {
-                let img = try await photos.analysisImage(for: item.localIdentifier, maxDimension: 512,
+                let img = try await source.analysisImage(for: item.localIdentifier, maxDimension: 512,
                                                          allowNetwork: options.allowICloudDownloads)
                 guard let (p, d) = PerceptualHash.hashes(for: img) else { return }
                 let (w, h) = Self.fit(img, maxSide: 512)
@@ -70,14 +71,14 @@ struct AnalysisJob: BackgroundJob {
     /// Hashing every original would read the whole library. Exact duplicates must share
     /// a perceptual hash and pixel size, so only those candidates are read.
     private func exactDuplicateStage(_ ctx: JobContext) async throws {
-        let rows = try db.assets().filter { $0.mediaType == "image" && $0.fileHash == nil && $0.pHash != nil }
+        let rows = try db.assets(sourceID: sourceID).filter { $0.mediaType == "image" && $0.fileHash == nil && $0.pHash != nil }
         let groups = Dictionary(grouping: rows) { "\($0.pHash!)-\($0.pixelWidth)x\($0.pixelHeight)" }
         let candidates = groups.values.filter { $0.count > 1 }.flatMap { $0 }
         guard !candidates.isEmpty else { return }
         let todo = candidates.map { (id: $0.id, localIdentifier: $0.localIdentifier) }
         try await forEach(todo, ctx: ctx, verb: "Checking exact duplicates for") { item in
-            if let sha = try? await photos.sha256OfOriginal(item.localIdentifier, allowNetwork: options.allowICloudDownloads) {
-                try db.setFileHash(assetID: item.id, sha256: sha, fileSize: photos.originalFileSize(item.localIdentifier))
+            if let sha = try? await source.sha256OfOriginal(item.localIdentifier, allowNetwork: options.allowICloudDownloads) {
+                try db.setFileHash(assetID: item.id, sha256: sha, fileSize: source.originalFileSize(item.localIdentifier))
             }
         }
     }
@@ -85,7 +86,7 @@ struct AnalysisJob: BackgroundJob {
     // MARK: Stages 3–4 — faces
 
     private func faceStage(_ ctx: JobContext) async throws {
-        let todo = try db.pending(stage: .faces, includeCloudOnly: options.allowICloudDownloads)
+        let todo = try db.pending(stage: .faces, sourceID: sourceID, includeCloudOnly: options.allowICloudDownloads)
         guard !todo.isEmpty else { return }
         db.log("model", "Detecting faces in \(todo.count) photos", assetCount: todo.count,
                model: "Apple Vision + \(options.face.name)")
@@ -95,7 +96,7 @@ struct AnalysisJob: BackgroundJob {
         let detector = FaceDetector()
         try await forEach(todo, ctx: ctx, verb: "Finding faces in") { item in
             do {
-                let img = try await photos.analysisImage(for: item.localIdentifier, maxDimension: 1600,
+                let img = try await source.analysisImage(for: item.localIdentifier, maxDimension: 1600,
                                                          allowNetwork: options.allowICloudDownloads)
                 let found = (try? detector.detect(in: img)) ?? []
                 var faces: [NewFace] = []

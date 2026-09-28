@@ -218,7 +218,7 @@ struct FaceThumb: View {
             let url = AppModel.faceCropDir.appendingPathComponent(p)
             if let img = NSImage(contentsOf: url) { return img }
         }
-        guard let thumb = await model.photos.thumbnail(for: face.localIdentifier, side: 800),
+        guard let thumb = await model.thumbnail(for: face.localIdentifier, side: 800),
               let cg = thumb.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
         // Box is normalized, top-left origin; pad it a little for context.
         let W = CGFloat(cg.width), H = CGFloat(cg.height)

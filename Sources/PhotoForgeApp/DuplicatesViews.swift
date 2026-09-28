@@ -209,10 +209,14 @@ struct RemovalQueueView: View {
                         .disabled(selection.isEmpty)
                     Button("Restore All") { Task { await model.restoreFromQueue(queued.map { $0.asset.id }) } }
                     Spacer()
+                    if !model.canDelete {
+                        Text("Read-only library: delete these in Photos.").font(.caption).foregroundStyle(.secondary)
+                    }
                     Button(role: .destructive) { confirmDelete = true } label: {
                         Label(selection.isEmpty ? "Delete All \(queued.count)…" : "Delete \(selection.count) Selected…", systemImage: "trash")
                     }
                     .buttonStyle(.borderedProminent).tint(.red)
+                    .disabled(!model.canDelete)
                 }
             }
         }

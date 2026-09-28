@@ -114,6 +114,9 @@ public enum AITool: String, Codable, Sendable {
 public struct ModelStamp: Codable, Sendable, Equatable {
     public var name: String, version: String, license: String
     public var execution: String         // "local" | "cloud:<provider>"
+    public init(name: String, version: String, license: String, execution: String) {
+        self.name = name; self.version = version; self.license = license; self.execution = execution
+    }
 }
 
 /// Everything needed to reproduce or audit a generative change.

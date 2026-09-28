@@ -1,4 +1,6 @@
 import Foundation
+import PFPhotosBridge
+import SQLite3
 import CoreGraphics
 import CoreImage
 import ImageIO
@@ -197,6 +199,97 @@ enum SelfTest {
             check(!r.clusters.isEmpty || !r.review.isEmpty, "clusterer runs on real embeddings")
         }
 
+        // 9. On-disk libraries: synthetic Photos library + iPhoto-style folder
+        attempt("read-only Photos library reader") {
+            let lib = dir.appendingPathComponent("Test.photoslibrary")
+            try makeFakePhotosLibrary(at: lib, image: scene)
+            let src = try FileLibrarySource(url: lib)
+            let found = try src.scan()
+            let byKey = Dictionary(uniqueKeysWithValues: found.map { ($0.key, $0) })
+            print("     library kind: \(src.inspection.kind.rawValue); assets: \(found.map { "\($0.key) local=\($0.isOriginalLocal) url=\($0.url != nil)" })")
+            guard src.inspection.kind == .photosLibrary, found.count == 3,
+                  byKey["pkg:LOCAL-1"]?.isOriginalLocal == true,
+                  byKey["pkg:CLOUD-2"]?.isOriginalLocal == false, byKey["pkg:CLOUD-2"]?.url != nil,   // derivative preview
+                  byKey["pkg:SHOT-4"]?.subtypeMask == 4,
+                  byKey["pkg:TRASH-3"] == nil else { return false }
+            let sem = DispatchSemaphore(value: 0)
+            var thumbOK = false, analysisOK = false
+            Task.detached {
+                thumbOK = await src.thumbnail(for: "pkg:LOCAL-1", side: 200) != nil
+                analysisOK = (try? await src.analysisImage(for: "pkg:CLOUD-2", maxDimension: 256, allowNetwork: false)) != nil
+                sem.signal()
+            }
+            sem.wait()
+            // Nothing inside the library may change.
+            let dbFile = lib.appendingPathComponent("database/Photos.sqlite")
+            let before = try Data(contentsOf: dbFile)
+            _ = try src.scan()
+            let unchanged = try Data(contentsOf: dbFile) == before
+            return thumbOK && analysisOK && unchanged
+        }
+        attempt("iPhoto-style folder library reader") {
+            let lib = dir.appendingPathComponent("Old.photolibrary")
+            let masters = lib.appendingPathComponent("Masters/2014/05/03")
+            try FileManager.default.createDirectory(at: masters, withIntermediateDirectories: true)
+            for i in 0..<3 { try writeJPEG(scene, to: masters.appendingPathComponent("IMG_\(i).JPG"), exifDate: "2014:05:03 10:0\(i):00") }
+            let src = try FileLibrarySource(url: lib)
+            let found = try src.scan()
+            let dated = found.filter { $0.creationDate.map { Calendar.current.component(.year, from: $0) } == 2014 }.count
+            print("     legacy kind: \(src.inspection.kind.rawValue), \(found.count) photos, \(dated) with EXIF 2014 dates")
+            return src.inspection.kind == .legacyLibrary && found.count == 3 && dated == 3
+        }
+        attempt("libraries are kept separate in the database") {
+            let db = try AppDatabase.open(at: dir.appendingPathComponent("libs.sqlite"))
+            let sys = try db.systemSourceID()
+            let other = try db.addLibrary(kind: "photoslibrary_readonly", name: "Other", path: "/tmp/Other.photoslibrary")
+            let now = Date()
+            func up(_ k: String, _ avail: String?, _ src: String = "library") -> AssetUpsert {
+                AssetUpsert(localIdentifier: k, mediaType: "image", subtypeMask: 0, creationDate: now, modificationDate: now,
+                            pixelWidth: 100, pixelHeight: 100, duration: 0, favorite: false, hidden: false, burstIdentifier: nil,
+                            assetSource: src, filePath: nil, availability: avail)
+            }
+            try db.upsert([up("A", "local"), up("B", "cloud_only"), up("C", nil, "shared")], sourceID: sys, scanStamp: now)
+            try db.upsert([up("pkg:X", "local")], sourceID: other, scanStamp: now)
+            // A later sync that doesn't know availability must not erase it.
+            try db.upsert([up("B", nil)], sourceID: sys, scanStamp: now)
+            let s1 = try db.stats(sourceID: sys), s2 = try db.stats(sourceID: other)
+            let libs = try db.libraries()
+            print("     system: \(s1.photos) photos, \(s1.cloudOnly) iCloud-only, \(s1.shared) shared · other: \(s2.photos)")
+            let otherKeys = try db.assets(sourceID: other).map(\.localIdentifier)
+            return s1.photos == 3 && s1.cloudOnly == 1 && s1.shared == 1 && s2.photos == 1
+                && otherKeys == ["pkg:X"] && libs.count == 2 && libs.first?.isSystem == true
+        }
+
+        // 10. Upscaling: FSRCNN (fast), Real-ESRGAN (best), Lanczos (standard)
+        do {
+            let sr = SuperResolution(modelsDirectory: Bundle.main.resourceURL?.appendingPathComponent("Models"))
+            check(sr.isAvailable(.fast), "FSRCNN models bundled")
+            check(sr.isAvailable(.best), "Real-ESRGAN model bundled")
+            // Downscale the 640px scene to 320, upscale back to 640, compare with the original.
+            if let small = sr.lanczos(scene, width: 320, height: 320) {
+                for m in SuperResolution.Method.allCases where sr.isAvailable(m) {
+                    let sem = DispatchSemaphore(value: 0)
+                    var out: SuperResolution.Result?
+                    var err: Error?
+                    Task.detached {
+                        do { out = try await sr.upscale(small, targetLongEdge: 640, method: m) } catch { err = error }
+                        sem.signal()
+                    }
+                    sem.wait()
+                    if let r = out {
+                        let p = SuperResolution.psnr(r.image, scene) ?? 0
+                        print(String(format: "     %@: %dx%d in %.2f s, PSNR vs original %.2f dB", r.modelName, r.image.width, r.image.height, r.seconds, p))
+                        check(r.image.width == 640 && r.image.height == 640, "upscale \(m.rawValue) produces the requested size")
+                    } else {
+                        check(false, "upscale \(m.rawValue) — \(err.map { "\($0)" } ?? "no result")")
+                    }
+                }
+                // Target larger than 2K keeps aspect ratio.
+                let (w, h) = SuperResolution.outputSize(width: 1200, height: 800, targetLongEdge: 2048)
+                check(w == 2048 && h == 1365, "2K output size keeps aspect ratio (\(w)×\(h))")
+            }
+        }
+
         print(failures == 0 ? "SELFTEST OK" : "SELFTEST FAILED (\(failures))")
         exit(failures == 0 ? 0 : 1)
     }
@@ -230,5 +323,39 @@ enum SelfTest {
             if r() > 0.5 { ctx.fillEllipse(in: rect) } else { ctx.fill(rect) }
         }
         return ctx.makeImage()
+    }
+
+    // MARK: Fixtures for library tests
+
+    static func writeJPEG(_ img: CGImage, to url: URL, exifDate: String? = nil) throws {
+        guard let d = CGImageDestinationCreateWithURL(url as CFURL, UTType.jpeg.identifier as CFString, 1, nil) else { throw CocoaError(.fileWriteUnknown) }
+        var props: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: 0.9]
+        if let exifDate { props[kCGImagePropertyExifDictionary] = [kCGImagePropertyExifDateTimeOriginal: exifDate] }
+        CGImageDestinationAddImage(d, img, props as CFDictionary)
+        guard CGImageDestinationFinalize(d) else { throw CocoaError(.fileWriteUnknown) }
+    }
+
+    /// Minimal Photos 5+ layout: database/Photos.sqlite with a ZASSET table, originals/, and a derivative.
+    static func makeFakePhotosLibrary(at lib: URL, image: CGImage) throws {
+        let fm = FileManager.default
+        try fm.createDirectory(at: lib.appendingPathComponent("database"), withIntermediateDirectories: true)
+        try fm.createDirectory(at: lib.appendingPathComponent("originals/A"), withIntermediateDirectories: true)
+        try fm.createDirectory(at: lib.appendingPathComponent("resources/derivatives/C"), withIntermediateDirectories: true)
+        try writeJPEG(image, to: lib.appendingPathComponent("originals/A/LOCAL-1.jpeg"))
+        try writeJPEG(image, to: lib.appendingPathComponent("originals/A/SHOT-4.png"))
+        try writeJPEG(image, to: lib.appendingPathComponent("resources/derivatives/C/CLOUD-2_1_105_c.jpeg"))   // original only in iCloud
+        var db: OpaquePointer?
+        guard sqlite3_open(lib.appendingPathComponent("database/Photos.sqlite").path, &db) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+        defer { sqlite3_close(db) }
+        let sql = """
+        CREATE TABLE ZASSET (Z_PK INTEGER PRIMARY KEY, ZUUID TEXT, ZDIRECTORY TEXT, ZFILENAME TEXT, ZDATECREATED REAL,
+            ZMODIFICATIONDATE REAL, ZWIDTH INTEGER, ZHEIGHT INTEGER, ZKIND INTEGER, ZKINDSUBTYPE INTEGER,
+            ZFAVORITE INTEGER, ZHIDDEN INTEGER, ZTRASHEDSTATE INTEGER, ZDURATION REAL, ZAVALANCHEUUID TEXT, ZSOMETHINGNEW TEXT);
+        INSERT INTO ZASSET VALUES (1,'LOCAL-1','A','LOCAL-1.jpeg', 700000000, 700000000, 640, 640, 0, 0, 1, 0, 0, 0, NULL, 'x');
+        INSERT INTO ZASSET VALUES (2,'CLOUD-2','C','CLOUD-2.heic', 700000100, 700000100, 4032, 3024, 0, 0, 0, 0, 0, 0, NULL, 'x');
+        INSERT INTO ZASSET VALUES (3,'TRASH-3','A','TRASH-3.jpeg', 700000200, 700000200, 640, 640, 0, 0, 0, 0, 1, 0, NULL, 'x');
+        INSERT INTO ZASSET VALUES (4,'SHOT-4','A','SHOT-4.png', 700000300, 700000300, 640, 640, 0, 10, 0, 0, 0, 0, NULL, 'x');
+        """
+        guard sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
     }
 }
