@@ -56,7 +56,7 @@ public struct AssetSnapshot: Sendable, Hashable {
         // if it ever disappears we simply report "unknown".
         let resources = PHAssetResource.assetResources(for: a)
         let original = resources.first { $0.type == .photo || $0.type == .video || $0.type == .fullSizePhoto }
-        locallyAvailable = original.flatMap { ($0.value(forKey: "locallyAvailable") as? NSNumber)?.boolValue }
+        locallyAvailable = original.flatMap { PhotoLibraryService.safeKVC($0, "locallyAvailable")?.boolValue }
     }
 }
 
@@ -216,6 +216,13 @@ public final class PhotoLibraryService: NSObject, PHPhotoLibraryChangeObserver, 
         return delta
     }
 
+    /// Reads an undocumented property only if the object actually has it, so a future
+    /// macOS that removes it degrades to "unknown" instead of raising NSUnknownKeyException.
+    static func safeKVC(_ obj: NSObject, _ key: String) -> NSNumber? {
+        guard obj.responds(to: NSSelectorFromString(key)) else { return nil }
+        return obj.value(forKey: key) as? NSNumber
+    }
+
     public func photoLibraryDidChange(_ changeInstance: PHChange) {
         changeContinuation.yield(())
     }
@@ -291,7 +298,7 @@ public final class PhotoLibraryService: NSObject, PHPhotoLibraryChangeObserver, 
     public func originalFileSize(_ localIdentifier: String) -> Int? {
         guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil).firstObject,
               let res = PHAssetResource.assetResources(for: asset).first(where: { $0.type == .photo }) else { return nil }
-        return (res.value(forKey: "fileSize") as? NSNumber)?.intValue   // KVC: not formally documented
+        return Self.safeKVC(res, "fileSize")?.intValue   // not formally documented
     }
 
     /// Thumbnail warm-up for the visible grid window.
