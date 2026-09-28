@@ -10,6 +10,9 @@ struct PhotoForgeApp: App {
     init() {
         let args = CommandLine.arguments
         if args.contains("--selftest") { SelfTest.runAndExit() }
+        if let i = args.firstIndex(of: "--srbench"), i + 1 < args.count {
+            UpscaleBenchmark.runAndExit(dir: URL(fileURLWithPath: args[i + 1]))
+        }
         if let i = args.firstIndex(of: "--facecal"), i + 1 < args.count {
             FaceCalibrationRun.runAndExit(dir: URL(fileURLWithPath: args[i + 1]))
         }

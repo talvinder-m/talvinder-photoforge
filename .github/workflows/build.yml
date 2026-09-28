@@ -124,6 +124,10 @@ jobs:
           set -o pipefail
           cat lfw.log > facecal.log
           dist/PhotoForge.app/Contents/MacOS/PhotoForge --facecal build/lfw 2>&1 | grep -v "FBBA\|IOService" | tee -a facecal.log
+          echo "" | tee -a facecal.log
+          python -c "from sklearn.datasets import load_sample_images as l; from PIL import Image; import os; os.makedirs('build/srbench', exist_ok=True); [Image.fromarray(a).save(f'build/srbench/sample{i}.png') for i, a in enumerate(l().images)]"
+          cp -R build/lfw/* build/srbench/ 2>/dev/null || true
+          dist/PhotoForge.app/Contents/MacOS/PhotoForge --srbench build/srbench 2>&1 | grep -v "FBBA\|IOService" | tee srbench.log
 
       - name: Publish logs to ci-results branch
         if: always()

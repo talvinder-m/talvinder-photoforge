@@ -1,4 +1,5 @@
 import Foundation
+import PFSimilarity
 import CoreGraphics
 import ImageIO
 import PFCore
@@ -100,5 +101,60 @@ enum FaceCalibrationRun {
             print(String(format: "     %.2f → %2d clusters, precision %5.1f%%, recall %5.1f%%, review %d",
                          t, r.clusters.count, prec * 100, rec * 100, r.review.count) + (reasons.isEmpty ? "" : " (\(reasons))"))
         }
+    }
+}
+
+
+/// `PhotoForge --srbench <dir>`: upscaling quality on real photos. Each photo is shrunk by 2×
+/// and 4× (Lanczos), then brought back to its original size by every method; reports PSNR
+/// against the original and a sharpness ratio (Laplacian variance vs the original).
+enum UpscaleBenchmark {
+    static func runAndExit(dir: URL) -> Never {
+        let fm = FileManager.default
+        var files: [URL] = []
+        if let e = fm.enumerator(at: dir, includingPropertiesForKeys: nil) {
+            for case let f as URL in e where ["jpg", "jpeg", "png"].contains(f.pathExtension.lowercased()) { files.append(f) }
+        }
+        files = Array(files.sorted { $0.path < $1.path }.prefix(24))
+        let sr = SuperResolution(modelsDirectory: Bundle.main.resourceURL?.appendingPathComponent("Models"))
+        print("SRBENCH: \(files.count) photos")
+        for factor in [2, 4] {
+            var psnr: [SuperResolution.Method: [Double]] = [:], sharp: [SuperResolution.Method: [Double]] = [:]
+            var secs: [SuperResolution.Method: Double] = [:]
+            for f in files {
+                guard let src = CGImageSourceCreateWithURL(f as CFURL, nil),
+                      let full = CGImageSourceCreateImageAtIndex(src, 0, nil) else { continue }
+                let W = full.width / (factor * 4) * factor * 4, H = full.height / (factor * 4) * factor * 4
+                guard W >= 64, H >= 64, let orig = full.cropping(to: CGRect(x: 0, y: 0, width: W, height: H)),
+                      let small = sr.lanczos(orig, width: W / factor, height: H / factor) else { continue }
+                let target = max(W, H)
+                for m in SuperResolution.Method.allCases where sr.isAvailable(m) {
+                    let sem = DispatchSemaphore(value: 0)
+                    var out: SuperResolution.Result?
+                    Task.detached { out = try? await sr.upscale(small, targetLongEdge: target, method: m); sem.signal() }
+                    sem.wait()
+                    guard let r = out, r.image.width == W, r.image.height == H else { continue }
+                    psnr[m, default: []].append(SuperResolution.psnr(r.image, orig) ?? 0)
+                    sharp[m, default: []].append(sharpness(r.image) / max(1e-6, sharpness(orig)))
+                    secs[m, default: 0] += r.seconds
+                }
+            }
+            print("  ×\(factor):")
+            for m in SuperResolution.Method.allCases {
+                guard let p = psnr[m], !p.isEmpty else { continue }
+                let s = sharp[m] ?? []
+                print(String(format: "    %-24@ PSNR %.2f dB   sharpness %.0f%% of original   %.2f s/photo",
+                             m.label as NSString, p.reduce(0, +) / Double(p.count),
+                             100 * s.reduce(0, +) / Double(max(1, s.count)), (secs[m] ?? 0) / Double(p.count)))
+            }
+        }
+        exit(0)
+    }
+
+    static func sharpness(_ img: CGImage) -> Double {
+        let (w, h) = (min(img.width, 512), min(img.height, 512))
+        guard let crop = img.cropping(to: CGRect(x: 0, y: 0, width: w, height: h)),
+              let luma = LumaImage.from(crop, width: w, height: h) else { return 0 }
+        return QualityMetrics.measure(luma).laplacianVariance
     }
 }
