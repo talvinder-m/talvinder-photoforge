@@ -14,6 +14,21 @@ This document covers the seven "begin by" deliverables in the spec:
 
 The sample code lives in `Sources/`. `tools/reference_check.py` verifies the platform-neutral algorithms numerically.
 
+## Status (release 1.0)
+
+The app is built, tested and packaged on every push by GitHub Actions: a universal binary, ad-hoc signed.
+
+**Changes from the design above:**
+
+- **Face embeddings.** The app bundles OpenCV **SFace** (Apache-2.0), converted to Core ML in CI and verified against ONNX Runtime (cosine 1.000000). This resolves licensing risk R5 for distribution.
+  - On an LFW sample (12 people, 96 photos): pairwise accuracy 100%, clustering precision 100%, recall about 90%, and exactly 12 groups.
+  - Apple Vision feature prints remain as the fallback. On the same sample they reach about 80% pairwise accuracy, so they use strict thresholds.
+- **Scene similarity** uses Vision feature prints. Thresholds were raised after the self-test showed different scenes scoring about 0.94.
+- **Encryption key storage.** Ad-hoc builds store the embedding-encryption key in a 0600 file rather than the Keychain, which would prompt after every unsigned update. `VectorCipher(store: .keychain)` is ready for Developer ID builds.
+- **Removal queue.** Migration 0003 adds a removal queue: rejected duplicates wait for review, and nothing is deleted from the duplicates screen.
+- **Language mode.** The package builds in Swift 5 language mode on the Swift 6 toolchain.
+- **Not yet built:** generative editing, semantic/OCR search, and video duplicates. Roadmap M5 and M7 remain open. The safety policy for generative editing is implemented and tested.
+
 ---
 
 ## 1. System architecture
