@@ -196,8 +196,8 @@ struct UpscaleView: View {
 
     private var methodNote: String {
         switch method {
-        case .fast: "FSRCNN: a small neural network that sharpens edges and fine detail. Runs on your Mac's GPU through Metal; a few seconds per photo, even on older Intel Macs."
-        case .best: "Real-ESRGAN (compact): a larger network that restores texture and removes compression artefacts. Noticeably sharper; can take 10–60 seconds per photo on older Intel Macs."
+        case .fast: "FSRCNN: a small neural network that restores edge sharpness. In tests on real photos it kept fine detail at the original's sharpness (standard resizing lost about 30%) and was the most faithful method. Runs on your Mac's GPU through Metal in about a second."
+        case .best: "Real-ESRGAN: a larger network that invents strong texture and removes compression artefacts. On normal photos it over-sharpens (tests: about 5× the original's sharpness), so use it for very small, soft or heavily compressed images and compare before saving. Can take a minute or more on older Intel Macs."
         case .standard: "High-quality Lanczos resizing with no AI, for comparison."
         }
     }

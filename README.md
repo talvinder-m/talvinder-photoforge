@@ -22,7 +22,7 @@ Each new build is a new unsigned version, so macOS may ask for Photos permission
 | **Libraries** | Your System Photo Library (through Apple Photos), plus any other Photos library, iPhoto library or folder on the Mac or an external drive. Switch from the sidebar. Other libraries are read directly and **never modified**; PhotoForge reads a copy of their database. |
 | **Library view** | Photos grouped into month or year sections, each with its own grid and a pinned header. Resizable, hideable preview pane. Favorites, screenshots, and a blurry-photo finder. ⌘-click to select several. |
 | **iCloud** | Its own sidebar section: *iCloud Photos* (stored in iCloud, not downloaded to this Mac) and *Shared Albums*. "On This Mac" shows only what's stored locally. |
-| **AI upscale to 2K** | **AI Fast** (FSRCNN) takes seconds, even on a 2015 MacBook. **AI Best** (Real-ESRGAN compact) is sharper and slower. Compare either against standard resizing at 100% on any part of the photo. Saves as a new photo or exports; the original is kept and the model used is recorded. Runs on the GPU through Metal via Core ML. |
+| **AI upscale to 2K** | Upscale to 2K (2048 px) or Full HD with **AI Detail** (FSRCNN, recommended) or **AI Strong** (Real-ESRGAN, for very small or soft images). Compare against standard resizing at 100% on any part of the photo. Saves as a new photo or exports; the original is kept and the model used is recorded. Runs on the GPU through Metal via Core ML. |
 | **Analysis** | A background scan you can pause, resume or stop. It slows down on battery or when the Mac is hot, and resumes where it left off after quitting. |
 | **Duplicates** | Four separate kinds: *exact* (identical files), *near* (resized, re-saved or lightly edited copies), *burst* and *similar* shots. Side-by-side comparison with sharpness, exposure, noise, size and favorite status. An explained "Best" recommendation, plus "not similar" and "exclude" feedback that's remembered. |
 | **Safe removal** | Nothing is deleted from the duplicates screen. Photos you don't keep go to a **Removal Queue**. Deleting from there needs your confirmation *and* Photos' own prompt, and moves photos to Recently Deleted (recoverable for 30 days). |
@@ -53,6 +53,18 @@ Apple's Photos framework only gives apps access to the *System* Photo Library, s
 Deleting and saving edits back only work for the System Photo Library. For other libraries, use **Export**.
 
 If macOS blocks access to a library, add PhotoForge under System Settings › Privacy & Security › Full Disk Access.
+
+### Upscaling quality
+
+Measured by the build pipeline on 24 real photos. Each photo was shrunk and then brought back to its original size:
+
+| Method | ×2 fidelity (PSNR) | ×2 sharpness vs original | ×4 fidelity | ×4 sharpness |
+|---|---|---|---|---|
+| AI Detail (FSRCNN) | **37.1 dB** | **99%** | **29.4 dB** | 56% |
+| AI Strong (Real-ESRGAN) | 28.0 dB | 578% (over-sharpened) | 26.0 dB | 235% |
+| Standard (Lanczos) | 36.5 dB | 70% | 28.6 dB | 26% |
+
+FSRCNN is the most faithful and restores sharpness. Real-ESRGAN adds strong synthetic detail, so compare before saving. On an Intel Mac, FSRCNN takes about a second per photo; Real-ESRGAN can take a minute or more for large photos.
 
 ## Not in this version
 

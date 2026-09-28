@@ -12,7 +12,8 @@ import PFCore
 ///  • `.fast`     FSRCNN ×2/×3/×4 on luma; colour is scaled with Lanczos (how FSRCNN is designed to be used).
 ///                ~12k parameters: seconds per photo even on a 2015 MacBook Pro.
 ///  • `.best`     Real-ESRGAN compact ×4 (realesr-general-x4v3) on full RGB, then resized to the target.
-///                Much sharper on real photos; roughly 10–60 s per photo on older Intel GPUs.
+///                Adds strong synthetic detail (over-sharpens normal photos; see the CI --srbench report).
+///                Useful for very small, soft or heavily compressed images. Slow on older Intel Macs.
 ///  • `.standard` Lanczos only (no AI), for comparison.
 public final class SuperResolution: @unchecked Sendable {
     public enum Method: String, CaseIterable, Sendable, Identifiable {
@@ -20,8 +21,8 @@ public final class SuperResolution: @unchecked Sendable {
         public var id: String { rawValue }
         public var label: String {
             switch self {
-            case .fast: "AI Fast (FSRCNN)"
-            case .best: "AI Best (Real-ESRGAN)"
+            case .fast: "AI Detail (FSRCNN) — recommended"
+            case .best: "AI Strong (Real-ESRGAN)"
             case .standard: "Standard (Lanczos)"
             }
         }
