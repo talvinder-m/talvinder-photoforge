@@ -108,7 +108,8 @@ enum SelfTest {
                                    outputAssetID: nil, outputPath: nil, modelsJSON: nil, sourceChecksum: nil)
             db.log("scan", "self-test")
             let st = try db.stats()
-            guard st.photos == 3, st.hashed == 3, st.faces == 2, st.namedPeople == 1, try !db.activity().isEmpty else { return false }
+            let hasActivity = try !db.activity().isEmpty
+            guard st.photos == 3, st.hashed == 3, st.faces == 2, st.namedPeople == 1, hasActivity else { return false }
 
             // Privacy wipes
             let semaphore = DispatchSemaphore(value: 0)
@@ -117,7 +118,9 @@ enum SelfTest {
             semaphore.wait()
             guard wiped == 2, try db.storedFaces(cipher: cipher).isEmpty, try db.persons().isEmpty else { return false }
             try db.deleteAllAppData()
-            return try db.assets().isEmpty && db.stats().photos == 0
+            let emptyAssets = try db.assets().isEmpty
+            let zeroPhotos = try db.stats().photos == 0
+            return emptyAssets && zeroPhotos
         }
 
         // 6. Duplicate grouping with real hashes + embeddings
@@ -155,7 +158,8 @@ enum SelfTest {
                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil), CGImageSourceGetCount(src) == 1 else { return false }
             }
             let json = try stack.encoded()
-            return ok && (try EditStack.decode(json)) == stack
+            let decoded = try EditStack.decode(json)
+            return ok && decoded == stack
         }
 
         // 8. Clustering with feature-print embeddings of the synthetic scenes
