@@ -44,8 +44,11 @@ struct FaceEmbedding: Sendable {
 }
 
 /// Threshold ranges measured by `PhotoForge --facecal` on the CI calibration set
-/// (see .github/workflows/build.yml, "Face calibration"). Update from its report.
+/// (LFW sample: 12 people × 8 photos; see .github/workflows/build.yml, "Face calibration").
+///  • SFace: same-person p5 = 0.55, different-person p99 = 0.33 → range centred between them.
+///  • Feature prints: distributions overlap heavily (best pairwise accuracy ~80%), so the
+///    fallback is set strict: it groups less and sends more faces to review.
 enum FaceCalibration {
-    static let sface: ClosedRange<Double> = 0.30...0.50
-    static let featurePrint: ClosedRange<Double> = 0.90...0.98
+    static let sface: ClosedRange<Double> = 0.30...0.45
+    static let featurePrint: ClosedRange<Double> = 0.84...0.90
 }

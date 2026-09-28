@@ -95,8 +95,10 @@ enum FaceCalibrationRun {
                 if together && sameP { tp += 1 } else if together { fp += 1 } else if sameP { fn += 1 }
             } }
             let prec = Double(tp) / Double(max(1, tp + fp)), rec = Double(tp) / Double(max(1, tp + fn))
+            let reasons = Dictionary(grouping: r.review, by: { $0.reason.rawValue }).mapValues(\.count)
+                .sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: ", ")
             print(String(format: "     %.2f → %2d clusters, precision %5.1f%%, recall %5.1f%%, review %d",
-                         t, r.clusters.count, prec * 100, rec * 100, r.review.count))
+                         t, r.clusters.count, prec * 100, rec * 100, r.review.count) + (reasons.isEmpty ? "" : " (\(reasons))"))
         }
     }
 }

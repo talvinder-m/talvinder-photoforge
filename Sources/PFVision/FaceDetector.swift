@@ -19,7 +19,7 @@ public struct DetectedFace: Sendable {
 
 public struct FaceDetectionConfig: Sendable {
     public var minFacePixels: CGFloat = 36         // smaller faces are unreliable for recognition
-    public var minCaptureQuality: Float = 0.25     // below this, detect but do not embed
+    public var minCaptureQuality: Float = 0.10     // below this, detect but do not embed (Vision's scale runs low; calibrated on LFW)
     public var alignedSize: Int = 112
     public init() {}
 }

@@ -72,12 +72,12 @@ public struct ClusteringResult: Sendable {
 public struct FaceClusterConfig: Sendable {
     public var k = 30                          // graph neighbours per face
     public var baseThreshold: Float = 0.45     // ArcFace-family cosine; calibrate per model
-    public var qualityPenalty: Float = 0.15    // raise the bar for low-quality pairs
+    public var qualityPenalty: Float = 0.10    // raise the bar for low-quality pairs
     public var smallFacePx: Double = 64        // below this, add a further penalty
     public var smallFacePenalty: Float = 0.05
     public var profileYaw: Double = 0.6        // ~35°; profile-vs-frontal pairs get a small penalty
     public var profilePenalty: Float = 0.04
-    public var minQualityToCluster: Double = 0.3
+    public var minQualityToCluster: Double = 0.15   // Vision capture quality; calibrated on LFW
     public var minClusterSize = 3              // smaller groups go to review, not to a "person"
     public var maxIterations = 40
     public var ambiguityMargin: Float = 0.05   // best vs second-best cluster
