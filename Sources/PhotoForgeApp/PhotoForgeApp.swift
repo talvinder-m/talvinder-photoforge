@@ -1,4 +1,5 @@
 import SwiftUI
+import PFClassify
 import PFCore
 import PFDatabase
 import PFPhotosBridge
@@ -33,6 +34,27 @@ struct PhotoForgeApp: App {
                     .keyboardShortcut("a", modifiers: [.command, .shift])
             }
         }
+
+        // Editor and upscaler: separate, floating, screen-fitted windows (one per photo).
+        WindowGroup("Edit Photo", id: "editor", for: Int64.self) { $assetID in
+            EditorWindowRoot(assetID: assetID).environment(model)
+        }
+        .defaultSize(ScreenFit.size())
+        .windowResizability(.contentMinSize)
+
+        WindowGroup("Upscale Photo", id: "upscale", for: Int64.self) { $assetID in
+            UpscaleWindowRoot(assetID: assetID).environment(model)
+        }
+        .defaultSize(ScreenFit.size(widthFraction: 0.85, heightFraction: 0.85))
+        .windowResizability(.contentMinSize)
+
+        WindowGroup("Slideshow", id: "slideshow", for: SlideshowRequest.self) { $request in
+            if let request {
+                SlideshowView(request: request).environment(model)
+            }
+        }
+        .defaultSize(ScreenFit.size(widthFraction: 1, heightFraction: 1, maxWidth: 10_000, maxHeight: 10_000))
+        .windowStyle(.hiddenTitleBar)
 
         Settings {
             SettingsView().environment(model).frame(width: 560, height: 620)
@@ -125,6 +147,7 @@ struct DeniedView: View {
 
 struct MainView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         @Bindable var model = model
@@ -139,6 +162,22 @@ struct MainView: View {
                     Label("Blurry Photos", systemImage: "camera.metering.unknown").tag(SidebarItem.blurry)
                 } header: {
                     LibrarySwitcher()
+                }
+                Section("Categories") {
+                    ForEach(PhotoCategory.allCases) { c in
+                        Label(c.title, systemImage: c.symbol)
+                            .badge(model.categoryMembers[c]?.count ?? 0)
+                            .tag(SidebarItem.category(c))
+                    }
+                }
+                if !model.folderTree.isEmpty {
+                    Section(model.isSystemLibrary ? "Albums & Folders" : "Folders") {
+                        OutlineGroup(model.folderTree, children: \.childrenOrNil) { node in
+                            Label(node.title, systemImage: node.symbol)
+                                .badge(node.assetKeys.count)
+                                .tag(SidebarItem.folder(node.id))
+                        }
+                    }
                 }
                 if model.isSystemLibrary || model.stats.cloudOnly > 0 {
                     Section("iCloud") {
@@ -168,6 +207,8 @@ struct MainView: View {
             .safeAreaInset(edge: .bottom) { IndexStatusFooter().padding(10) }
         } detail: {
             switch model.selection ?? .dashboard {
+            case .category(let c): PhotoGridView(filter: .category(c))
+            case .folder(let id): PhotoGridView(filter: .folder(id))
             case .dashboard: DashboardView()
             case .allPhotos: PhotoGridView(filter: .onThisMac)
             case .iCloudOnly: PhotoGridView(filter: .iCloudOnly)
@@ -182,11 +223,21 @@ struct MainView: View {
             case .settings: ScrollView { SettingsView().padding() }
             }
         }
-        .sheet(item: $model.editingAsset) { asset in
-            EditorView(asset: asset).environment(model).frame(minWidth: 1100, minHeight: 720)
+        // Requests from anywhere in the app open their own windows.
+        .onChange(of: model.editingAsset) { _, asset in
+            guard let asset else { return }
+            openWindow(id: "editor", value: asset.id)
+            model.editingAsset = nil
         }
-        .sheet(item: $model.upscaleRequest) { asset in
-            UpscaleView(asset: asset).environment(model).frame(minWidth: 980, minHeight: 680)
+        .onChange(of: model.upscaleRequest) { _, asset in
+            guard let asset else { return }
+            openWindow(id: "upscale", value: asset.id)
+            model.upscaleRequest = nil
+        }
+        .onChange(of: model.slideshowRequest) { _, req in
+            guard let req else { return }
+            openWindow(id: "slideshow", value: req)
+            model.slideshowRequest = nil
         }
     }
 }
@@ -358,5 +409,20 @@ struct LibrarySwitcher: View {
 
     private func title(_ lib: LibraryRow) -> String {
         lib.isSystem ? "System Photo Library" : "\(lib.name) (\(lib.assetCount.formatted()))"
+    }
+}
+
+
+extension AlbumNode {
+    /// OutlineGroup wants nil (not []) for leaves so no disclosure triangle is drawn.
+    var childrenOrNil: [AlbumNode]? { children.isEmpty ? nil : children }
+    var symbol: String {
+        switch kind {
+        case .folder: "folder"
+        case .album: "rectangle.stack"
+        case .smartAlbum: "gearshape"
+        case .directory: "folder"
+        case .date: "calendar"
+        }
     }
 }

@@ -34,9 +34,10 @@ public struct IndexStage: OptionSet, Sendable, Hashable {
     public static let faceEmbeddings  = IndexStage(rawValue: 1 << 4)
     public static let sceneEmbedding  = IndexStage(rawValue: 1 << 5)
     public static let ocr             = IndexStage(rawValue: 1 << 6)
+    public static let classification  = IndexStage(rawValue: 1 << 7)  // categories, OCR text, scene labels
 
     public static let all: IndexStage = [.metadata, .thumbnailHashes, .fileHash, .faces,
-                                         .faceEmbeddings, .sceneEmbedding, .ocr]
+                                         .faceEmbeddings, .sceneEmbedding, .ocr, .classification]
 }
 
 // MARK: - Common enums (mirror CHECK constraints in 0001_initial.sql)
@@ -83,4 +84,24 @@ public enum PhotoForgeError: Error, Sendable, Equatable {
     case modelLicenseNotDistributable(name: String)
     case cancelled
     case policyBlocked(reason: String)
+}
+
+// MARK: - Photo metadata used for classification
+
+/// Lightweight file metadata read without decoding the image.
+/// `hasCameraData == nil` means "couldn't read" (e.g. original only in iCloud), which is
+/// different from "read it and there was no camera information".
+public struct PhotoMetadata: Sendable, Equatable {
+    public var filename: String?
+    public var uti: String?
+    public var cameraMake: String?
+    public var cameraModel: String?
+    public var software: String?
+    public var hasCameraData: Bool?
+    public var hasAnyExif: Bool?
+    public init(filename: String? = nil, uti: String? = nil, cameraMake: String? = nil, cameraModel: String? = nil,
+                software: String? = nil, hasCameraData: Bool? = nil, hasAnyExif: Bool? = nil) {
+        self.filename = filename; self.uti = uti; self.cameraMake = cameraMake; self.cameraModel = cameraModel
+        self.software = software; self.hasCameraData = hasCameraData; self.hasAnyExif = hasAnyExif
+    }
 }

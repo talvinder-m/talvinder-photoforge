@@ -61,6 +61,12 @@ struct SettingsView: View {
                 Button("Delete All Face Data…", role: .destructive) { confirmFaceWipe = true }
             }
 
+            Section("Categories") {
+                Toggle("Sort photos into categories (documents, receipts, screenshots, WhatsApp, …)", isOn: $model.classifyEnabled)
+                Text("Uses Apple's on-device image classification, text recognition and barcode detection, plus file names and camera data. Text found in photos becomes searchable. Nothing leaves this Mac. You can correct any photo's categories and PhotoForge remembers.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
             Section("Duplicates & similar photos") {
                 Toggle("Find similar shots (visual similarity)", isOn: $model.sceneSimilarityEnabled)
                 LabeledContent("Matching strictness") {

@@ -16,7 +16,7 @@ let package = Package(
         .executable(name: "PhotoForgeApp", targets: ["PhotoForgeApp"]),
         .library(name: "PhotoForgeKit", targets: [
             "PFCore", "PFDatabase", "PFPhotosBridge", "PFVision",
-            "PFSimilarity", "PFPeople", "PFJobs", "PFEditing", "PFSafety",
+            "PFSimilarity", "PFPeople", "PFJobs", "PFEditing", "PFSafety", "PFClassify",
         ]),
     ],
     dependencies: [
@@ -34,11 +34,12 @@ let package = Package(
         .target(name: "PFJobs", dependencies: ["PFCore"], swiftSettings: settings),
         .target(name: "PFEditing", dependencies: ["PFCore", "PFSafety"], swiftSettings: settings),
         .target(name: "PFSafety", dependencies: ["PFCore"], swiftSettings: settings),
+        .target(name: "PFClassify", dependencies: ["PFCore"], swiftSettings: settings),
 
         .executableTarget(
             name: "PhotoForgeApp",
             dependencies: ["PFCore", "PFDatabase", "PFPhotosBridge", "PFVision", "PFSimilarity",
-                           "PFPeople", "PFJobs", "PFEditing", "PFSafety",
+                           "PFPeople", "PFJobs", "PFEditing", "PFSafety", "PFClassify",
                            .product(name: "GRDB", package: "GRDB.swift")],
             swiftSettings: settings
         ),
@@ -49,5 +50,6 @@ let package = Package(
                     dependencies: ["PFDatabase", .product(name: "GRDB", package: "GRDB.swift")],
                     swiftSettings: settings),
         .testTarget(name: "PFEditingTests", dependencies: ["PFEditing", "PFSafety"], swiftSettings: settings),
+        .testTarget(name: "PFClassifyTests", dependencies: ["PFClassify"], swiftSettings: settings),
     ]
 )

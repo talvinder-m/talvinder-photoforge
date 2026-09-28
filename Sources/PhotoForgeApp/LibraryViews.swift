@@ -1,10 +1,15 @@
 import SwiftUI
+import PFClassify
 import PFCore
 import AppKit
 import PFDatabase
 import PFPhotosBridge
 
-enum GridFilter: Equatable { case onThisMac, favorites, screenshots, blurry, iCloudOnly, sharedAlbums }
+enum GridFilter: Equatable {
+    case onThisMac, favorites, screenshots, blurry, iCloudOnly, sharedAlbums
+    case category(PhotoCategory)
+    case folder(String)
+}
 
 enum GridSort: String, CaseIterable, Identifiable {
     case newest = "Newest First", oldest = "Oldest First", sharpest = "Sharpest", largest = "Largest"
@@ -32,6 +37,8 @@ struct PhotoGridView: View {
     @AppStorage("grid.showPreview") private var showPreview = true
     @State private var selection: Set<Int64> = []
     @State private var focused: AssetRow?
+    @State private var search = ""
+    @State private var searchHits: Set<Int64>? = nil
 
     private var title: String {
         switch filter {
@@ -41,6 +48,8 @@ struct PhotoGridView: View {
         case .blurry: "Blurry Photos"
         case .iCloudOnly: "iCloud Photos"
         case .sharedAlbums: "Shared Albums"
+        case .category(let c): c.title
+        case .folder(let id): model.folderIndex[id]?.title ?? "Folder"
         }
     }
 
@@ -54,7 +63,14 @@ struct PhotoGridView: View {
         case .blurry: rows = rows.filter { ($0.sharpness ?? 1) < 0.25 && $0.subtypeMask & 4 == 0 }
         case .iCloudOnly: rows = rows.filter { $0.isICloudOnly && !$0.isShared }
         case .sharedAlbums: rows = rows.filter(\.isShared)
+        case .category(let c):
+            let ids = model.categoryMembers[c] ?? []
+            rows = rows.filter { ids.contains($0.id) }
+        case .folder(let id):
+            let keys = Set(model.folderIndex[id]?.assetKeys ?? [])
+            rows = rows.filter { keys.contains($0.localIdentifier) }
         }
+        if let hits = searchHits { rows = rows.filter { hits.contains($0.id) } }
         switch sort {
         case .newest: rows.sort { ($0.creationDate ?? .distantPast) > ($1.creationDate ?? .distantPast) }
         case .oldest: rows.sort { ($0.creationDate ?? .distantPast) < ($1.creationDate ?? .distantPast) }
@@ -134,6 +150,13 @@ struct PhotoGridView: View {
                     .pickerStyle(.menu)
                 Slider(value: $tileSize, in: 80...320) { Text("Thumbnail size") }.frame(width: 110)
                     .help("Thumbnail size")
+                Button {
+                    let chosen = selection.count > 1 ? rows.filter { selection.contains($0.id) } : rows
+                    model.startSlideshow(chosen, title: selection.count > 1 ? "\(selection.count) selected photos" : title,
+                                         startAt: selection.count == 1 ? selection.first : nil)
+                } label: { Label("Slideshow", systemImage: "play.rectangle") }
+                .help(selection.count > 1 ? "Play the selected photos as a slideshow" : "Play these photos as a slideshow")
+                .disabled(rows.isEmpty)
                 if !selection.isEmpty {
                     Button { queueSelection() } label: { Label("Queue for Removal", systemImage: "tray.and.arrow.down") }
                         .help("Add the selected photos to the Removal Queue (nothing is deleted yet)")
@@ -143,6 +166,14 @@ struct PhotoGridView: View {
             }
         }
         .onChange(of: filter) { selection = []; focused = nil }
+        .searchable(text: $search, placement: .toolbar, prompt: "Search text in photos, file names")
+        .task(id: search) {
+            let q = search.trimmingCharacters(in: .whitespaces)
+            guard q.count >= 2 else { searchHits = nil; return }
+            try? await Task.sleep(for: .milliseconds(250))          // debounce typing
+            if Task.isCancelled { return }
+            searchHits = await model.searchText(q)
+        }
     }
 
     @ViewBuilder
@@ -168,11 +199,24 @@ struct PhotoGridView: View {
             .onTapGesture { select(row, extend: NSEvent.modifierFlags.contains(.command)) }
             .contextMenu {
                 Button("Edit…") { model.editingAsset = row }
+                Button("Play Slideshow from Here") { model.startSlideshow(items, title: title, startAt: row.id) }
                 Button("Upscale to 2K…") { model.upscaleRequest = row }
                     .disabled(max(row.pixelWidth, row.pixelHeight) >= 2048)
                 Divider()
                 Button("Add to Removal Queue") { selection.insert(row.id); queueSelection() }
                 Button("Exclude from Duplicate Scans") { Task { await model.excludeFromScans([row.id]) } }
+                if case .category(let c) = filter {
+                    Divider()
+                    let ids = selection.contains(row.id) ? Array(selection) : [row.id]
+                    Button("Not \(c.singular.hasPrefix("a") || c.singular.hasPrefix("e") || c.singular.hasPrefix("i") || c.singular.hasPrefix("o") ? "an" : "a") \(c.singular)\(ids.count > 1 ? " (\(ids.count) photos)" : "")") {
+                        Task { await model.setCategory(c, assetIDs: ids, included: false) }
+                    }
+                }
+                Menu("Add to Category") {
+                    ForEach(PhotoCategory.allCases) { c in
+                        Button(c.title) { Task { await model.setCategory(c, assetIDs: selection.contains(row.id) ? Array(selection) : [row.id], included: true) } }
+                    }
+                }
             }
     }
 
@@ -199,6 +243,8 @@ struct PhotoGridView: View {
         case .blurry: "No blurry photos found"
         case .iCloudOnly: "No iCloud-only photos"
         case .sharedAlbums: "No shared-album photos"
+        case .category(let c): searchHits == nil ? "No \(c.title.lowercased()) yet" : "No matches"
+        case .folder: searchHits == nil ? "This folder is empty" : "No matches"
         default: "No photos here yet"
         }
     }
@@ -208,6 +254,7 @@ struct PhotoGridView: View {
         case .screenshots: "Screenshots from your library appear here."
         case .iCloudOnly: "Photos that are stored in iCloud but not downloaded to this Mac appear here."
         case .sharedAlbums: "Photos from iCloud Shared Albums appear here."
+        case .category: searchHits == nil ? "Run Analyze Photos from the Dashboard to sort photos into categories." : "Try other words."
         default: "Photos appear as PhotoForge reads your library."
         }
     }
@@ -301,6 +348,7 @@ struct PreviewPane: View {
                         if a.burstIdentifier != nil { InfoRow("Burst", "Part of a burst") }
                     }
                     .font(.callout)
+                    CategoryChips(asset: a)
                     let people = model.people.filter { p in p.faces.contains { $0.assetID == a.id } }
                     if !people.isEmpty {
                         Divider()
@@ -343,5 +391,39 @@ extension AssetRow {
         case "local": return "On this Mac"
         default: return "—"
         }
+    }
+}
+
+
+/// Categories this photo is in, with the reason for each, and a way to correct them.
+struct CategoryChips: View {
+    @Environment(AppModel.self) private var model
+    let asset: AssetRow
+    @State private var details: [(category: String, confidence: Double, reason: String, source: String)] = []
+
+    var body: some View {
+        let inCats = PhotoCategory.allCases.filter { model.categoryMembers[$0]?.contains(asset.id) == true }
+        VStack(alignment: .leading, spacing: 6) {
+            if !inCats.isEmpty {
+                Divider()
+                Text("Categories").font(.headline)
+                ForEach(inCats) { c in
+                    let d = details.first { $0.category == c.rawValue && ($0.source == "user" || $0.confidence >= 0.5) }
+                    HStack(alignment: .top) {
+                        Image(systemName: c.symbol).frame(width: 18)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(c.title).font(.callout)
+                            if let d { Text(d.reason).font(.caption).foregroundStyle(.secondary) }
+                        }
+                        Spacer()
+                        Button { Task { await model.setCategory(c, assetIDs: [asset.id], included: false) } } label: {
+                            Image(systemName: "xmark.circle")
+                        }
+                        .buttonStyle(.borderless).help("Not \(c.singular) — remove from \(c.title)")
+                    }
+                }
+            }
+        }
+        .task(id: "\(asset.id)-\(inCats.count)") { details = model.categoryDetails(asset.id) }
     }
 }

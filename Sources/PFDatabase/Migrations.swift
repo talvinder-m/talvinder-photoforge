@@ -328,4 +328,18 @@ INSERT INTO settings(key, value) VALUES
     UPDATE persons SET sourceLibraryID = (SELECT id FROM source_libraries WHERE kind = 'photokit_system' LIMIT 1);
     CREATE INDEX idx_assets_source ON assets(sourceLibraryID, isDeletedInSource, mediaType);
     """
+
+    /// Photo categories (documents, receipts, screenshots, WhatsApp, …). Automatic decisions and
+    /// user overrides are separate rows so re-analysis never undoes a user's correction.
+    static let v0005_categories = """
+    CREATE TABLE asset_categories (
+        assetID    INTEGER NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+        category   TEXT NOT NULL,
+        confidence REAL NOT NULL,
+        reason     TEXT,
+        source     TEXT NOT NULL CHECK (source IN ('auto','user')),
+        PRIMARY KEY (assetID, category, source)
+    );
+    CREATE INDEX idx_asset_categories ON asset_categories(category, source);
+    """
 }

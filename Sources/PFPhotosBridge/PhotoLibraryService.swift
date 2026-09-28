@@ -1,4 +1,5 @@
 import Foundation
+import ImageIO
 import Photos
 import AppKit
 import CryptoKit
@@ -292,6 +293,87 @@ public final class PhotoLibraryService: NSObject, PHPhotoLibraryChangeObserver, 
                 else { cont.resume(throwing: PhotoForgeError.assetUnavailable(localIdentifier: localIdentifier)) }
             }
         }
+    }
+
+    /// Albums, folders and non-empty smart albums from the System Photo Library.
+    public func albumTree() -> [AlbumNode] {
+        func keys(_ c: PHAssetCollection) -> [String] {
+            let opts = PHFetchOptions()
+            opts.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.image.rawValue)
+            let r = PHAsset.fetchAssets(in: c, options: opts)
+            var out: [String] = []
+            out.reserveCapacity(r.count)
+            r.enumerateObjects { a, _, _ in out.append(a.localIdentifier) }
+            return out
+        }
+        func node(_ c: PHCollection, depth: Int) -> AlbumNode? {
+            if let list = c as? PHCollectionList {
+                guard depth < 12 else { return nil }
+                var kids: [AlbumNode] = []
+                PHCollection.fetchCollections(in: list, options: nil).enumerateObjects { k, _, _ in
+                    if let n = node(k, depth: depth + 1) { kids.append(n) }
+                }
+                return AlbumNode(id: "pk:\(list.localIdentifier)", title: list.localizedTitle ?? "Folder", kind: .folder, children: kids)
+            }
+            if let a = c as? PHAssetCollection {
+                return AlbumNode(id: "pk:\(a.localIdentifier)", title: a.localizedTitle ?? "Album", kind: .album, assetKeys: keys(a))
+            }
+            return nil
+        }
+        var top: [AlbumNode] = []
+        PHCollectionList.fetchTopLevelUserCollections(with: nil).enumerateObjects { c, _, _ in
+            if let n = node(c, depth: 0) { top.append(n) }
+        }
+        var smart: [AlbumNode] = []
+        PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: .any, options: nil).enumerateObjects { c, _, _ in
+            guard c.assetCollectionSubtype != .smartAlbumAllHidden, c.assetCollectionSubtype != .smartAlbumUserLibrary else { return }
+            let k = keys(c)
+            if !k.isEmpty {
+                smart.append(AlbumNode(id: "pk:\(c.localIdentifier)", title: c.localizedTitle ?? "Smart Album", kind: .smartAlbum, assetKeys: k))
+            }
+        }
+        var out = top.compactMap { $0.rolledUp() }
+        if !smart.isEmpty {
+            out.append(AlbumNode(id: "pk:smart", title: "Smart Albums", kind: .folder,
+                                 children: smart.sorted { $0.title < $1.title }).rolledUp()!)
+        }
+        return out
+    }
+
+    /// File name and camera metadata from the start of the original file. Local originals only:
+    /// never downloads from iCloud (camera data is then reported as unknown, not absent).
+    public func metadata(for localIdentifier: String) async -> PhotoMetadata {
+        guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil).firstObject else {
+            return PhotoMetadata()
+        }
+        let resources = PHAssetResource.assetResources(for: asset)
+        guard let res = resources.first(where: { $0.type == .photo }) ?? resources.first else { return PhotoMetadata() }
+        let name = res.originalFilename, uti = res.uniformTypeIdentifier
+        let opts = PHAssetResourceRequestOptions()
+        opts.isNetworkAccessAllowed = false
+        final class Box: @unchecked Sendable { var data = Data(); var id: PHAssetResourceDataRequestID = 0; var done = false }
+        let box = Box()
+        let limit = 1 << 20      // EXIF lives in the first bytes of JPEG/HEIC files
+        let data: Data? = await withCheckedContinuation { cont in
+            box.id = PHAssetResourceManager.default().requestData(for: res, options: opts, dataReceivedHandler: { chunk in
+                box.data.append(chunk)
+                if box.data.count >= limit { PHAssetResourceManager.default().cancelDataRequest(box.id) }
+            }, completionHandler: { error in
+                guard !box.done else { return }
+                box.done = true
+                // A cancel after enough bytes is success; any other error means "not available locally".
+                cont.resume(returning: (error == nil || box.data.count >= limit) ? box.data : (box.data.isEmpty ? nil : box.data))
+            })
+        }
+        guard let data, !data.isEmpty, let src = CGImageSourceCreateWithData(data as CFData, nil) else {
+            return PhotoMetadata(filename: name, uti: uti)
+        }
+        let md = MetadataReader.read(src, filename: name, uti: uti)
+        // A truncated read that found nothing is "unknown", not "no camera data".
+        if data.count >= limit && md.hasAnyExif == false {
+            return PhotoMetadata(filename: name, uti: uti)
+        }
+        return md
     }
 
     /// Size in bytes of the original resource, when PhotoKit reports it.

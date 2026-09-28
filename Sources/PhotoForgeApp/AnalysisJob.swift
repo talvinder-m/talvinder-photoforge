@@ -8,6 +8,7 @@ import PFPhotosBridge
 import PFVision
 import PFSimilarity
 import PFJobs
+import PFClassify
 
 /// Options captured when the scan starts (from Settings).
 struct AnalysisOptions: Sendable {
@@ -17,6 +18,7 @@ struct AnalysisOptions: Sendable {
     var allowICloudDownloads: Bool
     var faceCropDirectory: URL
     var face: FaceEmbedding
+    var classify: Bool = true
 }
 
 /// The whole local analysis pipeline as one resumable background job.
@@ -36,6 +38,7 @@ struct AnalysisJob: BackgroundJob {
     func run(_ ctx: JobContext) async throws {
         try await hashStage(ctx)
         try await exactDuplicateStage(ctx)
+        if options.classify { try await classificationStage(ctx) }
         if options.faceAnalysis { try await faceStage(ctx) }
         await ctx.report(message: "Finishing up")
     }
@@ -79,6 +82,33 @@ struct AnalysisJob: BackgroundJob {
         try await forEach(todo, ctx: ctx, verb: "Checking exact duplicates for") { item in
             if let sha = try? await source.sha256OfOriginal(item.localIdentifier, allowNetwork: options.allowICloudDownloads) {
                 try db.setFileHash(assetID: item.id, sha256: sha, fileSize: source.originalFileSize(item.localIdentifier))
+            }
+        }
+    }
+
+    // MARK: Stage 5 — categories (documents, receipts, screenshots, WhatsApp, social, QR, camera)
+
+    private func classificationStage(_ ctx: JobContext) async throws {
+        let todo = try db.pending(stage: .classification, sourceID: sourceID, includeCloudOnly: options.allowICloudDownloads)
+        guard !todo.isEmpty else { return }
+        let rows = Dictionary(uniqueKeysWithValues: try db.assets(sourceID: sourceID).map { ($0.id, $0) })
+        db.log("model", "Sorting \(todo.count) photos into categories", assetCount: todo.count, model: "Apple Vision (classify, text, barcodes)")
+        let analyzer = PhotoAnalyzer()
+        try await forEach(todo, ctx: ctx, verb: "Sorting") { item in
+            guard let row = rows[item.id] else { return }
+            do {
+                let md = await source.metadata(for: item.localIdentifier)
+                let img = try await source.analysisImage(for: item.localIdentifier, maxDimension: 1280,
+                                                         allowNetwork: options.allowICloudDownloads)
+                let out = try analyzer.analyze(img, width: row.pixelWidth, height: row.pixelHeight, metadata: md,
+                                               isScreenshotSubtype: row.subtypeMask & 4 != 0)
+                try db.saveClassification(
+                    assetID: item.id,
+                    categories: out.decisions.map { .init(category: $0.category.rawValue, confidence: $0.confidence, reason: $0.reason) },
+                    ocrText: out.ocrText, labels: out.sceneLabels, filename: md.filename,
+                    cameraMake: md.cameraMake, cameraModel: md.cameraModel)
+            } catch PhotoForgeError.iCloudDownloadRequired {
+                try? db.setAvailability(assetID: item.id, .cloudOnly)
             }
         }
     }

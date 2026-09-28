@@ -1,4 +1,6 @@
 import Foundation
+import PFClassify
+import CoreText
 import PFPhotosBridge
 import SQLite3
 import CoreGraphics
@@ -290,6 +292,83 @@ enum SelfTest {
             }
         }
 
+        // 11. Classification with real Vision
+        do {
+            let analyzer = PhotoAnalyzer()
+            let camera = PhotoMetadata(filename: "IMG_2231.JPG", uti: "public.jpeg", cameraMake: "Apple", cameraModel: "iPhone 12",
+                                       hasCameraData: true, hasAnyExif: true)
+            if let page = makeDocument(lines: ["SHARMA TRADERS", "Invoice No: 4471", "Date: 12/03/2024", "Item   Qty   Rate   Amount",
+                                               "Seeds   2   250   500", "Fertilizer   1   400   400", "Subtotal   900",
+                                               "CGST 9%   81", "SGST 9%   81", "Total Rs. 1062", "Paid via UPI", "Thank you, visit again"]) {
+                let out = try? analyzer.analyze(page, width: 1500, height: 2000, metadata: camera, isScreenshotSubtype: false)
+                let cats = Set(out?.decisions.filter { $0.confidence >= 0.5 }.map(\.category) ?? [])
+                print("     invoice photo → \((out?.decisions ?? []).map { "\($0.category.rawValue) \(String(format: "%.2f", $0.confidence)): \($0.reason)" })")
+                print("       OCR: \(out?.signals.textCharacters ?? 0) chars, page confidence \(out?.signals.documentConfidence ?? 0), labels \(out?.sceneLabels.prefix(3).map { $0.0 } ?? [])")
+                check(cats.contains(.document) && cats.contains(.receipt) && !cats.contains(.camera),
+                      "photographed invoice → Documents + Receipts (not Camera Photos)")
+            }
+            if let qr = makeQR("https://hillsprouts.in") {
+                let out = try? analyzer.analyze(qr, width: qr.width, height: qr.height,
+                                                metadata: PhotoMetadata(filename: "qr.png", uti: "public.png", hasCameraData: false, hasAnyExif: false),
+                                                isScreenshotSubtype: false)
+                check(out?.decisions.contains { $0.category == .qrCode } == true, "QR code detected")
+            }
+            let plain = try? analyzer.analyze(scene, width: 4032, height: 3024, metadata: camera, isScreenshotSubtype: false)
+            let pc = Set(plain?.decisions.map(\.category) ?? [])
+            check(pc == [.camera], "ordinary camera photo → Camera Photos only (\(pc.map(\.rawValue)))")
+        }
+
+        // 12. Metadata reading from files
+        attempt("camera metadata and stripped-file detection") {
+            let folder = dir.appendingPathComponent("MetaFolder")
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try writeJPEG(scene, to: folder.appendingPathComponent("canon.jpg"), exifDate: "2023:01:02 03:04:05",
+                          tiff: [kCGImagePropertyTIFFMake: "Canon", kCGImagePropertyTIFFModel: "Canon EOS 80D"],
+                          exposure: 0.004)
+            try writeJPEG(scene, to: folder.appendingPathComponent("IMG-20240315-WA0012.jpg"))
+            let src = try FileLibrarySource(url: folder)
+            _ = try src.scan()
+            let sem = DispatchSemaphore(value: 0)
+            var a = PhotoMetadata(), b = PhotoMetadata()
+            Task.detached {
+                a = await src.metadata(for: "file:canon.jpg")
+                b = await src.metadata(for: "file:IMG-20240315-WA0012.jpg")
+                sem.signal()
+            }
+            sem.wait()
+            print("     canon: make=\(a.cameraMake ?? "nil") model=\(a.cameraModel ?? "nil") camera=\(String(describing: a.hasCameraData)); wa: exif=\(String(describing: b.hasAnyExif)) camera=\(String(describing: b.hasCameraData))")
+            let wa = ClassificationRules.classify(.init(metadata: b, width: 1600, height: 1200)).map(\.category)
+            return a.cameraMake == "Canon" && a.hasCameraData == true && b.hasCameraData == false && wa.contains(.whatsapp)
+        }
+
+        // 13. Folder trees: albums from a Photos database, directories from an iPhoto library
+        attempt("albums & folders tree") {
+            let lib = dir.appendingPathComponent("Albums.photoslibrary")
+            try makeFakePhotosLibrary(at: lib, image: scene)
+            let src = try FileLibrarySource(url: lib)
+            _ = try src.scan()
+            func describe(_ n: AlbumNode, _ depth: Int = 0) -> String {
+                String(repeating: "  ", count: depth) + "\(n.title) [\(n.kind.rawValue), \(n.assetKeys.count)]\n" + n.children.map { describe($0, depth + 1) }.joined()
+            }
+            print("     albums:\n" + src.albums.map { describe($0, 3) }.joined(), terminator: "")
+            let trips = src.albums.first { $0.title == "Trips" }
+            let goa = trips?.children.first { $0.title == "Goa" }
+            let bills = src.albums.first { $0.title == "Bills" }
+            let legacy = try FileLibrarySource(url: dir.appendingPathComponent("Old.photolibrary"))
+            _ = try legacy.scan()
+            let y2014 = legacy.albums.first { $0.title == "2014" }
+            print("     iPhoto folders: \(legacy.albums.map { describe($0) }.joined().replacingOccurrences(of: "\n", with: " | "))")
+            return trips?.kind == .folder && goa?.assetKeys == ["pkg:LOCAL-1"] && trips?.assetKeys == ["pkg:LOCAL-1"]
+                && bills?.assetKeys == ["pkg:SHOT-4"] && y2014?.assetKeys.count == 3
+        }
+
+        // 14. Slideshow requests travel between windows as Codable values
+        attempt("slideshow request encodes for its window") {
+            let r = SlideshowRequest(title: "Goa", keys: ["a", "b", "c"], startIndex: 1)
+            let back = try JSONDecoder().decode(SlideshowRequest.self, from: JSONEncoder().encode(r))
+            return back == r
+        }
+
         print(failures == 0 ? "SELFTEST OK" : "SELFTEST FAILED (\(failures))")
         exit(failures == 0 ? 0 : 1)
     }
@@ -327,10 +406,15 @@ enum SelfTest {
 
     // MARK: Fixtures for library tests
 
-    static func writeJPEG(_ img: CGImage, to url: URL, exifDate: String? = nil) throws {
+    static func writeJPEG(_ img: CGImage, to url: URL, exifDate: String? = nil, tiff: [CFString: Any]? = nil,
+                          exposure: Double? = nil) throws {
         guard let d = CGImageDestinationCreateWithURL(url as CFURL, UTType.jpeg.identifier as CFString, 1, nil) else { throw CocoaError(.fileWriteUnknown) }
         var props: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: 0.9]
-        if let exifDate { props[kCGImagePropertyExifDictionary] = [kCGImagePropertyExifDateTimeOriginal: exifDate] }
+        var exif: [CFString: Any] = [:]
+        if let exifDate { exif[kCGImagePropertyExifDateTimeOriginal] = exifDate }
+        if let exposure { exif[kCGImagePropertyExifExposureTime] = exposure }
+        if !exif.isEmpty { props[kCGImagePropertyExifDictionary] = exif }
+        if let tiff { props[kCGImagePropertyTIFFDictionary] = tiff }
         CGImageDestinationAddImage(d, img, props as CFDictionary)
         guard CGImageDestinationFinalize(d) else { throw CocoaError(.fileWriteUnknown) }
     }
@@ -355,7 +439,42 @@ enum SelfTest {
         INSERT INTO ZASSET VALUES (2,'CLOUD-2','C','CLOUD-2.heic', 700000100, 700000100, 4032, 3024, 0, 0, 0, 0, 0, 0, NULL, 'x');
         INSERT INTO ZASSET VALUES (3,'TRASH-3','A','TRASH-3.jpeg', 700000200, 700000200, 640, 640, 0, 0, 0, 0, 1, 0, NULL, 'x');
         INSERT INTO ZASSET VALUES (4,'SHOT-4','A','SHOT-4.png', 700000300, 700000300, 640, 640, 0, 10, 0, 0, 0, 0, NULL, 'x');
+        CREATE TABLE ZGENERICALBUM (Z_PK INTEGER PRIMARY KEY, ZKIND INTEGER, ZTITLE TEXT, ZPARENTFOLDER INTEGER, ZTRASHEDSTATE INTEGER);
+        INSERT INTO ZGENERICALBUM VALUES (1, 3999, NULL, NULL, 0), (2, 4000, 'Trips', 1, 0), (3, 2, 'Goa', 2, 0),
+                                         (4, 2, 'Bills', 1, 0), (5, 2, 'Deleted album', 1, 1);
+        CREATE TABLE Z_26ASSETS (Z_26ALBUMS INTEGER, Z_3ASSETS INTEGER, Z_FOK_3ASSETS INTEGER);
+        INSERT INTO Z_26ASSETS VALUES (3, 1, 1), (4, 4, 1), (5, 2, 1);
         """
         guard sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+    }
+
+    /// A white "page" with typed lines on a grey desk, like a photographed invoice.
+    static func makeDocument(lines: [String]) -> CGImage? {
+        let W = 1500, H = 2000
+        guard let ctx = CGContext(data: nil, width: W, height: H, bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        ctx.setFillColor(CGColor(gray: 0.35, alpha: 1)); ctx.fill(CGRect(x: 0, y: 0, width: W, height: H))
+        let page = CGRect(x: 180, y: 160, width: 1140, height: 1680)
+        ctx.setFillColor(CGColor(gray: 0.98, alpha: 1)); ctx.fill(page)
+        let font = CTFontCreateWithName("Helvetica" as CFString, 46, nil)
+        for (i, line) in lines.enumerated() {
+            let attr = NSAttributedString(string: line, attributes: [
+                NSAttributedString.Key(kCTFontAttributeName as String): font,
+                NSAttributedString.Key(kCTForegroundColorAttributeName as String): CGColor(gray: 0.05, alpha: 1)])
+            let ctLine = CTLineCreateWithAttributedString(attr)
+            ctx.textPosition = CGPoint(x: page.minX + 80, y: page.maxY - 140 - CGFloat(i) * 118)
+            CTLineDraw(ctLine, ctx)
+        }
+        return ctx.makeImage()
+    }
+
+    static func makeQR(_ text: String) -> CGImage? {
+        guard let f = CIFilter(name: "CIQRCodeGenerator") else { return nil }
+        f.setValue(Data(text.utf8), forKey: "inputMessage")
+        f.setValue("M", forKey: "inputCorrectionLevel")
+        guard let qr = f.outputImage?.transformed(by: CGAffineTransform(scaleX: 16, y: 16)) else { return nil }
+        let canvas = CIImage(color: .white).cropped(to: qr.extent.insetBy(dx: -80, dy: -80))
+        let img = qr.composited(over: canvas)
+        return CIContext().createCGImage(img, from: img.extent)
     }
 }

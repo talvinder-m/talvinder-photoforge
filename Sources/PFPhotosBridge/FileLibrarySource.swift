@@ -23,6 +23,28 @@ public protocol MediaSource: AnyObject, Sendable {
     func fullImageData(for key: String) async throws -> Data
     func sha256OfOriginal(_ key: String, allowNetwork: Bool) async throws -> Data
     func originalFileSize(_ key: String) -> Int?
+    /// File name, type and camera metadata, read without decoding the image or downloading.
+    func metadata(for key: String) async -> PhotoMetadata
+}
+
+/// Shared EXIF/TIFF reading for both kinds of source.
+public enum MetadataReader {
+    public static func read(_ src: CGImageSource, filename: String?, uti: String?) -> PhotoMetadata {
+        guard let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any] else {
+            return PhotoMetadata(filename: filename, uti: uti)
+        }
+        let tiff = props[kCGImagePropertyTIFFDictionary] as? [CFString: Any] ?? [:]
+        let exif = props[kCGImagePropertyExifDictionary] as? [CFString: Any] ?? [:]
+        let make = (tiff[kCGImagePropertyTIFFMake] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let model = (tiff[kCGImagePropertyTIFFModel] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let software = tiff[kCGImagePropertyTIFFSoftware] as? String
+        let exposure = exif[kCGImagePropertyExifExposureTime] != nil || exif[kCGImagePropertyExifFNumber] != nil
+            || exif[kCGImagePropertyExifISOSpeedRatings] != nil
+        return PhotoMetadata(filename: filename, uti: uti ?? (CGImageSourceGetType(src) as String?),
+                             cameraMake: make?.isEmpty == false ? make : nil, cameraModel: model?.isEmpty == false ? model : nil,
+                             software: software, hasCameraData: make != nil || model != nil || exposure,
+                             hasAnyExif: !exif.isEmpty || !tiff.isEmpty)
+    }
 }
 
 extension PhotoLibraryService: MediaSource {
@@ -32,6 +54,34 @@ extension PhotoLibraryService: MediaSource {
 }
 
 // MARK: - Libraries on disk
+
+/// A folder, album or directory in the sidebar tree. `assetKeys` holds the photos shown when
+/// it's selected (for folders: everything inside, recursively).
+public struct AlbumNode: Sendable, Identifiable, Hashable {
+    public enum Kind: String, Sendable { case folder, album, smartAlbum, directory, date }
+    public let id: String
+    public let title: String
+    public let kind: Kind
+    public var children: [AlbumNode]
+    public var assetKeys: [String]
+    public init(id: String, title: String, kind: Kind, children: [AlbumNode] = [], assetKeys: [String] = []) {
+        self.id = id; self.title = title; self.kind = kind; self.children = children; self.assetKeys = assetKeys
+    }
+    public static func == (a: Self, b: Self) -> Bool { a.id == b.id && a.assetKeys.count == b.assetKeys.count && a.children.count == b.children.count }
+    public func hash(into h: inout Hasher) { h.combine(id) }
+
+    /// Fills folders' asset lists from their children and drops empty branches.
+    public func rolledUp() -> AlbumNode? {
+        let kids = children.compactMap { $0.rolledUp() }
+        var keys = assetKeys
+        if kind == .folder || kind == .directory || kind == .date {
+            var seen = Set(keys)
+            for k in kids { for a in k.assetKeys where seen.insert(a).inserted { keys.append(a) } }
+        }
+        if keys.isEmpty && kids.isEmpty && kind != .album { return nil }
+        return AlbumNode(id: id, title: title, kind: kind, children: kids, assetKeys: keys)
+    }
+}
 
 /// One photo found in an on-disk library.
 public struct FileAsset: Sendable {
@@ -90,6 +140,8 @@ public final class FileLibrarySource: MediaSource, @unchecked Sendable {
     public let inspection: LibraryInspection
     private var paths: [String: URL] = [:]
     private let lock = NSLock()
+    /// Albums/folders (Photos libraries) or the directory tree (iPhoto libraries, folders), after `scan()`.
+    public private(set) var albums: [AlbumNode] = []
 
     public var capabilities: MediaSourceCapabilities {
         MediaSourceCapabilities(canDelete: false, canAddToLibrary: false, isReadOnly: true)
@@ -165,6 +217,9 @@ public final class FileLibrarySource: MediaSource, @unchecked Sendable {
         lock.lock()
         for a in assets { if let u = a.url { paths[a.key] = u } }
         lock.unlock()
+        if inspection.kind != .photosLibrary || albums.isEmpty {
+            albums = Self.directoryTree(assets, root: root)
+        }
         return assets
     }
 
@@ -244,6 +299,7 @@ public final class FileLibrarySource: MediaSource, @unchecked Sendable {
         }
 
         var out: [FileAsset] = []
+        albums = (try? Self.readAlbums(db, assetTable: table)) ?? []
         while sqlite3_step(st) == SQLITE_ROW {
             guard let uuid = text(0), let dir = text(1), let file = text(2) else { continue }
             let kind = int(7) ?? 0
@@ -266,6 +322,93 @@ public final class FileLibrarySource: MediaSource, @unchecked Sendable {
                 favorite: (int(9) ?? 0) != 0, hidden: (int(10) ?? 0) != 0, burstIdentifier: text(12)))
         }
         return out
+    }
+
+    /// Albums and folders from a Photos database (undocumented schema: detected, never assumed).
+    static func readAlbums(_ db: OpaquePointer?, assetTable: String) throws -> [AlbumNode] {
+        func query(_ sql: String) -> [[String?]] {
+            var st: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &st, nil) == SQLITE_OK else { return [] }
+            defer { sqlite3_finalize(st) }
+            var rows: [[String?]] = []
+            while sqlite3_step(st) == SQLITE_ROW {
+                rows.append((0..<sqlite3_column_count(st)).map { i in sqlite3_column_text(st, i).map { String(cString: $0) } })
+            }
+            return rows
+        }
+        let tables = query("SELECT name FROM sqlite_master WHERE type='table'").compactMap { $0[0] }
+        guard tables.contains("ZGENERICALBUM") else { return [] }
+        let albumCols = Set(query("PRAGMA table_info(ZGENERICALBUM)").compactMap { $0[1] })
+        guard albumCols.isSuperset(of: ["Z_PK", "ZKIND", "ZTITLE"]) else { return [] }
+
+        // Join table: named Z_<n>ASSETS with one *ALBUMS column and one *ASSETS column.
+        var join: (table: String, albumCol: String, assetCol: String)?
+        for t in tables where t.range(of: #"^Z_\d+ASSETS$"#, options: .regularExpression) != nil {
+            let cols = query("PRAGMA table_info(\(t))").compactMap { $0[1] }
+            if let a = cols.first(where: { $0.hasSuffix("ALBUMS") }), let b = cols.first(where: { $0.hasSuffix("ASSETS") && $0 != a }) {
+                join = (t, a, b); break
+            }
+        }
+        guard let join else { return [] }
+
+        let trash = albumCols.contains("ZTRASHEDSTATE") ? " AND COALESCE(ZTRASHEDSTATE,0) = 0" : ""
+        let parentCol = albumCols.contains("ZPARENTFOLDER") ? "ZPARENTFOLDER" : "NULL"
+        // ZKIND: 2 = user album, 4000 = folder, 3999 = top-level folder (Photos 5+).
+        let rows = query("SELECT Z_PK, ZKIND, ZTITLE, \(parentCol) FROM ZGENERICALBUM WHERE ZKIND IN (2, 4000, 3999)\(trash)")
+        var members: [String: [String]] = [:]
+        for r in query("""
+            SELECT j.\(join.albumCol), a.ZUUID FROM \(join.table) j JOIN \(assetTable) a ON a.Z_PK = j.\(join.assetCol)
+            """ + (tables.contains(assetTable) ? " WHERE COALESCE(a.ZTRASHEDSTATE,0) = 0" : "")) {
+            if let al = r[0], let u = r[1] { members[al, default: []].append("pkg:\(u)") }
+        }
+        struct Item { let pk: String; let kind: Int; let title: String; let parent: String? }
+        let items = rows.compactMap { r -> Item? in
+            guard let pk = r[0], let k = r[1].flatMap(Int.init) else { return nil }
+            return Item(pk: pk, kind: k, title: r[2] ?? "Untitled", parent: r[3])
+        }
+        let rootPKs = Set(items.filter { $0.kind == 3999 }.map(\.pk))
+        let byParent = Dictionary(grouping: items.filter { $0.kind != 3999 }) { $0.parent ?? "" }
+        func build(_ parent: String, depth: Int) -> [AlbumNode] {
+            guard depth < 12 else { return [] }
+            return (byParent[parent] ?? []).sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }.map { i in
+                i.kind == 4000
+                    ? AlbumNode(id: "pkgalbum:\(i.pk)", title: i.title, kind: .folder, children: build(i.pk, depth: depth + 1))
+                    : AlbumNode(id: "pkgalbum:\(i.pk)", title: i.title, kind: .album, assetKeys: members[i.pk] ?? [])
+            }
+        }
+        var top: [AlbumNode] = []
+        for r in rootPKs { top += build(r, depth: 0) }
+        top += build("", depth: 0)
+        return top.compactMap { $0.rolledUp() }
+    }
+
+    /// Directory hierarchy of the photos' files (below the library's Masters/originals folder).
+    static func directoryTree(_ assets: [FileAsset], root: URL) -> [AlbumNode] {
+        final class Dir { var children: [String: Dir] = [:]; var keys: [String] = [] }
+        let top = Dir()
+        for a in assets {
+            guard let u = a.url else { continue }
+            var rel = u.deletingLastPathComponent().path.replacingOccurrences(of: root.path, with: "")
+            for prefix in ["/Masters", "/originals", "/resources/derivatives/masters", "/resources/derivatives"] where rel.hasPrefix(prefix) {
+                rel = String(rel.dropFirst(prefix.count)); break
+            }
+            let parts = rel.split(separator: "/").map(String.init)
+            var d = top
+            for p in parts {
+                if d.children[p] == nil { d.children[p] = Dir() }
+                d = d.children[p]!
+            }
+            d.keys.append(a.key)
+        }
+        func convert(_ name: String, _ d: Dir, _ path: String) -> AlbumNode {
+            let kids = d.children.keys.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+                .map { convert($0, d.children[$0]!, path + "/" + $0) }
+            return AlbumNode(id: "dir:\(path)", title: name, kind: .directory, children: kids, assetKeys: d.keys)
+        }
+        let nodes = top.children.keys.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+            .map { convert($0, top.children[$0]!, "/" + $0) }
+        // A single wrapper directory (e.g. only "2014") is shown expanded one level.
+        return nodes.compactMap { $0.rolledUp() }
     }
 
     static let imageExtensions: Set<String> = ["jpg", "jpeg", "heic", "heif", "png", "tif", "tiff", "gif", "bmp", "webp",
@@ -330,6 +473,15 @@ public final class FileLibrarySource: MediaSource, @unchecked Sendable {
         var hasher = SHA256()
         while let chunk = try h.read(upToCount: 1 << 20), !chunk.isEmpty { hasher.update(data: chunk) }
         return Data(hasher.finalize())
+    }
+
+    public func metadata(for key: String) async -> PhotoMetadata {
+        guard let u = url(for: key), let src = CGImageSourceCreateWithURL(u as CFURL, nil) else { return PhotoMetadata() }
+        // For iCloud-only Photos originals we only have a preview, whose metadata isn't the original's.
+        if key.hasPrefix("pkg:"), u.path.contains("/resources/derivatives/") {
+            return PhotoMetadata(filename: u.lastPathComponent)
+        }
+        return MetadataReader.read(src, filename: u.lastPathComponent, uti: nil)
     }
 
     public func originalFileSize(_ key: String) -> Int? {

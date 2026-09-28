@@ -44,6 +44,9 @@ public final class AppDatabase: Sendable {
         m.registerMigration("0004_libraries") { db in
             try db.execute(sql: Migrations.v0004_libraries)
         }
+        m.registerMigration("0005_categories") { db in
+            try db.execute(sql: Migrations.v0005_categories)
+        }
         return m
     }
 

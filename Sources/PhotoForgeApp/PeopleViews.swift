@@ -124,6 +124,11 @@ struct PersonDetailView: View {
                 if person.personID != nil {
                     Button(person.isHidden ? "Unhide" : "Hide") { Task { await model.setHidden(person, !person.isHidden) } }
                 }
+                Button {
+                    var seen = Set<Int64>()
+                    let rows = person.faces.compactMap { model.assetsByID[$0.assetID] }.filter { seen.insert($0.id).inserted }
+                    model.startSlideshow(rows, title: person.title)
+                } label: { Label("Slideshow", systemImage: "play.rectangle") }
             }
             Text("Wrong face? Use “Not this person” on it. PhotoForge remembers, and won't group them together again.")
                 .font(.caption).foregroundStyle(.secondary)

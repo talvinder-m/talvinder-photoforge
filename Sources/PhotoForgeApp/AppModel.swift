@@ -11,8 +11,11 @@ import PFPeople
 import PFJobs
 import PFEditing
 import PFSafety
+import PFClassify
 
 enum SidebarItem: Hashable {
+    case category(PhotoCategory)
+    case folder(String)
     case dashboard, allPhotos, favorites, screenshots, blurry, iCloudOnly, sharedAlbums
     case duplicates, removalQueue, people
     case activity, settings
@@ -87,6 +90,12 @@ final class AppModel {
     var activity: [ActivityEntry] = []
     var editingAsset: AssetRow?
     var upscaleRequest: AssetRow?
+    var slideshowRequest: SlideshowRequest?
+
+    // Categories and folders
+    var categoryMembers: [PhotoCategory: Set<Int64>] = [:]
+    var folderTree: [AlbumNode] = []
+    var folderIndex: [String: AlbumNode] = [:]
     var banner: String?
 
     // Libraries: the System Photo Library (PhotoKit) plus any libraries/folders opened from disk.
@@ -116,6 +125,7 @@ final class AppModel {
     var activityLogEnabled = true { didSet { save("activityLogEnabled", activityLogEnabled) } }
     var duplicateStrictness = 0.5 { didSet { save("duplicateStrictness", duplicateStrictness) } }
     var faceStrictness = 0.5 { didSet { save("faceStrictness", faceStrictness) } }
+    var classifyEnabled = true { didSet { save("classifyEnabled", classifyEnabled) } }
 
     private var currentJob: UUID?
     private var loadingSettings = false
@@ -237,6 +247,7 @@ final class AppModel {
         ThumbnailCache.shared.removeAll()
         assets = []; assetsByID = [:]; duplicateGroups = []; people = []; reviewFaces = []
         if selection == .iCloudOnly || selection == .sharedAlbums { selection = .allPhotos }
+        if case .folder = selection { selection = .allPhotos }
         await reloadFromDatabase()
         if !isSystemLibrary || access == .authorized || access == .limited { await syncLibrary() }
     }
@@ -346,6 +357,11 @@ final class AppModel {
         let loaded = try? await Task.detached { () -> ([AssetRow], LibraryStats, [(assetID: Int64, reason: String)], [ActivityEntry]) in
             (try db.assets(sourceID: sid), try db.stats(sourceID: sid), try db.removalQueue(sourceID: sid), try db.activity())
         }.value
+        if let raw = try? await Task.detached(operation: { try db.categoryMembers(sourceID: sid) }).value {
+            var m: [PhotoCategory: Set<Int64>] = [:]
+            for (k, v) in raw { if let c = PhotoCategory(rawValue: k) { m[c] = v } }
+            categoryMembers = m
+        }
         if let (a, s, q, act) = loaded {
             assets = a
             assetsByID = Dictionary(uniqueKeysWithValues: a.map { ($0.id, $0) })
@@ -355,6 +371,73 @@ final class AppModel {
         }
         await rebuildDuplicates()
         await rebuildPeople()
+        await rebuildFolders()
+    }
+
+    // MARK: Folders & albums
+
+    func rebuildFolders() async {
+        var tree: [AlbumNode]
+        if let id = activeLibraryID, let src = fileSources[id] {
+            tree = src.albums
+        } else if access == .authorized || access == .limited {
+            let svc = photos
+            tree = await Task.detached(priority: .utility) { svc.albumTree() }.value
+        } else {
+            tree = []
+        }
+        // Libraries without albums/folders get a Year › Month tree from capture dates.
+        if tree.isEmpty { tree = Self.dateTree(assets) }
+        folderTree = tree
+        var index: [String: AlbumNode] = [:]
+        func walk(_ n: AlbumNode) { index[n.id] = n; n.children.forEach(walk) }
+        tree.forEach(walk)
+        folderIndex = index
+    }
+
+    static func dateTree(_ rows: [AssetRow]) -> [AlbumNode] {
+        let cal = Calendar.current
+        let monthFmt = DateFormatter(); monthFmt.setLocalizedDateFormatFromTemplate("MMMM")
+        var byYear: [Int: [Int: [String]]] = [:]
+        for r in rows where r.mediaType == "image" {
+            guard let d = r.creationDate else { continue }
+            let c = cal.dateComponents([.year, .month], from: d)
+            byYear[c.year!, default: [:]][c.month!, default: []].append(r.localIdentifier)
+        }
+        return byYear.keys.sorted(by: >).map { y in
+            let months = byYear[y]!.keys.sorted(by: >).map { m -> AlbumNode in
+                let title = monthFmt.string(from: cal.date(from: DateComponents(year: y, month: m, day: 1)) ?? .now)
+                return AlbumNode(id: "date:\(y)-\(m)", title: title, kind: .album, assetKeys: byYear[y]![m]!)
+            }
+            return AlbumNode(id: "date:\(y)", title: String(y), kind: .date, children: months).rolledUp()!
+        }
+    }
+
+    // MARK: Categories & search
+
+    func setCategory(_ c: PhotoCategory, assetIDs: [Int64], included: Bool) async {
+        try? db?.setCategory(c.rawValue, assetIDs: assetIDs, included: included)
+        db?.log("edit", "\(included ? "Added" : "Removed") \(assetIDs.count) photo(s) \(included ? "to" : "from") \(c.title)")
+        await reloadFromDatabase()
+    }
+
+    func categoryDetails(_ assetID: Int64) -> [(category: String, confidence: Double, reason: String, source: String)] {
+        (try? db?.categoryDetails(assetID: assetID)) ?? []
+    }
+
+    func searchText(_ q: String) async -> Set<Int64> {
+        guard let db else { return [] }
+        let sid = activeLibraryID
+        return (try? await Task.detached { try db.searchText(q, sourceID: sid) }.value) ?? []
+    }
+
+    // MARK: Slideshow
+
+    func startSlideshow(_ rows: [AssetRow], title: String, startAt: Int64? = nil) {
+        let keys = rows.filter { $0.mediaType == "image" }.map(\.localIdentifier)
+        guard !keys.isEmpty else { banner = "There are no photos to show."; return }
+        let start = startAt.flatMap { id in rows.firstIndex { $0.id == id } } ?? 0
+        slideshowRequest = SlideshowRequest(title: title, keys: keys, startIndex: min(start, keys.count - 1))
     }
 
     // MARK: Analysis
@@ -363,7 +446,7 @@ final class AppModel {
         guard let db, let cipher, currentJob == nil, let sid = activeLibraryID else { return }
         let options = AnalysisOptions(faceAnalysis: faceAnalysisEnabled, storeFaceCrops: storeFaceCrops,
                                       sceneSimilarity: sceneSimilarityEnabled, allowICloudDownloads: allowICloudDownloads,
-                                      faceCropDirectory: Self.faceCropDir, face: faceModel)
+                                      faceCropDirectory: Self.faceCropDir, face: faceModel, classify: classifyEnabled)
         let job = AnalysisJob(db: db, source: mediaSource, sourceID: sid, cipher: cipher, options: options)
         status = IndexStatus(running: true, message: "Starting…")
         currentJob = await jobs.enqueue(job)
@@ -660,6 +743,7 @@ final class AppModel {
         activityLogEnabled = bool("activityLogEnabled", true)
         duplicateStrictness = dbl("duplicateStrictness", 0.5)
         faceStrictness = dbl("faceStrictness", 0.5)
+        classifyEnabled = bool("classifyEnabled", true)
     }
 
     private func save(_ key: String, _ value: Bool) {
@@ -694,4 +778,12 @@ extension DuplicateGroupType {
     var order: Int {
         switch self { case .exact: 0; case .near: 1; case .burst: 2; case .similar: 3 }
     }
+}
+
+
+struct SlideshowRequest: Identifiable, Hashable, Codable {
+    var id = UUID()
+    let title: String
+    let keys: [String]
+    let startIndex: Int
 }

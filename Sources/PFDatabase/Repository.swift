@@ -430,6 +430,97 @@ public extension AppDatabase {
         }
     }
 
+    // --- categories, OCR text, scene labels ---------------------------------------------
+
+    struct AutoCategory: Sendable { public let category: String; public let confidence: Double; public let reason: String
+        public init(category: String, confidence: Double, reason: String) { self.category = category; self.confidence = confidence; self.reason = reason } }
+
+    /// Stores one photo's classification. User overrides are left untouched.
+    func saveClassification(assetID: Int64, categories: [AutoCategory], ocrText: String?,
+                            labels: [(String, Float)], filename: String?, cameraMake: String?, cameraModel: String?) throws {
+        try writer.write { db in
+            try db.execute(sql: "DELETE FROM asset_categories WHERE assetID = ? AND source = 'auto'", arguments: [assetID])
+            for c in categories {
+                try db.execute(sql: "INSERT INTO asset_categories(assetID, category, confidence, reason, source) VALUES (?,?,?,?,'auto')",
+                               arguments: [assetID, c.category, c.confidence, c.reason])
+            }
+            try db.execute(sql: "DELETE FROM ocr_text WHERE rowid = ?", arguments: [assetID])
+            if let t = ocrText, !t.isEmpty {
+                try db.execute(sql: "INSERT INTO ocr_text(rowid, text) VALUES (?, ?)", arguments: [assetID, t])
+            }
+            try db.execute(sql: "DELETE FROM tags WHERE assetID = ? AND source = 'vision-classify'", arguments: [assetID])
+            for (label, conf) in labels.prefix(10) where conf >= 0.3 {
+                try db.execute(sql: "INSERT OR REPLACE INTO tags(assetID, label, confidence, source) VALUES (?,?,?,'vision-classify')",
+                               arguments: [assetID, label, Double(conf)])
+            }
+            try db.execute(sql: """
+                INSERT INTO asset_metadata(assetID, cameraMake, cameraModel, hasOCRText) VALUES (?,?,?,?)
+                ON CONFLICT(assetID) DO UPDATE SET cameraMake = excluded.cameraMake, cameraModel = excluded.cameraModel,
+                                                   hasOCRText = excluded.hasOCRText
+                """, arguments: [assetID, cameraMake, cameraModel, (ocrText?.isEmpty == false)])
+            try db.execute(sql: "UPDATE assets SET originalFilename = COALESCE(?, originalFilename), analysisStage = analysisStage | ? WHERE id = ?",
+                           arguments: [filename, IndexStage.classification.rawValue | IndexStage.ocr.rawValue, assetID])
+        }
+    }
+
+    /// Effective membership: user overrides win; otherwise automatic decisions ≥ 0.5.
+    func categoryMembers(sourceID: Int64?) throws -> [String: Set<Int64>] {
+        try writer.read { db in
+            var out: [String: Set<Int64>] = [:]
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT c.assetID, c.category FROM asset_categories c JOIN assets a ON a.id = c.assetID
+                WHERE a.isDeletedInSource = 0 AND (? IS NULL OR a.sourceLibraryID = ?) AND (
+                      (c.source = 'user' AND c.confidence >= 0.5)
+                   OR (c.source = 'auto' AND c.confidence >= 0.5 AND NOT EXISTS (
+                        SELECT 1 FROM asset_categories u WHERE u.assetID = c.assetID AND u.category = c.category AND u.source = 'user')))
+                """, arguments: [sourceID, sourceID])
+            for r in rows { out[r["category"], default: []].insert(r["assetID"]) }
+            return out
+        }
+    }
+
+    /// Why a photo is (or isn't) in each category — shown in the preview pane.
+    func categoryDetails(assetID: Int64) throws -> [(category: String, confidence: Double, reason: String, source: String)] {
+        try writer.read { db in
+            try Row.fetchAll(db, sql: "SELECT category, confidence, reason, source FROM asset_categories WHERE assetID = ? ORDER BY source DESC",
+                             arguments: [assetID]).map { ($0["category"], $0["confidence"], $0["reason"] ?? "", $0["source"]) }
+        }
+    }
+
+    /// The user adds a photo to, or removes it from, a category. Remembered across re-analysis.
+    func setCategory(_ category: String, assetIDs: [Int64], included: Bool) throws {
+        try writer.write { db in
+            for id in assetIDs {
+                try db.execute(sql: """
+                    INSERT OR REPLACE INTO asset_categories(assetID, category, confidence, reason, source)
+                    VALUES (?, ?, ?, ?, 'user')
+                    """, arguments: [id, category, included ? 1.0 : 0.0, included ? "Added by you" : "Removed by you"])
+            }
+        }
+    }
+
+    /// Full-text search over text found in photos (documents, receipts, screenshots) and file names.
+    func searchText(_ query: String, sourceID: Int64?) throws -> Set<Int64> {
+        let terms = query.split(whereSeparator: { $0.isWhitespace || $0 == "\"" }).map(String.init).filter { !$0.isEmpty }
+        guard !terms.isEmpty else { return [] }
+        let fts = terms.map { "\"\($0.replacingOccurrences(of: "\"", with: ""))\"*" }.joined(separator: " ")
+        return try writer.read { db in
+            var ids = Set(try Int64.fetchAll(db, sql: """
+                SELECT o.rowid FROM ocr_text o JOIN assets a ON a.id = o.rowid
+                WHERE ocr_text MATCH ? AND (? IS NULL OR a.sourceLibraryID = ?)
+                """, arguments: [fts, sourceID, sourceID]))
+            let like = "%" + query + "%"
+            ids.formUnion(try Int64.fetchAll(db, sql: """
+                SELECT id FROM assets WHERE (originalFilename LIKE ? OR photoKitLocalIdentifier LIKE ?) AND (? IS NULL OR sourceLibraryID = ?)
+                """, arguments: [like, like, sourceID, sourceID]))
+            return ids
+        }
+    }
+
+    func ocrText(assetID: Int64) throws -> String? {
+        try writer.read { db in try String.fetchOne(db, sql: "SELECT text FROM ocr_text WHERE rowid = ?", arguments: [assetID]) }
+    }
+
     // --- faces & people -----------------------------------------------------------
 
     /// Replaces the faces of one asset (re-analysis) and sets the face stage bits.
@@ -658,7 +749,7 @@ public extension AppDatabase {
     /// Settings › Privacy › "Delete all app data": everything except settings.
     func deleteAllAppData() throws {
         try writer.write { db in
-            for t in ["removal_queue", "embedding_vectors", "embeddings", "face_constraints", "person_face_membership", "persons", "faces",
+            for t in ["asset_categories", "removal_queue", "embedding_vectors", "embeddings", "face_constraints", "person_face_membership", "persons", "faces",
                       "duplicate_group_members", "duplicate_groups", "similarity_exclusions", "edit_projects",
                       "user_decisions", "tags", "asset_metadata", "assets", "jobs", "activity_log"] {
                 try db.execute(sql: "DELETE FROM \(t)")

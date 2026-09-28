@@ -65,11 +65,29 @@ struct EditorView: View {
     @State private var keepMetadata = true
     @State private var removeGPS = true
     @State private var confirmClose = false
+    @AppStorage("editor.showControls") private var showControls = true
 
     var body: some View {
-        HSplitView {
-            canvas.frame(minWidth: 600, maxWidth: .infinity, maxHeight: .infinity).background(Color.black.opacity(0.85))
-            controls.frame(minWidth: 300, idealWidth: 320, maxWidth: 360)
+        // Adapts to the window: side-by-side when there's room, otherwise the controls
+        // slide over the photo and can be hidden (toolbar "Adjustments" button).
+        GeometryReader { geo in
+            let narrow = geo.size.width < 900
+            ZStack(alignment: .trailing) {
+                HStack(spacing: 0) {
+                    canvas.frame(minWidth: 320, maxWidth: .infinity, maxHeight: .infinity).background(Color.black.opacity(0.85))
+                    if showControls && !narrow {
+                        Divider()
+                        controls.frame(width: min(340, max(270, geo.size.width * 0.28)))
+                    }
+                }
+                if showControls && narrow {
+                    controls.frame(width: min(320, geo.size.width * 0.6))
+                        .background(.regularMaterial)
+                        .shadow(radius: 8)
+                        .transition(.move(edge: .trailing))
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: showControls)
         }
         .toolbar {
             ToolbarItemGroup(placement: .navigation) {
@@ -77,12 +95,14 @@ struct EditorView: View {
                     .keyboardShortcut(.cancelAction)
             }
             ToolbarItemGroup {
+                Button { showControls.toggle() } label: { Label("Adjustments", systemImage: "slider.horizontal.3") }
+                    .help(showControls ? "Hide the adjustment panel" : "Show the adjustment panel")
                 Button { state.undo() } label: { Label("Undo", systemImage: "arrow.uturn.backward") }
                     .keyboardShortcut("z", modifiers: .command).disabled(!state.canUndo)
                 Button { state.redo() } label: { Label("Redo", systemImage: "arrow.uturn.forward") }
                     .keyboardShortcut("z", modifiers: [.command, .shift]).disabled(!state.canRedo)
                 Picker("View", selection: $mode) { ForEach(CompareMode.allCases) { Text($0.rawValue).tag($0) } }
-                    .pickerStyle(.segmented).frame(width: 280)
+                    .pickerStyle(.segmented).frame(maxWidth: 280)
             }
         }
         .task { await load() }
@@ -166,7 +186,7 @@ struct EditorView: View {
                     }.controlSize(.small)
                 }
                 Button("Revert to Original") { state.revert() }.disabled(!state.isModified)
-                Button { model.editingAsset = nil; model.upscaleRequest = asset } label: {
+                Button { model.upscaleRequest = asset; dismiss() } label: {
                     Label("Upscale to 2K…", systemImage: "arrow.up.left.and.arrow.down.right")
                 }
                 .disabled(max(asset.pixelWidth, asset.pixelHeight) >= 2048)

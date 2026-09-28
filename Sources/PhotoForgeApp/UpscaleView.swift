@@ -41,8 +41,8 @@ struct UpscaleView: View {
 
     var body: some View {
         HSplitView {
-            comparison.frame(minWidth: 560, maxWidth: .infinity, maxHeight: .infinity)
-            controls.frame(minWidth: 300, idealWidth: 320, maxWidth: 360)
+            comparison.frame(minWidth: 380, maxWidth: .infinity, maxHeight: .infinity)
+            controls.frame(minWidth: 270, idealWidth: 310, maxWidth: 360)
         }
         .toolbar {
             ToolbarItem(placement: .navigation) {
