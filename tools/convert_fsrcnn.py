@@ -95,6 +95,26 @@ def extract(sess, ops):
                 alphas.append(v); seen.add(base)
     print("  convs:", [w.shape for w in W], "| deconv:", D.shape, "| biases:", [b.shape for b in biases],
           "| alphas:", [a.shape for a in alphas])
+    # The graph writes PReLU as relu(x) + (alpha · (x − |x|)) · y. Since x − |x| = 2·min(x, 0),
+    # the true slope is alpha · 2y. Read y from the graph instead of assuming 0.5.
+    alpha_ops = []
+    seen2 = set()
+    for o in ops:
+        if "alpha" in o.name.lower() and o.type in ("Const", "VariableV2", "Identity") and o.outputs:
+            base = o.name.split("/")[0]
+            if base in seen2: continue
+            seen2.add(base); alpha_ops.append(o)
+    factors = []
+    for ao in alpha_ops:
+        m1 = next(o for o in ops if o.type == "Mul" and ao.outputs[0] in list(o.inputs))
+        m2 = next((o for o in ops if o.type == "Mul" and m1.outputs[0] in list(o.inputs)), None)
+        y = 1.0
+        if m2 is not None:
+            other = [i for i in m2.inputs if i is not m1.outputs[0]][0]
+            y = float(np.asarray(sess.run(other)).ravel()[0])
+        factors.append(2.0 * y)
+    print("  PReLU scale factors (2·y):", [round(f, 4) for f in factors])
+    alphas = [a * f for a, f in zip(alphas, factors)]
     print("  upsampling:", mode)
     assert len(biases) == len(W) + 1, "bias count mismatch"
     assert len(alphas) == len(W), "PReLU count mismatch"

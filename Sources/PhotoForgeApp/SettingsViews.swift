@@ -16,6 +16,33 @@ struct SettingsView: View {
                     .foregroundStyle(.green)
             }
 
+            Section("Libraries") {
+                ForEach(model.libraries) { lib in
+                    HStack {
+                        Image(systemName: lib.isSystem ? "photo.stack" : "externaldrive")
+                        VStack(alignment: .leading) {
+                            Text(lib.isSystem ? "System Photo Library" : lib.name)
+                            Text(lib.isSystem ? "Through Apple Photos · \(lib.assetCount.formatted()) items"
+                                              : "\(lib.path ?? "") · read-only · \(lib.assetCount.formatted()) items")
+                                .font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                        }
+                        Spacer()
+                        if lib.id == model.activeLibraryID {
+                            Text("In use").font(.caption).foregroundStyle(.secondary)
+                        } else {
+                            Button("Switch") { Task { await model.switchLibrary(lib.id) } }
+                        }
+                        if !lib.isSystem {
+                            Button("Forget", role: .destructive) { Task { await model.forgetLibrary(lib.id) } }
+                                .help("Remove PhotoForge's data about this library. The library itself is not touched.")
+                        }
+                    }
+                }
+                Button("Add Library or Folder…") { Task { await model.chooseLibraryWithPanel() } }
+                Text("Other Photos or iPhoto libraries are read directly and never modified. To delete photos or save edits into one of them, open it in Photos.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
             Section("Face grouping") {
                 Toggle("Group photos by person (face analysis)", isOn: $model.faceAnalysisEnabled)
                 Toggle("Keep face thumbnails", isOn: $model.storeFaceCrops)
@@ -67,6 +94,7 @@ struct SettingsView: View {
                 LabeledContent("Scene similarity", value: "Apple Vision feature prints · on-device")
                 LabeledContent("Duplicate matching", value: "Perceptual hashes (pHash/dHash) + SHA-256")
                 LabeledContent("Editing", value: "Core Image · on-device")
+                LabeledContent("Upscaling", value: "FSRCNN (Apache-2.0) and Real-ESRGAN compact (BSD-3) · Core ML on the GPU via Metal")
                 Text(model.faceModel.isDedicatedFaceModel
                      ? "The only third-party model is SFace (Apache-2.0), bundled and run locally. No cloud services are used."
                      : "No third-party AI models or cloud services are used in this version.")
