@@ -19,7 +19,10 @@ Each new build is a new unsigned version, so macOS may ask for Photos permission
 
 | Area | What you get |
 |---|---|
-| **Library** | Browse all photos, favorites and screenshots. A blurry-photo finder. An inspector showing size, date, sharpness, exposure, noise and iCloud status. |
+| **Libraries** | Your System Photo Library (through Apple Photos), plus any other Photos library, iPhoto library or folder on the Mac or an external drive. Switch from the sidebar. Other libraries are read directly and **never modified**; PhotoForge reads a copy of their database. |
+| **Library view** | Photos grouped into month or year sections, each with its own grid and a pinned header. Resizable, hideable preview pane. Favorites, screenshots, and a blurry-photo finder. ⌘-click to select several. |
+| **iCloud** | Its own sidebar section: *iCloud Photos* (stored in iCloud, not downloaded to this Mac) and *Shared Albums*. "On This Mac" shows only what's stored locally. |
+| **AI upscale to 2K** | **AI Fast** (FSRCNN) takes seconds, even on a 2015 MacBook. **AI Best** (Real-ESRGAN compact) is sharper and slower. Compare either against standard resizing at 100% on any part of the photo. Saves as a new photo or exports; the original is kept and the model used is recorded. Runs on the GPU through Metal via Core ML. |
 | **Analysis** | A background scan you can pause, resume or stop. It slows down on battery or when the Mac is hot, and resumes where it left off after quitting. |
 | **Duplicates** | Four separate kinds: *exact* (identical files), *near* (resized, re-saved or lightly edited copies), *burst* and *similar* shots. Side-by-side comparison with sharpness, exposure, noise, size and favorite status. An explained "Best" recommendation, plus "not similar" and "exclude" feedback that's remembered. |
 | **Safe removal** | Nothing is deleted from the duplicates screen. Photos you don't keep go to a **Removal Queue**. Deleting from there needs your confirmation *and* Photos' own prompt, and moves photos to Recently Deleted (recoverable for 30 days). |
@@ -38,6 +41,18 @@ The build pipeline measures accuracy on every build:
   - Perceptual hashes ignore exposure changes (0 bits moved in the self-test) and separate different scenes by 20+ bits.
   - Exact duplicates are confirmed by SHA-256 of the original files.
   - "Similar shot" grouping uses Apple Vision feature prints with deliberately high thresholds. Tune it with **Settings › Matching strictness**.
+
+### Reading other libraries
+
+Apple's Photos framework only gives apps access to the *System* Photo Library, so PhotoForge reads other libraries directly from their files:
+
+- **Photos libraries (macOS 10.15+):** the database is copied, and the copy is read. Photos whose originals are only in iCloud are shown from the library's own preview files.
+- **iPhoto and older Photos libraries:** read as a folder of image files (their `Masters` folder), using camera dates from the photos' EXIF data.
+- **Any folder:** every image inside, including RAW, HEIC and PNG files.
+
+Deleting and saving edits back only work for the System Photo Library. For other libraries, use **Export**.
+
+If macOS blocks access to a library, add PhotoForge under System Settings › Privacy & Security › Full Disk Access.
 
 ## Not in this version
 

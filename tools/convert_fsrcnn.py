@@ -58,6 +58,28 @@ def load_tf(path):
     return sess, inp[0].outputs[0], outs[-1].outputs[0], ops
 
 
+def extract_by_name(sess, ops):
+    """Preferred: the graph names its tensors f1..fN (conv filters), b1..bN (biases), alpha1..alphaK."""
+    names = {o.name for o in ops}
+    if not {"f1", "b1", "alpha1"} <= names:
+        return None
+    n = max(int(x[1:]) for x in names if x[:1] == "f" and x[1:].isdigit())
+    k = max(int(x[5:]) for x in names if x.startswith("alpha") and x[5:].isdigit())
+    get = lambda nm: np.asarray(sess.run(nm + ":0"))
+    W = [get(f"f{i}") for i in range(1, n + 1)]
+    B = [get(f"b{i}").ravel() for i in range(1, n + 1)]
+    A = [get(f"alpha{i}").ravel() for i in range(1, k + 1)]
+    mode = "shuffle" if any(o.type == "DepthToSpace" for o in ops) else "deconv"
+    if mode == "shuffle":
+        D = W.pop()
+    else:
+        D = W.pop()   # transposed-conv filter [kh, kw, out, in]
+    print(f"  by name: {n} filters, {k} PReLUs, upsampling {mode}")
+    print("  shapes:", [w.shape for w in W], D.shape, [b.shape for b in B], [a.shape for a in A])
+    assert len(A) == len(W) and len(B) == len(W) + 1
+    return W, B, A, D, mode
+
+
 def extract(sess, ops):
     """Returns conv weights, biases, PReLU slopes, and the upsampling stage.
     The graph upsamples either with a transposed conv (Conv2DBackpropInput) or with a
@@ -183,6 +205,12 @@ def diagnose(sess, x_in, x, ops, model):
             print(f"   conv{i}: max|tf - torch| (pre-bias) = {float(np.abs(tv - raw.numpy()).max()):.3e}")
             h = c(h)
             h = F.relu(h) + model.alphas[i] * torch.clamp(h, max=0)
+            try:
+                post = sess.run(f"add_{2 * i + 1}:0", {x_in: x})
+                post = post if post.shape[1] == h.shape[1] else post.transpose(0, 3, 1, 2)
+                print(f"          after activation: max diff {float(np.abs(post - h.numpy()).max()):.3e}")
+            except Exception as e:
+                print("          (no named activation tensor)", e)
 
 
 def psnr(a, b):
@@ -217,7 +245,7 @@ samples = [Image.fromarray(a) for a in load_sample_images().images]
 for scale in (2, 3, 4):
     print(f"\n== x{scale}")
     sess, x_in, y_out, ops = load_tf(fetch(scale))
-    W, B, A, D, mode = extract(sess, ops)
+    W, B, A, D, mode = extract_by_name(sess, ops) or extract(sess, ops)
     model = FSRCNN(W, B, A, D, scale, mode).eval()
 
     # 1. PyTorch rebuild == TensorFlow original
