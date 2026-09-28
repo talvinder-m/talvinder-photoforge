@@ -32,7 +32,10 @@ public final class EditRenderer: @unchecked Sendable {
     }
 
     public func apply(_ a: Adjustments, to input: CIImage) -> CIImage {
-        var img = input
+        let extent = input.extent
+        // Blur-based filters (clarity, dehaze, sharpening, noise reduction) read beyond the
+        // edges and grow the extent; clamp first so edges stay clean, crop back at the end.
+        var img = input.clampedToExtent()
         if a.exposure != 0 {
             let f = CIFilter.exposureAdjust(); f.inputImage = img; f.ev = Float(a.exposure); img = f.outputImage ?? img
         }
@@ -94,8 +97,11 @@ public final class EditRenderer: @unchecked Sendable {
             img = f.outputImage ?? img
         }
         if a.vignette != 0 {
-            let f = CIFilter.vignette(); f.inputImage = img
-            f.intensity = Float(a.vignette) * 1.5; f.radius = Float(max(img.extent.width, img.extent.height) / 400)
+            let f = CIFilter.vignetteEffect(); f.inputImage = img
+            f.center = CGPoint(x: extent.midX, y: extent.midY)
+            f.radius = Float(hypot(extent.width, extent.height) / 2 * 0.75)
+            f.intensity = Float(a.vignette)
+            f.falloff = 0.6
             img = f.outputImage ?? img
         }
         if a.grain > 0 {
@@ -104,10 +110,10 @@ public final class EditRenderer: @unchecked Sendable {
                     "inputRVector": CIVector(x: 0, y: 1, z: 0, w: 0), "inputGVector": CIVector(x: 0, y: 1, z: 0, w: 0),
                     "inputBVector": CIVector(x: 0, y: 1, z: 0, w: 0), "inputAVector": CIVector(x: 0, y: 0, z: 0, w: CGFloat(a.grain) * 0.15),
                     "inputBiasVector": CIVector(x: -0.5, y: -0.5, z: -0.5, w: 0)])
-                .cropped(to: img.extent)
-            img = noise.applyingFilter("CIAdditionCompositing", parameters: [kCIInputBackgroundImageKey: img]).cropped(to: img.extent)
+                .cropped(to: extent)
+            img = noise.applyingFilter("CIAdditionCompositing", parameters: [kCIInputBackgroundImageKey: img])
         }
-        return img
+        return img.cropped(to: extent)
     }
 
     public func apply(_ c: CropSpec, to input: CIImage) -> CIImage {
