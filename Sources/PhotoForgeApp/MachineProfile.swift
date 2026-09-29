@@ -81,7 +81,8 @@ struct MachineProfile: Codable, Equatable, Sendable {
             thumbnailCacheMB: 150, computeUnits: "cpuAndGPU", recommendedUpscaler: "fast")
         switch tier {
         case .intelLow:
-            p.analysisConcurrency = 2; p.classifyImageSize = 1024; p.faceImageSize = 1280; p.thumbnailCacheMB = 120
+            // Dual-core Intel: one photo at a time leaves a core free for the window.
+            p.analysisConcurrency = max(1, pcores - 1); p.classifyImageSize = 1024; p.faceImageSize = 1280; p.thumbnailCacheMB = 120
         case .intel:
             p.analysisConcurrency = max(2, min(4, cores - 2)); p.classifyImageSize = 1280; p.faceImageSize = 1600; p.thumbnailCacheMB = 250
         case .appleBase:

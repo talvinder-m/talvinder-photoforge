@@ -95,7 +95,13 @@ public final class CoreMLFaceEmbedder: ImageEmbeddingModel, @unchecked Sendable 
                 batchSize: Int = 32, flipAugment: Bool = true,
                 pixelMean: Float = 127.5, pixelScale: Float = 127.5) throws {
         let cfg = MLModelConfiguration()
-        cfg.computeUnits = .all          // ANE + GPU + CPU; Core ML chooses per layer
+        #if arch(x86_64)
+        // Intel Macs: the face model is small, so run it on the CPU and leave the
+        // (integrated) GPU to draw the window. Sharing it made the app stutter.
+        cfg.computeUnits = .cpuOnly
+        #else
+        cfg.computeUnits = .all          // Neural Engine + GPU + CPU on Apple silicon
+        #endif
         self.model = try MLModel(contentsOf: compiledModelURL, configuration: cfg)
         self.descriptor = descriptor
         self.inputName = inputName

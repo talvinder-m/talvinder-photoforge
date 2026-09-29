@@ -1,4 +1,5 @@
 import SwiftUI
+import ImageIO
 import AppKit
 import PFCore
 import PFDatabase
@@ -256,18 +257,31 @@ struct FaceThumb: View {
 
     private func load() async -> NSImage? {
         guard let face else { return nil }
+        let key = "face:\(face.id)"
+        if let cached = ThumbnailCache.shared.get(key, 0) { return cached }
+        // Read and decode off the main thread.
         if let p = face.cropPath {
             let url = model.faceCropDir.appendingPathComponent(p)
-            if let img = NSImage(contentsOf: url) { return img }
+            let img = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+                guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+                      let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+                else { return nil }
+                return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+            }.value
+            if let img { ThumbnailCache.shared.set(img, key, 0); return img }
         }
-        guard let thumb = await model.thumbnail(for: face.localIdentifier, side: 800),
-              let cg = thumb.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
+        await ThumbnailGate.shared.acquire()
+        let thumb = Task.isCancelled ? nil : await model.thumbnail(for: face.localIdentifier, side: 800)
+        await ThumbnailGate.shared.release()
+        guard let thumb, let cg = thumb.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
         // Box is normalized, top-left origin; pad it a little for context.
         let W = CGFloat(cg.width), H = CGFloat(cg.height)
         let b = face.box.insetBy(dx: -face.box.width * 0.25, dy: -face.box.height * 0.25)
         let r = CGRect(x: b.minX * W, y: b.minY * H, width: b.width * W, height: b.height * H)
             .intersection(CGRect(x: 0, y: 0, width: W, height: H))
         guard !r.isEmpty, let crop = cg.cropping(to: r) else { return nil }
-        return NSImage(cgImage: crop, size: NSSize(width: crop.width, height: crop.height))
+        let img = NSImage(cgImage: crop, size: NSSize(width: crop.width, height: crop.height))
+        ThumbnailCache.shared.set(img, key, 0)
+        return img
     }
 }

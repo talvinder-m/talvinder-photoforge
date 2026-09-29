@@ -30,6 +30,49 @@ struct GridSection: Identifiable {
     let items: [AssetRow]
 }
 
+/// Selection lives in its own object so that clicking a photo only redraws the visible
+/// cells, not the whole grid.
+@MainActor
+@Observable
+final class GridSelection {
+    var ids: Set<Int64> = []
+    var focused: AssetRow?
+
+    func select(_ row: AssetRow, extend: Bool) {
+        if extend {
+            if ids.contains(row.id) { ids.remove(row.id) } else { ids.insert(row.id) }
+        } else {
+            ids = [row.id]
+        }
+        focused = row
+    }
+}
+
+/// What the grid shows, computed off the main thread.
+struct GridData: Sendable {
+    var rows: [AssetRow] = []
+    var sections: [GridSection] = []
+    var version = 0
+}
+
+struct GridKey: Equatable {
+    var filter: GridFilter
+    var sort: GridSort
+    var grouping: GridGrouping
+    var searchHits: Set<Int64>?
+    var dataVersion: Int
+}
+
+/// Everything a cell's menu can do, supplied by the grid.
+struct GridActions {
+    var filter: GridFilter
+    var title: String
+    var rename: ([Int64]) -> Void
+    var newAlbum: ([Int64]) -> Void
+    var slideshowFrom: (AssetRow) -> Void
+    var queueForRemoval: ([Int64]) -> Void
+}
+
 struct PhotoGridView: View {
     @Environment(AppModel.self) private var model
     let filter: GridFilter
@@ -37,8 +80,9 @@ struct PhotoGridView: View {
     @AppStorage("grid.grouping") private var grouping: GridGrouping = .month
     @AppStorage("grid.tileSize") private var tileSize: Double = 140
     @AppStorage("grid.showPreview") private var showPreview = true
-    @State private var selection: Set<Int64> = []
-    @State private var focused: AssetRow?
+    @State private var sel = GridSelection()
+    @State private var data = GridData()
+    @State private var loaded = false
     @State private var search = ""
     @State private var searchHits: Set<Int64>? = nil
     @State private var renameRequest: RenameRequest?
@@ -59,19 +103,44 @@ struct PhotoGridView: View {
         }
     }
 
-    private var items: [AssetRow] {
+    private var key: GridKey {
+        GridKey(filter: filter, sort: sort, grouping: grouping, searchHits: searchHits, dataVersion: model.dataVersion)
+    }
+
+    /// Filters, sorts and groups on a background thread.
+    private func recompute() async {
+        let assets = model.visibleAssets
+        var memberIDs: Set<Int64>? = nil, keys: Set<String>? = nil
+        switch filter {
+        case .album(let id): memberIDs = model.albumAssetIDs(id)
+        case .category(let c): memberIDs = model.categoryMembers[c] ?? []
+        case .folder(let id): keys = Set(model.folderIndex[id]?.assetKeys ?? [])
+        default: break
+        }
+        let f = filter, so = sort, gr = grouping, hits = searchHits, version = data.version &+ 1
+        let result = await Task.detached(priority: .userInitiated) {
+            Self.compute(assets, filter: f, memberIDs: memberIDs, keys: keys, hits: hits, sort: so, grouping: gr, version: version)
+        }.value
+        guard !Task.isCancelled else { return }
+        data = result
+        loaded = true
+        // Keep the preview pointing at the current copy of the focused item (e.g. after a rename).
+        if let f = sel.focused { sel.focused = model.assetsByID[f.id] }
+    }
+
+    nonisolated static func compute(_ all: [AssetRow], filter: GridFilter, memberIDs: Set<Int64>?, keys: Set<String>?,
+                                    hits: Set<Int64>?, sort: GridSort, grouping: GridGrouping, version: Int) -> GridData {
         // Albums and folders show photos and videos; photo views show photos; Videos shows videos.
         var rows: [AssetRow]
         switch filter {
-        case .videos: rows = model.visibleAssets.filter(\.isVideo)
-        case .album, .folder: rows = model.visibleAssets.filter { $0.mediaType == "image" || $0.isVideo }
-        default: rows = model.visibleAssets.filter { $0.mediaType == "image" }
+        case .videos: rows = all.filter(\.isVideo)
+        case .album, .folder: rows = all.filter { $0.mediaType == "image" || $0.isVideo }
+        default: rows = all.filter { $0.mediaType == "image" }
         }
         switch filter {
         case .videos: break
-        case .album(let id):
-            let ids = model.albumAssetIDs(id)
-            rows = rows.filter { ids.contains($0.id) }
+        case .album, .category: if let ids = memberIDs { rows = rows.filter { ids.contains($0.id) } }
+        case .folder: if let k = keys { rows = rows.filter { k.contains($0.localIdentifier) } }
         case .onThisMac: rows = rows.filter { !$0.isICloudOnly && !$0.isShared }
         case .favorites: rows = rows.filter(\.favorite)
         case .screenshots: rows = rows.filter { $0.subtypeMask & 4 != 0 }
@@ -79,25 +148,22 @@ struct PhotoGridView: View {
         case .blurry: rows = rows.filter { ($0.sharpness ?? 1) < 0.25 && $0.subtypeMask & 4 == 0 }
         case .iCloudOnly: rows = rows.filter { $0.isICloudOnly && !$0.isShared }
         case .sharedAlbums: rows = rows.filter(\.isShared)
-        case .category(let c):
-            let ids = model.categoryMembers[c] ?? []
-            rows = rows.filter { ids.contains($0.id) }
-        case .folder(let id):
-            let keys = Set(model.folderIndex[id]?.assetKeys ?? [])
-            rows = rows.filter { keys.contains($0.localIdentifier) }
         }
-        if let hits = searchHits { rows = rows.filter { hits.contains($0.id) } }
+        if let hits { rows = rows.filter { hits.contains($0.id) } }
         switch sort {
         case .newest: rows.sort { ($0.creationDate ?? .distantPast) > ($1.creationDate ?? .distantPast) }
         case .oldest: rows.sort { ($0.creationDate ?? .distantPast) < ($1.creationDate ?? .distantPast) }
         case .sharpest: rows.sort { ($0.sharpness ?? 0) > ($1.sharpness ?? 0) }
         case .largest: rows.sort { $0.pixelWidth * $0.pixelHeight > $1.pixelWidth * $1.pixelHeight }
-        case .name: rows.sort { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
+        case .name:
+            let names = rows.map(\.displayName)
+            let order = names.indices.sorted { names[$0].localizedStandardCompare(names[$1]) == .orderedAscending }
+            rows = order.map { rows[$0] }
         }
-        return rows
+        return GridData(rows: rows, sections: sections(rows, sort: sort, grouping: grouping), version: version)
     }
 
-    private func sections(_ rows: [AssetRow]) -> [GridSection] {
+    nonisolated static func sections(_ rows: [AssetRow], sort: GridSort, grouping: GridGrouping) -> [GridSection] {
         // Group by name: one section per name stem ("Farm Visit 001", "Farm Visit 002" → "Farm Visit").
         if grouping == .name {
             let groups = Dictionary(grouping: rows) { BatchRename.nameStem($0.displayName) }
@@ -114,60 +180,60 @@ struct PhotoGridView: View {
         let fmt = DateFormatter()
         fmt.setLocalizedDateFormatFromTemplate(grouping == .month ? "MMMM yyyy" : "yyyy")
         var out: [GridSection] = []
-        var currentKey: String?
+        var currentKey: Int?
         var bucket: [AssetRow] = []
         var bucketTitle = ""
         for r in rows {
-            let key: String, t: String
+            let key: Int
             if let d = r.creationDate {
                 let c = cal.dateComponents([.year, .month], from: d)
-                key = grouping == .month ? "\(c.year!)-\(c.month!)" : "\(c.year!)"
-                t = fmt.string(from: d)
+                key = grouping == .month ? c.year! * 100 + c.month! : c.year! * 100
             } else {
-                key = "undated"; t = "No Date"
+                key = -1
             }
             if key != currentKey {
-                if let k = currentKey { out.append(GridSection(id: k, title: bucketTitle, items: bucket)) }
-                currentKey = key; bucket = []; bucketTitle = t
+                if let k = currentKey { out.append(GridSection(id: "\(k)", title: bucketTitle, items: bucket)) }
+                currentKey = key; bucket = []
+                // Format the title once per section, not once per photo.
+                bucketTitle = r.creationDate.map { fmt.string(from: $0) } ?? "No Date"
             }
             bucket.append(r)
         }
-        if let k = currentKey { out.append(GridSection(id: k, title: bucketTitle, items: bucket)) }
+        if let k = currentKey { out.append(GridSection(id: "\(k)", title: bucketTitle, items: bucket)) }
         return out
     }
 
+    private var actions: GridActions {
+        let rows = data.rows
+        return GridActions(
+            filter: filter, title: title,
+            rename: { ids in renameRequest = RenameRequest(assetIDs: ids) },
+            newAlbum: { ids in newAlbum = NewAlbumRequest(isFolder: false, assetIDs: ids) },
+            slideshowFrom: { row in model.startSlideshow(rows, title: title, startAt: row.id) },
+            queueForRemoval: { ids in queue(ids) })
+    }
+
     var body: some View {
-        let rows = items
-        let secs = sections(rows)
+        let rows = data.rows
         Group {
-            if rows.isEmpty {
+            if !loaded {
+                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if rows.isEmpty {
                 ContentUnavailableView(emptyTitle, systemImage: filter == .iCloudOnly ? "icloud" : "photo",
                                        description: Text(emptyHint))
             } else {
-                ScrollView {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: tileSize, maximum: tileSize * 1.5), spacing: 6)],
-                              spacing: 6, pinnedViews: [.sectionHeaders]) {
-                        ForEach(secs) { sec in
-                            Section {
-                                ForEach(sec.items) { row in cell(row) }
-                            } header: {
-                                if !sec.title.isEmpty { SectionHeader(title: sec.title, count: sec.items.count) }
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 12)
-                }
-                .background(Color(nsColor: .controlBackgroundColor))
+                GridContent(data: data, tileSize: tileSize, showNames: grouping == .name || sort == .name,
+                            sel: sel, actions: actions)
+                    .equatable()
             }
         }
         .navigationTitle(title)
-        .navigationSubtitle(selection.count > 1 ? "\(selection.count) selected of \(rows.count.formatted())"
+        .navigationSubtitle(sel.ids.count > 1 ? "\(sel.ids.count) selected of \(rows.count.formatted())"
                             : "\(rows.count.formatted()) \(filter == .videos ? "videos" : "items")")
         .sheet(item: $renameRequest) { r in RenameSheet(request: r).environment(model) }
         .sheet(item: $newAlbum) { r in NewAlbumSheet(request: r).environment(model) }
         .inspector(isPresented: $showPreview) {
-            PreviewPane(asset: focused)
+            PreviewPane(asset: sel.focused)
                 .inspectorColumnWidth(min: 260, ideal: 340, max: 620)
         }
         .toolbar {
@@ -179,26 +245,27 @@ struct PhotoGridView: View {
                 Slider(value: $tileSize, in: 80...320) { Text("Thumbnail size") }.frame(width: 110)
                     .help("Thumbnail size")
                 Button {
-                    let chosen = selection.count > 1 ? rows.filter { selection.contains($0.id) } : rows
-                    model.startSlideshow(chosen, title: selection.count > 1 ? "\(selection.count) selected photos" : title,
-                                         startAt: selection.count == 1 ? selection.first : nil)
+                    let chosen = sel.ids.count > 1 ? rows.filter { sel.ids.contains($0.id) } : rows
+                    model.startSlideshow(chosen, title: sel.ids.count > 1 ? "\(sel.ids.count) selected photos" : title,
+                                         startAt: sel.ids.count == 1 ? sel.ids.first : nil)
                 } label: { Label("Slideshow", systemImage: "play.rectangle") }
-                .help(selection.count > 1 ? "Play the selected photos as a slideshow" : "Play these photos as a slideshow")
+                .help(sel.ids.count > 1 ? "Play the selected photos as a slideshow" : "Play these photos as a slideshow")
                 .disabled(rows.isEmpty)
-                Button { renameRequest = RenameRequest(assetIDs: selection.isEmpty ? rows.map(\.id) : rows.filter { selection.contains($0.id) }.map(\.id)) } label: {
+                Button { renameRequest = RenameRequest(assetIDs: sel.ids.isEmpty ? rows.map(\.id) : rows.filter { sel.ids.contains($0.id) }.map(\.id)) } label: {
                     Label("Rename", systemImage: "character.cursor.ibeam")
                 }
-                .help(selection.isEmpty ? "Rename everything shown here" : "Rename the selected items")
+                .help(sel.ids.isEmpty ? "Rename everything shown here" : "Rename the selected items")
                 .disabled(rows.isEmpty)
-                if !selection.isEmpty {
-                    Button { queueSelection() } label: { Label("Queue for Removal", systemImage: "tray.and.arrow.down") }
+                if !sel.ids.isEmpty {
+                    Button { queue(Array(sel.ids)) } label: { Label("Queue for Removal", systemImage: "tray.and.arrow.down") }
                         .help("Add the selected photos to the Removal Queue (nothing is deleted yet)")
                 }
                 Button { showPreview.toggle() } label: { Label("Preview", systemImage: "sidebar.right") }
                     .help(showPreview ? "Hide the preview pane" : "Show the preview pane")
             }
         }
-        .onChange(of: filter) { selection = []; focused = nil }
+        .onChange(of: filter) { sel.ids = []; sel.focused = nil }
+        .task(id: key) { await recompute() }
         .searchable(text: $search, placement: .toolbar, prompt: "Search text in photos, file names")
         .task(id: search) {
             let q = search.trimmingCharacters(in: .whitespaces)
@@ -209,9 +276,80 @@ struct PhotoGridView: View {
         }
     }
 
-    @ViewBuilder
-    private func cell(_ row: AssetRow) -> some View {
-        let isSelected = selection.contains(row.id)
+    private func queue(_ ids: [Int64]) {
+        Task {
+            try? model.db?.queueForRemoval(ids, reason: "Chosen by you", groupID: nil)
+            sel.ids = []
+            await model.reloadFromDatabase()
+        }
+    }
+
+    private var emptyTitle: String {
+        switch filter {
+        case .blurry: "No blurry photos found"
+        case .iCloudOnly: "No iCloud-only photos"
+        case .sharedAlbums: "No shared-album photos"
+        case .category(let c): searchHits == nil ? "No \(c.title.lowercased()) yet" : "No matches"
+        case .folder: searchHits == nil ? "This folder is empty" : "No matches"
+        default: "No photos here yet"
+        }
+    }
+    private var emptyHint: String {
+        switch filter {
+        case .blurry: "Run Analyze Photos from the Dashboard to measure sharpness."
+        case .screenshots: "Screenshots from your library appear here."
+        case .iCloudOnly: "Photos that are stored in iCloud but not downloaded to this Mac appear here."
+        case .sharedAlbums: "Photos from iCloud Shared Albums appear here."
+        case .category: searchHits == nil ? "Run Analyze Photos from the Dashboard to sort photos into categories." : "Try other words."
+        default: "Photos appear as PhotoForge reads your library."
+        }
+    }
+}
+
+/// The scrolling grid. Rebuilt only when the photos, tile size or name labels change —
+/// never on a click.
+struct GridContent: View, Equatable {
+    let data: GridData
+    let tileSize: Double
+    let showNames: Bool
+    let sel: GridSelection
+    let actions: GridActions
+
+    nonisolated static func == (a: Self, b: Self) -> Bool {
+        a.data.version == b.data.version && a.tileSize == b.tileSize && a.showNames == b.showNames && a.sel === b.sel
+    }
+
+    var body: some View {
+        ScrollView {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: tileSize, maximum: tileSize * 1.5), spacing: 6)],
+                      spacing: 6, pinnedViews: [.sectionHeaders]) {
+                ForEach(data.sections) { sec in
+                    Section {
+                        ForEach(sec.items) { row in
+                            GridCell(row: row, tileSize: tileSize, showNames: showNames, sel: sel, actions: actions)
+                        }
+                    } header: {
+                        if !sec.title.isEmpty { SectionHeader(title: sec.title, count: sec.items.count) }
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.bottom, 12)
+        }
+        .background(Color(nsColor: .controlBackgroundColor))
+    }
+}
+
+struct GridCell: View {
+    @Environment(AppModel.self) private var model
+    let row: AssetRow
+    let tileSize: Double
+    let showNames: Bool
+    let sel: GridSelection
+    let actions: GridActions
+
+    var body: some View {
+        let isSelected = sel.ids.contains(row.id)
         AssetThumbnail(localIdentifier: row.localIdentifier, side: tileSize * 2)
             .aspectRatio(1, contentMode: .fit)                          // square cell, exactly the column width
             .clipShape(RoundedRectangle(cornerRadius: 5))
@@ -237,80 +375,43 @@ struct PhotoGridView: View {
                 }
             }
             .overlay(alignment: .topLeading) {
-                if grouping == .name || sort == .name || row.title != nil {
+                if showNames || row.title != nil {
                     Text(row.displayName).font(.caption2).lineLimit(1).padding(.horizontal, 4).padding(.vertical, 2)
                         .background(.black.opacity(0.45), in: RoundedRectangle(cornerRadius: 3)).foregroundStyle(.white).padding(4)
                 }
             }
             .contentShape(Rectangle())
             .onTapGesture(count: 2) { if row.isVideo { model.playRequest = row } else { model.editingAsset = row } }
-            .onTapGesture { select(row, extend: NSEvent.modifierFlags.contains(.command)) }
-            .contextMenu {
-                let ids = selection.contains(row.id) ? Array(selection) : [row.id]
-                if row.isVideo { Button("Play") { model.playRequest = row } } else { Button("Edit…") { model.editingAsset = row } }
-                Button(ids.count > 1 ? "Rename \(ids.count) Items…" : "Rename…") { renameRequest = RenameRequest(assetIDs: ids) }
-                AddToAlbumMenu(ids: ids) { newAlbum = NewAlbumRequest(isFolder: false, assetIDs: ids) }
-                if case .album(let aid) = filter {
-                    Button("Remove from Album") { model.removeFromAlbum(aid, ids) }
-                }
-                Divider()
-                Button("Play Slideshow from Here") { model.startSlideshow(items, title: title, startAt: row.id) }
-                Button("Upscale to 2K…") { model.upscaleRequest = row }
-                    .disabled(max(row.pixelWidth, row.pixelHeight) >= 2048)
-                Divider()
-                Button("Add to Removal Queue") { selection.insert(row.id); queueSelection() }
-                Button("Exclude from Duplicate Scans") { Task { await model.excludeFromScans([row.id]) } }
-                if case .category(let c) = filter {
-                    Divider()
-                    let ids = selection.contains(row.id) ? Array(selection) : [row.id]
-                    Button("Not \(c.singular.hasPrefix("a") || c.singular.hasPrefix("e") || c.singular.hasPrefix("i") || c.singular.hasPrefix("o") ? "an" : "a") \(c.singular)\(ids.count > 1 ? " (\(ids.count) photos)" : "")") {
-                        Task { await model.setCategory(c, assetIDs: ids, included: false) }
-                    }
-                }
-                Menu("Add to Category") {
-                    ForEach(PhotoCategory.allCases) { c in
-                        Button(c.title) { Task { await model.setCategory(c, assetIDs: selection.contains(row.id) ? Array(selection) : [row.id], included: true) } }
-                    }
-                }
+            .onTapGesture { sel.select(row, extend: NSEvent.modifierFlags.contains(.command)) }
+            .contextMenu { menu }
+    }
+
+    @ViewBuilder private var menu: some View {
+        let ids = sel.ids.contains(row.id) ? Array(sel.ids) : [row.id]
+        if row.isVideo { Button("Play") { model.playRequest = row } } else { Button("Edit…") { model.editingAsset = row } }
+        Button(ids.count > 1 ? "Rename \(ids.count) Items…" : "Rename…") { actions.rename(ids) }
+        AddToAlbumMenu(ids: ids) { actions.newAlbum(ids) }
+        if case .album(let aid) = actions.filter {
+            Button("Remove from Album") { model.removeFromAlbum(aid, ids) }
+        }
+        Divider()
+        Button("Play Slideshow from Here") { actions.slideshowFrom(row) }
+        Button("Upscale to 2K…") { model.upscaleRequest = row }
+            .disabled(max(row.pixelWidth, row.pixelHeight) >= 2048)
+        Divider()
+        Button("Add to Removal Queue") { actions.queueForRemoval(ids) }
+        Button("Exclude from Duplicate Scans") { Task { await model.excludeFromScans(ids) } }
+        if case .category(let c) = actions.filter {
+            Divider()
+            let article = "aeio".contains(c.singular.prefix(1).lowercased()) ? "an" : "a"
+            Button("Not \(article) \(c.singular)\(ids.count > 1 ? " (\(ids.count) photos)" : "")") {
+                Task { await model.setCategory(c, assetIDs: ids, included: false) }
             }
-    }
-
-    private func select(_ row: AssetRow, extend: Bool) {
-        if extend {
-            if selection.contains(row.id) { selection.remove(row.id) } else { selection.insert(row.id) }
-        } else {
-            selection = [row.id]
         }
-        focused = row
-    }
-
-    private func queueSelection() {
-        let ids = Array(selection)
-        Task {
-            try? model.db?.queueForRemoval(ids, reason: "Chosen by you", groupID: nil)
-            selection = []
-            await model.reloadFromDatabase()
-        }
-    }
-
-    private var emptyTitle: String {
-        switch filter {
-        case .blurry: "No blurry photos found"
-        case .iCloudOnly: "No iCloud-only photos"
-        case .sharedAlbums: "No shared-album photos"
-        case .category(let c): searchHits == nil ? "No \(c.title.lowercased()) yet" : "No matches"
-        case .folder: searchHits == nil ? "This folder is empty" : "No matches"
-        default: "No photos here yet"
-        }
-    }
-    private var emptyHint: String {
-        switch filter {
-        case .blurry: "Run Analyze Photos from the Dashboard to measure sharpness."
-        case .screenshots: "Screenshots from your library appear here."
-        case .iCloudOnly: "Photos that are stored in iCloud but not downloaded to this Mac appear here."
-        case .sharedAlbums: "Photos from iCloud Shared Albums appear here."
-        case .category: searchHits == nil ? "Run Analyze Photos from the Dashboard to sort photos into categories." : "Try other words."
-        default: "Photos appear as PhotoForge reads your library."
+        Menu("Add to Category") {
+            ForEach(PhotoCategory.allCases) { c in
+                Button(c.title) { Task { await model.setCategory(c, assetIDs: ids, included: true) } }
+            }
         }
     }
 }
@@ -355,11 +456,33 @@ struct AssetThumbnail: View {
             .clipped()
             .task(id: "\(localIdentifier)@\(Int(side))") {
                 if let cached = ThumbnailCache.shared.get(localIdentifier, side) { image = cached; return }
+                // A few at a time, newest request first: cells scrolled past are skipped.
+                await ThumbnailGate.shared.acquire()
+                if Task.isCancelled { await ThumbnailGate.shared.release(); return }
                 let img = await model.thumbnail(for: localIdentifier, side: side)
+                await ThumbnailGate.shared.release()
                 if let img { ThumbnailCache.shared.set(img, localIdentifier, side) }
                 image = img
                 tried = true
             }
+    }
+}
+
+/// Limits how many thumbnails load at once, so fast scrolling can't swamp the CPU.
+/// Waiting requests are served newest-first (what's on screen now).
+actor ThumbnailGate {
+    static let shared = ThumbnailGate(limit: max(2, min(6, ProcessInfo.processInfo.activeProcessorCount)))
+    private let limit: Int
+    private var running = 0
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+    init(limit: Int) { self.limit = limit }
+
+    func acquire() async {
+        if running < limit { running += 1; return }
+        await withCheckedContinuation { waiters.append($0) }
+    }
+    func release() {
+        if let next = waiters.popLast() { next.resume() } else { running -= 1 }
     }
 }
 

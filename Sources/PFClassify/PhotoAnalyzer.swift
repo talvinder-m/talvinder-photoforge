@@ -25,8 +25,11 @@ public struct PhotoAnalyzer: Sendable {
         let handler = VNImageRequestHandler(cgImage: image, options: [:])
 
         let classify = VNClassifyImageRequest()
+        classify.preferBackgroundProcessing = true   // yield the GPU to the window
         let barcodes = VNDetectBarcodesRequest()
+        barcodes.preferBackgroundProcessing = true   // yield the GPU to the window
         let document = VNDetectDocumentSegmentationRequest()
+        document.preferBackgroundProcessing = true   // yield the GPU to the window
         try handler.perform([classify, barcodes, document])
 
         let labels = (classify.results ?? []).filter { $0.confidence >= 0.1 }
@@ -46,6 +49,7 @@ public struct PhotoAnalyzer: Sendable {
         var text = "", chars = 0, textArea = 0.0
         if needOCR {
             let ocr = VNRecognizeTextRequest()
+            ocr.preferBackgroundProcessing = true   // yield the GPU to the window
             ocr.recognitionLevel = accurateText ? .accurate : .fast
             ocr.usesLanguageCorrection = false
             ocr.minimumTextHeight = 0.012

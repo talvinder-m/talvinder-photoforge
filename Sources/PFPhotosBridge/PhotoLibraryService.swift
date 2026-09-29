@@ -232,46 +232,63 @@ public final class PhotoLibraryService: NSObject, PHPhotoLibraryChangeObserver, 
 
     /// Small image for hashing, quality metrics and Vision passes. Never triggers an
     /// iCloud download unless `allowNetwork` is true (set only for user-initiated work).
+    /// Background queues for PhotoKit image requests. Requests are made synchronously *on these
+    /// queues*, so decoding happens there and never on the main thread (PhotoKit delivers
+    /// asynchronous results on the main thread, which made the window stutter during analysis).
+    private static let analysisQueue = DispatchQueue(label: "photoforge.photokit.analysis", qos: .utility, attributes: .concurrent)
+    private static let thumbnailQueue = DispatchQueue(label: "photoforge.photokit.thumbnails", qos: .userInitiated, attributes: .concurrent)
+
     public func analysisImage(for localIdentifier: String, maxDimension: CGFloat = 512,
                               allowNetwork: Bool = false) async throws -> CGImage {
-        guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil).firstObject else {
-            throw PhotoForgeError.assetUnavailable(localIdentifier: localIdentifier)
-        }
-        let opts = PHImageRequestOptions()
-        opts.deliveryMode = .highQualityFormat     // exactly one callback
-        opts.resizeMode = .fast
-        opts.version = .current                    // what the user sees, incl. Photos edits
-        opts.isNetworkAccessAllowed = allowNetwork
-        opts.isSynchronous = false
-
+        let manager = imageManager
         return try await withCheckedThrowingContinuation { cont in
-            imageManager.requestImage(for: asset,
-                                      targetSize: CGSize(width: maxDimension, height: maxDimension),
-                                      contentMode: .aspectFit, options: opts) { image, info in
-                if let err = info?[PHImageErrorKey] as? Error { cont.resume(throwing: err); return }
-                if (info?[PHImageCancelledKey] as? Bool) == true { cont.resume(throwing: PhotoForgeError.cancelled); return }
-                if image == nil, (info?[PHImageResultIsInCloudKey] as? Bool) == true {
-                    cont.resume(throwing: PhotoForgeError.iCloudDownloadRequired(localIdentifier: localIdentifier)); return
+            Self.analysisQueue.async {
+                guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil).firstObject else {
+                    cont.resume(throwing: PhotoForgeError.assetUnavailable(localIdentifier: localIdentifier)); return
                 }
-                guard let cg = image?.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-                    cont.resume(throwing: PhotoForgeError.corruptImage); return
+                let opts = PHImageRequestOptions()
+                opts.deliveryMode = .highQualityFormat     // exactly one callback
+                opts.resizeMode = .fast
+                opts.version = .current                    // what the user sees, incl. Photos edits
+                opts.isNetworkAccessAllowed = allowNetwork
+                opts.isSynchronous = true                  // on this background queue
+                var result: Result<CGImage, Error> = .failure(PhotoForgeError.corruptImage)
+                manager.requestImage(for: asset, targetSize: CGSize(width: maxDimension, height: maxDimension),
+                                     contentMode: .aspectFit, options: opts) { image, info in
+                    if let err = info?[PHImageErrorKey] as? Error { result = .failure(err); return }
+                    if (info?[PHImageCancelledKey] as? Bool) == true { result = .failure(PhotoForgeError.cancelled); return }
+                    if image == nil, (info?[PHImageResultIsInCloudKey] as? Bool) == true {
+                        result = .failure(PhotoForgeError.iCloudDownloadRequired(localIdentifier: localIdentifier)); return
+                    }
+                    if let cg = image?.cgImage(forProposedRect: nil, context: nil, hints: nil) { result = .success(cg) }
                 }
-                cont.resume(returning: cg)
+                cont.resume(with: result)
             }
         }
     }
 
-    /// Grid thumbnail. Uses PhotoKit's local derivatives; never downloads.
+    /// Grid thumbnail. Uses PhotoKit's local derivatives; never downloads. Decoded off the main thread.
     public func thumbnail(for localIdentifier: String, side: CGFloat) async -> NSImage? {
-        guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil).firstObject else { return nil }
-        let opts = PHImageRequestOptions()
-        opts.deliveryMode = .highQualityFormat
-        opts.resizeMode = .fast
-        opts.isNetworkAccessAllowed = false
+        let manager = imageManager
         return await withCheckedContinuation { cont in
-            imageManager.requestImage(for: asset, targetSize: CGSize(width: side, height: side),
-                                      contentMode: .aspectFill, options: opts) { image, _ in
-                cont.resume(returning: image)
+            Self.thumbnailQueue.async {
+                guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil).firstObject else {
+                    cont.resume(returning: nil); return
+                }
+                let opts = PHImageRequestOptions()
+                opts.deliveryMode = .highQualityFormat
+                opts.resizeMode = .fast
+                opts.isNetworkAccessAllowed = false
+                opts.isSynchronous = true
+                var out: NSImage?
+                manager.requestImage(for: asset, targetSize: CGSize(width: side, height: side),
+                                     contentMode: .aspectFill, options: opts) { image, _ in
+                    // Render to a bitmap here so drawing it later costs nothing.
+                    if let cg = image?.cgImage(forProposedRect: nil, context: nil, hints: nil) {
+                        out = NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+                    }
+                }
+                cont.resume(returning: out)
             }
         }
     }

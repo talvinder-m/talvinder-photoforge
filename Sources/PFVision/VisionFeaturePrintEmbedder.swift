@@ -34,6 +34,7 @@ public struct VisionFeaturePrintEmbedder: ImageEmbeddingModel {
 
     public static func featurePrint(_ image: CGImage) throws -> [Float] {
         let req = VNGenerateImageFeaturePrintRequest()
+        req.preferBackgroundProcessing = true   // yield the GPU to the window
         req.imageCropAndScaleOption = .scaleFill
         try VNImageRequestHandler(cgImage: image, options: [:]).perform([req])
         guard let obs = req.results?.first else { throw PhotoForgeError.corruptImage }

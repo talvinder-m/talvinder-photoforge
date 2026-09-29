@@ -83,7 +83,9 @@ final class AppModel {
     var startupError: String?
     var access: PhotoLibraryService.AccessState = .notDetermined
     var selection: SidebarItem? = .dashboard
-    var assets: [AssetRow] = []
+    var assets: [AssetRow] = [] { didSet { dataVersion &+= 1 } }
+    /// Bumped whenever anything the photo grid shows changes, so the grid recomputes only then.
+    var dataVersion = 0
     var assetsByID: [Int64: AssetRow] = [:]
     var stats = LibraryStats()
     var status = IndexStatus()
@@ -98,9 +100,9 @@ final class AppModel {
     var slideshowRequest: SlideshowRequest?
 
     // Categories and folders
-    var categoryMembers: [PhotoCategory: Set<Int64>] = [:]
+    var categoryMembers: [PhotoCategory: Set<Int64>] = [:] { didSet { dataVersion &+= 1 } }
     var folderTree: [AlbumNode] = []
-    var folderIndex: [String: AlbumNode] = [:]
+    var folderIndex: [String: AlbumNode] = [:] { didSet { dataVersion &+= 1 } }
     var banner: String?
 
     // Libraries. Each has its own database; only one is open at a time.
@@ -156,7 +158,7 @@ final class AppModel {
     var importTask: Task<Void, Never>?
 
     // PhotoForge albums (custom groups) of the open library
-    var albums: [PFAlbum] = []
+    var albums: [PFAlbum] = [] { didSet { dataVersion &+= 1 } }
     var albumTree: [AlbumNode] = []
 
     // Other apps' access
@@ -468,7 +470,10 @@ final class AppModel {
             tree = []
         }
         // Libraries without albums/folders get a Year › Month tree from capture dates.
-        if tree.isEmpty { tree = Self.dateTree(assets) }
+        if tree.isEmpty {
+            let rows = assets
+            tree = await Task.detached(priority: .userInitiated) { Self.dateTree(rows) }.value
+        }
         folderTree = tree
         var index: [String: AlbumNode] = [:]
         func walk(_ n: AlbumNode) { index[n.id] = n; n.children.forEach(walk) }
@@ -476,7 +481,7 @@ final class AppModel {
         folderIndex = index
     }
 
-    static func dateTree(_ rows: [AssetRow]) -> [AlbumNode] {
+    nonisolated static func dateTree(_ rows: [AssetRow]) -> [AlbumNode] {
         let cal = Calendar.current
         let monthFmt = DateFormatter(); monthFmt.setLocalizedDateFormatFromTemplate("MMMM")
         var byYear: [Int: [Int: [String]]] = [:]

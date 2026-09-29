@@ -39,12 +39,14 @@ public struct FaceDetector: Sendable {
         let W = CGFloat(upright.width), H = CGFloat(upright.height)
 
         let landmarks = VNDetectFaceLandmarksRequest()
+        landmarks.preferBackgroundProcessing = true   // yield the GPU to the window
         let handler = VNImageRequestHandler(cgImage: upright, orientation: .up, options: [:])
         try handler.perform([landmarks])
         let faces = landmarks.results ?? []
         guard !faces.isEmpty else { return [] }
 
         let quality = VNDetectFaceCaptureQualityRequest()
+        quality.preferBackgroundProcessing = true   // yield the GPU to the window
         quality.inputFaceObservations = faces
         try handler.perform([quality])
         // Match quality results back to faces by bounding-box centre rather than by
