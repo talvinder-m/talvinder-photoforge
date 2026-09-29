@@ -342,4 +342,27 @@ INSERT INTO settings(key, value) VALUES
     );
     CREATE INDEX idx_asset_categories ON asset_categories(category, source);
     """
+
+    /// Names (titles) for any photo, PhotoForge's own albums/folders for any library,
+    /// and faces the user marked by hand.
+    static let v0006_names_albums = """
+    ALTER TABLE assets ADD COLUMN title TEXT;
+    CREATE INDEX idx_assets_title ON assets(title);
+    ALTER TABLE faces ADD COLUMN isManual INTEGER NOT NULL DEFAULT 0;
+    CREATE TABLE pf_albums (
+        id              INTEGER PRIMARY KEY,
+        sourceLibraryID INTEGER REFERENCES source_libraries(id) ON DELETE CASCADE,
+        parentID        INTEGER REFERENCES pf_albums(id) ON DELETE CASCADE,
+        title           TEXT NOT NULL,
+        isFolder        INTEGER NOT NULL DEFAULT 0 CHECK (isFolder IN (0,1)),
+        createdAt       REAL NOT NULL
+    );
+    CREATE TABLE pf_album_members (
+        albumID  INTEGER NOT NULL REFERENCES pf_albums(id) ON DELETE CASCADE,
+        assetID  INTEGER NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+        addedAt  REAL NOT NULL,
+        PRIMARY KEY (albumID, assetID)
+    );
+    CREATE INDEX idx_album_members_asset ON pf_album_members(assetID);
+    """
 }

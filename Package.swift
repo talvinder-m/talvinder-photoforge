@@ -3,6 +3,12 @@
 // See docs/ARCHITECTURE.md §4.
 
 import PackageDescription
+import Foundation
+
+// VLC's playback engine (VLCKit, LGPL-2.1) is downloaded by CI into Vendor/ and linked when
+// present; without it the app still builds and plays everything AVFoundation supports.
+let vlcKitPath = Context.packageDirectory + "/Vendor/VLCKit.xcframework"
+let hasVLCKit = FileManager.default.fileExists(atPath: vlcKitPath)
 
 // Swift 5 language mode: strict-concurrency diagnostics are warnings, not errors,
 // while Apple's frameworks (Photos, Vision, Core Image) finish their Sendable audits.
@@ -40,8 +46,9 @@ let package = Package(
             name: "PhotoForgeApp",
             dependencies: ["PFCore", "PFDatabase", "PFPhotosBridge", "PFVision", "PFSimilarity",
                            "PFPeople", "PFJobs", "PFEditing", "PFSafety", "PFClassify",
-                           .product(name: "GRDB", package: "GRDB.swift")],
-            swiftSettings: settings
+                           .product(name: "GRDB", package: "GRDB.swift")] + (hasVLCKit ? ["VLCKit"] : []),
+            swiftSettings: settings,
+            linkerSettings: [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])]
         ),
 
         .testTarget(name: "PFSimilarityTests", dependencies: ["PFSimilarity"], swiftSettings: settings),
@@ -51,5 +58,6 @@ let package = Package(
                     swiftSettings: settings),
         .testTarget(name: "PFEditingTests", dependencies: ["PFEditing", "PFSafety"], swiftSettings: settings),
         .testTarget(name: "PFClassifyTests", dependencies: ["PFClassify"], swiftSettings: settings),
-    ]
+        .testTarget(name: "PFCoreTests", dependencies: ["PFCore"], swiftSettings: settings),
+    ] + (hasVLCKit ? [.binaryTarget(name: "VLCKit", path: "Vendor/VLCKit.xcframework")] : [])
 )

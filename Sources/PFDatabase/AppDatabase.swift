@@ -8,7 +8,11 @@ import PFCore
 /// Apple's Photos.sqlite is never opened for writing anywhere in this codebase.
 public final class AppDatabase: Sendable {
     public let writer: DatabasePool
+    public let url: URL
 
+    /// Opens (creating if needed) and migrates a library database. When an upgrade brings
+    /// new migrations, the database is first copied to `Backups/` next to it (last 3 kept),
+    /// so an app update can never cost the user their analysis or names.
     public static func open(at url: URL) throws -> AppDatabase {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         var cfg = Configuration()
@@ -19,12 +23,48 @@ public final class AppDatabase: Sendable {
         let pool = try DatabasePool(path: url.path, configuration: cfg)
         // Protect the file at rest when the Mac is locked (FileVault is the primary layer).
         try? (url as NSURL).setResourceValue(URLFileProtection.completeUntilFirstUserAuthentication, forKey: .fileProtectionKey)
-        let db = AppDatabase(writer: pool)
-        try db.migrator.migrate(pool)
+        let db = AppDatabase(writer: pool, url: url)
+        let migrator = db.migrator
+        let (applied, complete) = try pool.read { d in (try migrator.appliedMigrations(d), try migrator.hasCompletedMigrations(d)) }
+        if !applied.isEmpty && !complete {
+            try? db.backup(reason: "before-upgrade")
+        }
+        try migrator.migrate(pool)
         return db
     }
 
-    init(writer: DatabasePool) { self.writer = writer }
+    /// Opens a library database for reading only (no migrations, no writes) — used to serve
+    /// other apps through the local API, and to read a library that isn't the open one.
+    public static func openReadOnly(at url: URL) throws -> AppDatabase {
+        var cfg = Configuration()
+        cfg.readonly = true
+        cfg.foreignKeysEnabled = true
+        return AppDatabase(writer: try DatabasePool(path: url.path, configuration: cfg), url: url)
+    }
+
+    init(writer: DatabasePool, url: URL) { self.writer = writer; self.url = url }
+
+    public var backupsDirectory: URL { url.deletingLastPathComponent().appendingPathComponent("Backups", isDirectory: true) }
+
+    /// Consistent single-file copy of the live database (safe while in use).
+    public func copy(to dest: URL) throws {
+        try FileManager.default.createDirectory(at: dest.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if FileManager.default.fileExists(atPath: dest.path) { try FileManager.default.removeItem(at: dest) }
+        try writer.writeWithoutTransaction { db in try db.execute(sql: "VACUUM INTO ?", arguments: [dest.path]) }
+    }
+
+    /// Timestamped backup in `Backups/`; keeps the newest `keep`.
+    @discardableResult
+    public func backup(reason: String, keep: Int = 3) throws -> URL {
+        let f = DateFormatter(); f.dateFormat = "yyyyMMdd-HHmmss"; f.locale = Locale(identifier: "en_US_POSIX")
+        let dest = backupsDirectory.appendingPathComponent("photoforge-\(f.string(from: .now))-\(reason).sqlite")
+        try copy(to: dest)
+        let fm = FileManager.default
+        let all = ((try? fm.contentsOfDirectory(at: backupsDirectory, includingPropertiesForKeys: [.creationDateKey])) ?? [])
+            .filter { $0.pathExtension == "sqlite" }.sorted { $0.lastPathComponent > $1.lastPathComponent }
+        for old in all.dropFirst(keep) { try? fm.removeItem(at: old) }
+        return dest
+    }
 
     /// Append-only list of migrations. Never edit a shipped migration; add a new one.
     var migrator: DatabaseMigrator {
@@ -46,6 +86,9 @@ public final class AppDatabase: Sendable {
         }
         m.registerMigration("0005_categories") { db in
             try db.execute(sql: Migrations.v0005_categories)
+        }
+        m.registerMigration("0006_names_albums_manual_faces") { db in
+            try db.execute(sql: Migrations.v0006_names_albums)
         }
         return m
     }

@@ -19,11 +19,16 @@ public struct AssetUpsert: Sendable {
     public var assetSource: String          // library | shared
     public var filePath: String?            // on-disk libraries only
     public var availability: String?        // local | cloud_only | nil (unknown / keep previous)
+    public var originalFilename: String?    // nil = keep what's stored
+    public var fileSize: Int?
+    public var fileHash: Data?
     public init(localIdentifier: String, mediaType: String, subtypeMask: Int, creationDate: Date?,
                 modificationDate: Date?, pixelWidth: Int, pixelHeight: Int, duration: Double,
                 favorite: Bool, hidden: Bool, burstIdentifier: String?,
-                assetSource: String = "library", filePath: String? = nil, availability: String? = nil) {
+                assetSource: String = "library", filePath: String? = nil, availability: String? = nil,
+                originalFilename: String? = nil, fileSize: Int? = nil, fileHash: Data? = nil) {
         self.assetSource = assetSource; self.filePath = filePath; self.availability = availability
+        self.originalFilename = originalFilename; self.fileSize = fileSize; self.fileHash = fileHash
         self.localIdentifier = localIdentifier; self.mediaType = mediaType; self.subtypeMask = subtypeMask
         self.creationDate = creationDate; self.modificationDate = modificationDate
         self.pixelWidth = pixelWidth; self.pixelHeight = pixelHeight; self.duration = duration
@@ -54,6 +59,19 @@ public struct AssetRow: Sendable, Hashable, Identifiable {
     public let assetSource: String
     public let filePath: String?
     public let sourceLibraryID: Int64
+    public let title: String?
+    public let originalFilename: String?
+    public let duration: Double
+    public let fileSize: Int?
+
+    /// What the user sees as the photo's name: their own name, else the file name.
+    public var displayName: String {
+        if let t = title, !t.isEmpty { return t }
+        if let f = originalFilename, !f.isEmpty { return f }
+        if localIdentifier.hasPrefix("file:") { return (localIdentifier as NSString).lastPathComponent }
+        return "Untitled"
+    }
+    public var isVideo: Bool { mediaType == "video" }
 }
 
 public struct StoredFace: Sendable, Identifiable {
@@ -140,8 +158,9 @@ public extension AppDatabase {
             let stmt = try db.cachedStatement(sql: """
                 INSERT INTO assets(photoKitLocalIdentifier, sourceLibraryID, mediaType, mediaSubtypeMask, creationDate,
                     modificationDate, pixelWidth, pixelHeight, duration, favorite, hidden, burstIdentifier,
-                    analysisStage, isDeletedInSource, indexedAt, updatedAt, assetSource, filePath, localAvailabilityState)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?, 1, 0, ?, ?, ?, ?, COALESCE(?, 'unknown'))
+                    analysisStage, isDeletedInSource, indexedAt, updatedAt, assetSource, filePath, localAvailabilityState,
+                    originalFilename, fileSize, fileHash)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?, 1, 0, ?, ?, ?, ?, COALESCE(?, 'unknown'), ?, ?, ?)
                 ON CONFLICT(sourceLibraryID, photoKitLocalIdentifier) DO UPDATE SET
                     mediaType = excluded.mediaType, mediaSubtypeMask = excluded.mediaSubtypeMask,
                     creationDate = excluded.creationDate, pixelWidth = excluded.pixelWidth,
@@ -152,6 +171,9 @@ public extension AppDatabase {
                     modificationDate = excluded.modificationDate,
                     isDeletedInSource = 0, indexedAt = excluded.indexedAt, updatedAt = excluded.updatedAt,
                     assetSource = excluded.assetSource, filePath = excluded.filePath,
+                    originalFilename = COALESCE(excluded.originalFilename, assets.originalFilename),
+                    fileSize = COALESCE(excluded.fileSize, assets.fileSize),
+                    fileHash = COALESCE(excluded.fileHash, assets.fileHash),
                     localAvailabilityState = CASE WHEN ? IS NULL THEN assets.localAvailabilityState
                                                   ELSE excluded.localAvailabilityState END
                 """)
@@ -160,7 +182,7 @@ public extension AppDatabase {
                                              a.creationDate?.timeIntervalSince1970, a.modificationDate?.timeIntervalSince1970,
                                              a.pixelWidth, a.pixelHeight, a.duration, a.favorite, a.hidden,
                                              a.burstIdentifier, stamp, stamp, a.assetSource, a.filePath,
-                                             a.availability, a.availability])
+                                             a.availability, a.originalFilename, a.fileSize, a.fileHash, a.availability])
             }
         }
     }
@@ -254,7 +276,9 @@ public extension AppDatabase {
                         fileHash: r["fileHash"], sharpness: r["sharpnessScore"], noise: r["noiseScore"],
                         exposure: r["exposureScore"], laplacianVariance: lap, noiseSigma: sigma, meanLuma: luma,
                         availability: r["localAvailabilityState"], assetSource: r["assetSource"] ?? "library",
-                        filePath: r["filePath"], sourceLibraryID: r["sourceLibraryID"])
+                        filePath: r["filePath"], sourceLibraryID: r["sourceLibraryID"],
+                        title: r["title"], originalFilename: r["originalFilename"], duration: r["duration"] ?? 0,
+                        fileSize: r["fileSize"])
     }
 
     /// Scene embeddings keyed by asset id.
@@ -511,8 +535,9 @@ public extension AppDatabase {
                 """, arguments: [fts, sourceID, sourceID]))
             let like = "%" + query + "%"
             ids.formUnion(try Int64.fetchAll(db, sql: """
-                SELECT id FROM assets WHERE (originalFilename LIKE ? OR photoKitLocalIdentifier LIKE ?) AND (? IS NULL OR sourceLibraryID = ?)
-                """, arguments: [like, like, sourceID, sourceID]))
+                SELECT id FROM assets WHERE (title LIKE ?1 OR originalFilename LIKE ?1 OR photoKitLocalIdentifier LIKE ?1)
+                  AND (?2 IS NULL OR sourceLibraryID = ?2)
+                """, arguments: [like, sourceID]))
             return ids
         }
     }

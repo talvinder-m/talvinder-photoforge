@@ -25,6 +25,8 @@ public protocol MediaSource: AnyObject, Sendable {
     func originalFileSize(_ key: String) -> Int?
     /// File name, type and camera metadata, read without decoding the image or downloading.
     func metadata(for key: String) async -> PhotoMetadata
+    /// What to hand a video player.
+    func playback(for key: String) async throws -> PlaybackSource
 }
 
 /// Shared EXIF/TIFF reading for both kinds of source.
@@ -434,24 +436,17 @@ public final class FileLibrarySource: MediaSource, @unchecked Sendable {
         let exif = DateFormatter()
         exif.dateFormat = "yyyy:MM:dd HH:mm:ss"
         exif.locale = Locale(identifier: "en_US_POSIX")
-        for case let f as URL in e where Self.imageExtensions.contains(f.pathExtension.lowercased()) {
+        _ = exif
+        for case let f as URL in e where MediaFiles.isMedia(f) {
             // Compare resolved paths: /var → /private/var style symlinks must not change the key.
             let rel = Self.relativePath(f, to: root)
             let values = try? f.resourceValues(forKeys: [.contentModificationDateKey, .creationDateKey])
-            var w = 0, h = 0
-            var taken: Date? = nil
-            if let src = CGImageSourceCreateWithURL(f as CFURL, nil),
-               let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any] {
-                w = props[kCGImagePropertyPixelWidth] as? Int ?? 0
-                h = props[kCGImagePropertyPixelHeight] as? Int ?? 0
-                if let o = props[kCGImagePropertyOrientation] as? Int, o >= 5 { swap(&w, &h) }
-                if let ex = props[kCGImagePropertyExifDictionary] as? [CFString: Any],
-                   let s = ex[kCGImagePropertyExifDateTimeOriginal] as? String { taken = exif.date(from: s) }
-            }
-            out.append(FileAsset(key: "file:\(rel)", url: f, isOriginalLocal: true, mediaType: "image",
-                                 subtypeMask: f.lastPathComponent.lowercased().hasPrefix("screenshot") ? 4 : 0,
-                                 creationDate: taken ?? values?.creationDate, modificationDate: values?.contentModificationDate,
-                                 pixelWidth: w, pixelHeight: h, duration: 0, favorite: false, hidden: false, burstIdentifier: nil))
+            let p = MediaFiles.probe(f)
+            out.append(FileAsset(key: "file:\(rel)", url: f, isOriginalLocal: true, mediaType: p.mediaType,
+                                 subtypeMask: p.isScreenshot ? 4 : 0,
+                                 creationDate: p.captureDate ?? values?.creationDate, modificationDate: values?.contentModificationDate,
+                                 pixelWidth: p.width, pixelHeight: p.height, duration: p.duration, favorite: false, hidden: false,
+                                 burstIdentifier: nil))
         }
         return out
     }
@@ -460,9 +455,30 @@ public final class FileLibrarySource: MediaSource, @unchecked Sendable {
 
     public func thumbnail(for key: String, side: CGFloat) async -> NSImage? {
         guard let u = url(for: key) else { return nil }
-        return await Task.detached(priority: .userInitiated) {
-            Self.downsample(u, maxPixel: side).map { NSImage(cgImage: $0, size: NSSize(width: $0.width, height: $0.height)) }
-        }.value
+        return await Self.thumbnail(at: u, side: side)
+    }
+
+    static func thumbnail(at u: URL, side: CGFloat) async -> NSImage? {
+        let cg: CGImage?
+        if MediaFiles.isVideo(u) {
+            cg = await MediaFiles.videoThumbnail(u, maxPixel: side)
+        } else {
+            cg = await Task.detached(priority: .userInitiated) { Self.downsample(u, maxPixel: side) }.value
+        }
+        return cg.map { NSImage(cgImage: $0, size: NSSize(width: $0.width, height: $0.height)) }
+    }
+
+    public func playback(for key: String) async throws -> PlaybackSource {
+        guard let u = url(for: key) else { throw FileLibraryError.missing(key) }
+        return .url(u)
+    }
+
+    static func sha256(of u: URL) throws -> Data {
+        let h = try FileHandle(forReadingFrom: u)
+        defer { try? h.close() }
+        var hasher = SHA256()
+        while let chunk = try h.read(upToCount: 1 << 20), !chunk.isEmpty { hasher.update(data: chunk) }
+        return Data(hasher.finalize())
     }
 
     public func analysisImage(for key: String, maxDimension: CGFloat, allowNetwork: Bool) async throws -> CGImage {

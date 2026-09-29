@@ -18,7 +18,7 @@ struct DatabaseTests {
         #expect(Set(tables) == ["source_libraries", "assets", "asset_metadata", "ocr_text", "tags", "embeddings",
                                 "embedding_vectors", "faces", "persons", "person_face_membership", "face_constraints",
                                 "duplicate_groups", "duplicate_group_members", "similarity_exclusions", "edit_projects",
-                                "jobs", "user_decisions", "activity_log", "settings", "removal_queue", "asset_categories"])
+                                "jobs", "user_decisions", "activity_log", "settings", "removal_queue", "asset_categories", "pf_albums", "pf_album_members"])
     }
 
     @Test func constraintsRejectBadData() throws {

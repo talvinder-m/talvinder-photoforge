@@ -19,6 +19,15 @@ lipo -create -output "$APP/Contents/MacOS/PhotoForge" \
   ".build/x86_64-apple-macosx/release/PhotoForgeApp"
 lipo -info "$APP/Contents/MacOS/PhotoForge"
 
+# VLC playback engine, when it was built in.
+VLCFW=$(find .build -path "*release*" -name "VLCKit.framework" -maxdepth 4 | head -1)
+if [ -n "$VLCFW" ]; then
+  mkdir -p "$APP/Contents/Frameworks"
+  cp -R "$VLCFW" "$APP/Contents/Frameworks/"
+  echo "Bundled VLCKit from $VLCFW"
+  lipo -info "$APP/Contents/Frameworks/VLCKit.framework/VLCKit" || true
+fi
+
 sed "s/__VERSION__/${VERSION}/g" Resources/Info.plist > "$APP/Contents/Info.plist"
 plutil -lint "$APP/Contents/Info.plist"
 [ -f Resources/AppIcon.icns ] && cp Resources/AppIcon.icns "$APP/Contents/Resources/"

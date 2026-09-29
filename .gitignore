@@ -5,3 +5,4 @@ DerivedData/
 dist/
 __pycache__/
 .DS_Store
+Vendor/

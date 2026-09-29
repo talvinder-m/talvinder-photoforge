@@ -295,6 +295,141 @@ public final class PhotoLibraryService: NSObject, PHPhotoLibraryChangeObserver, 
         }
     }
 
+    // MARK: Video
+
+    /// The video for playback (downloads from iCloud if needed — the user asked to play it).
+    public func playback(for localIdentifier: String) async throws -> PlaybackSource {
+        guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil).firstObject else {
+            throw PhotoForgeError.assetUnavailable(localIdentifier: localIdentifier)
+        }
+        let opts = PHVideoRequestOptions()
+        opts.isNetworkAccessAllowed = true
+        opts.deliveryMode = .highQualityFormat
+        opts.version = .current
+        final class Box: @unchecked Sendable { var done = false }
+        let box = Box()
+        return try await withCheckedThrowingContinuation { cont in
+            imageManager.requestAVAsset(forVideo: asset, options: opts) { av, _, info in
+                guard !box.done else { return }
+                box.done = true
+                if let av { cont.resume(returning: .asset(av)) }
+                else if let e = info?[PHImageErrorKey] as? Error { cont.resume(throwing: e) }
+                else { cont.resume(throwing: PhotoForgeError.assetUnavailable(localIdentifier: localIdentifier)) }
+            }
+        }
+    }
+
+    // MARK: Copying out (used when building a PhotoForge Library from Apple Photos)
+
+    public struct ExportedOriginal: Sendable {
+        public let url: URL
+        public let originalFilename: String
+    }
+
+    /// Writes the photo or video as currently shown in Photos (with edits) to `directory`.
+    public func exportOriginal(_ localIdentifier: String, to directory: URL, allowNetwork: Bool) async throws -> ExportedOriginal {
+        guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil).firstObject else {
+            throw PhotoForgeError.assetUnavailable(localIdentifier: localIdentifier)
+        }
+        let resources = PHAssetResource.assetResources(for: asset)
+        let preferred: [PHAssetResourceType] = asset.mediaType == .video ? [.fullSizeVideo, .video] : [.fullSizePhoto, .photo]
+        guard let res = preferred.lazy.compactMap({ t in resources.first { $0.type == t } }).first ?? resources.first else {
+            throw PhotoForgeError.assetUnavailable(localIdentifier: localIdentifier)
+        }
+        let original = resources.first { $0.type == .photo || $0.type == .video }?.originalFilename ?? res.originalFilename
+        var name = res.originalFilename
+        // Edited renditions are called FullSizeRender.*; keep the original's name with the rendition's extension.
+        if name.lowercased().hasPrefix("fullsizerender") {
+            name = (original as NSString).deletingPathExtension + "." + (name as NSString).pathExtension
+        }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        var dest = directory.appendingPathComponent(name)
+        var n = 2
+        while FileManager.default.fileExists(atPath: dest.path) {
+            dest = directory.appendingPathComponent("\((name as NSString).deletingPathExtension) \(n).\((name as NSString).pathExtension)"); n += 1
+        }
+        let opts = PHAssetResourceRequestOptions()
+        opts.isNetworkAccessAllowed = allowNetwork
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+            PHAssetResourceManager.default().writeData(for: res, toFile: dest, options: opts) { error in
+                if let error { cont.resume(throwing: error) } else { cont.resume() }
+            }
+        }
+        return ExportedOriginal(url: dest, originalFilename: original)
+    }
+
+    /// Album membership as (album path, asset ids), for recreating albums in a copy.
+    public func albumMemberships() -> [(path: [String], localIdentifiers: [String])] {
+        var out: [(path: [String], localIdentifiers: [String])] = []
+        func walk(_ nodes: [AlbumNode], _ path: [String]) {
+            for n in nodes {
+                if n.kind == .album { out.append((path + [n.title], n.assetKeys)) }
+                walk(n.children, path + [n.title])
+            }
+        }
+        walk(albumTree().filter { $0.id != "pk:smart" }, [])
+        return out
+    }
+
+    // MARK: Names in Apple Photos (via Photos' own scripting, since PhotoKit can't set titles)
+
+    public struct TitleWriteResult: Sendable { public let written: Int; public let failed: Int; public let error: String? }
+
+    /// Sets the Title field in Apple Photos. macOS asks the user once to allow PhotoForge to control Photos.
+    public static func writeTitlesToPhotos(_ items: [(localIdentifier: String, title: String)]) async -> TitleWriteResult {
+        func esc(_ s: String) -> String { s.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"") }
+        var written = 0, failed = 0
+        var lastError: String?
+        // Pre-flight: triggers the one-time "allow PhotoForge to control Photos" prompt and
+        // surfaces a refusal clearly (inside the per-item try blocks it would be swallowed).
+        let (_, preErr, preStatus) = await runOsascript("tell application \"Photos\" to return (count of albums)")
+        if preStatus != 0 {
+            let denied = preErr.contains("-1743") || preErr.lowercased().contains("not allowed")
+            return TitleWriteResult(written: 0, failed: items.count,
+                                    error: denied ? "PhotoForge isn't allowed to control Photos. Allow it in System Settings › Privacy & Security › Automation."
+                                                  : preErr)
+        }
+        for chunk in stride(from: 0, to: items.count, by: 150) {
+            let part = items[chunk..<min(chunk + 150, items.count)]
+            var script = "tell application \"Photos\"\nset ok to 0\n"
+            for (id, t) in part {
+                script += "try\nset name of media item id \"\(esc(id))\" to \"\(esc(t))\"\nset ok to ok + 1\nend try\n"
+            }
+            script += "return ok\nend tell\n"
+            let (out, err, status) = await runOsascript(script)
+            if status == 0, let n = Int(out.trimmingCharacters(in: .whitespacesAndNewlines)) {
+                written += n; failed += part.count - n
+            } else {
+                failed += part.count
+                lastError = err.isEmpty ? "osascript exited with \(status)" : err
+                if err.contains("-1743") || err.lowercased().contains("not allowed") { break }   // permission denied: stop
+            }
+        }
+        return TitleWriteResult(written: written, failed: failed, error: lastError)
+    }
+
+    static func runOsascript(_ script: String) async -> (String, String, Int32) {
+        await withCheckedContinuation { cont in
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+            p.arguments = ["-"]
+            let inPipe = Pipe(), outPipe = Pipe(), errPipe = Pipe()
+            p.standardInput = inPipe; p.standardOutput = outPipe; p.standardError = errPipe
+            p.terminationHandler = { proc in
+                let o = String(decoding: outPipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+                let e = String(decoding: errPipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+                cont.resume(returning: (o, e, proc.terminationStatus))
+            }
+            do {
+                try p.run()
+                inPipe.fileHandleForWriting.write(Data(script.utf8))
+                try? inPipe.fileHandleForWriting.close()
+            } catch {
+                cont.resume(returning: ("", error.localizedDescription, -1))
+            }
+        }
+    }
+
     /// Albums, folders and non-empty smart albums from the System Photo Library.
     public func albumTree() -> [AlbumNode] {
         func keys(_ c: PHAssetCollection) -> [String] {

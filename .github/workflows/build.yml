@@ -25,6 +25,39 @@ jobs:
           swift --version | tee -a toolchain.log
           sw_vers | tee -a toolchain.log
 
+      - name: Cache VLC engine (VLCKit)
+        id: vlccache
+        uses: actions/cache@v4
+        with:
+          path: Vendor/VLCKit.xcframework
+          key: vlckit-3-v1
+
+      - name: Fetch VLC engine (VLCKit, LGPL-2.1)
+        if: steps.vlccache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          mkdir -p Vendor /tmp/vlc && cd /tmp/vlc
+          BASE=https://download.videolan.org/pub/cocoapods/prod
+          FILE=$(curl -fsSL "$BASE/" | grep -oE 'VLCKit-3\.[0-9.]+-[0-9a-f]+-[0-9a-f]+\.tar\.xz' | sort -uV | tail -1)
+          echo "VLCKit archive: $FILE" | tee $GITHUB_WORKSPACE/vlc.log
+          curl -fsSL -o vlc.tar.xz "$BASE/$FILE"
+          tar xf vlc.tar.xz
+          find . -maxdepth 4 \( -name "*.xcframework" -o -name "VLCKit.framework" \) | tee -a $GITHUB_WORKSPACE/vlc.log
+          XC=$(find . -maxdepth 4 -name "VLCKit.xcframework" | head -1)
+          if [ -n "$XC" ]; then
+            cp -R "$XC" $GITHUB_WORKSPACE/Vendor/VLCKit.xcframework
+          else
+            FW=$(find . -maxdepth 4 -name "VLCKit.framework" | head -1)
+            xcodebuild -create-xcframework -framework "$FW" -output $GITHUB_WORKSPACE/Vendor/VLCKit.xcframework
+          fi
+          cd $GITHUB_WORKSPACE
+          find Vendor/VLCKit.xcframework -maxdepth 2 | tee -a vlc.log
+          BIN=$(find Vendor/VLCKit.xcframework -path "*macos*" -name VLCKit -type f | head -1)
+          [ -n "$BIN" ] && lipo -info "$BIN" | tee -a vlc.log
+          ls Vendor/VLCKit.xcframework/*/VLCKit.framework/Modules 2>/dev/null | tee -a vlc.log
+          du -sh Vendor/VLCKit.xcframework | tee -a vlc.log
+
       - name: Build (debug)
         id: build
         continue-on-error: true
@@ -140,6 +173,7 @@ jobs:
             echo "test: ${{ steps.test.outcome }}"
             echo "package: ${{ steps.package.outcome }}"
             echo "selftest: ${{ steps.selftest.outcome }}"
+            echo "vlckit: $( [ -d Vendor/VLCKit.xcframework ] && echo present || echo missing ) (cache hit: ${{ steps.vlccache.outputs.cache-hit }})"
             echo "models: ${{ steps.models.outcome }} (cache hit: ${{ steps.modelcache.outputs.cache-hit }})"
             echo "facecal: ${{ steps.facecal.outcome }}"
             echo "run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
