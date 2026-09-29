@@ -95,6 +95,7 @@ struct PersonDetailView: View {
     let person: PersonVM
     @State private var name = ""
     @State private var focusedFace: StoredFace?
+    @State private var suggested: [(face: StoredFace, similarity: Double)] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -133,6 +134,39 @@ struct PersonDetailView: View {
             Text("Wrong face? Use “Not this person” on it. PhotoForge remembers, and won't group them together again.")
                 .font(.caption).foregroundStyle(.secondary)
             ScrollView {
+                if person.name != nil && !suggested.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Is this \(person.title)?").font(.headline)
+                            Text("\(suggested.count) suggestion(s)").font(.caption).foregroundStyle(.secondary)
+                            Spacer()
+                            Button("Accept All") {
+                                let faces = suggested.map(\.face)
+                                Task { await model.acceptSuggestions(faces, for: person) }
+                            }
+                        }
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 10)], spacing: 10) {
+                            ForEach(suggested, id: \.face.id) { s in
+                                VStack(spacing: 4) {
+                                    FaceThumb(face: s.face, size: 100).clipShape(RoundedRectangle(cornerRadius: 8))
+                                        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.orange.opacity(0.7), lineWidth: 2))
+                                    HStack(spacing: 14) {
+                                        Button { Task { await model.acceptSuggestions([s.face], for: person) } } label: {
+                                            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                                        }.help("Yes, this is \(person.title)")
+                                        Button { suggested.removeAll { $0.face.id == s.face.id }; Task { await model.rejectSuggestion(s.face, for: person) } } label: {
+                                            Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
+                                        }.help("No, not \(person.title)")
+                                    }
+                                    .buttonStyle(.borderless).font(.title3)
+                                }
+                            }
+                        }
+                    }
+                    .padding(10)
+                    .background(.orange.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
+                    Text("Confirmed").font(.headline).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 6)
+                }
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 10)], spacing: 10) {
                     ForEach(person.faces) { f in
                         VStack(spacing: 4) {
@@ -152,6 +186,9 @@ struct PersonDetailView: View {
         }
         .padding(20)
         .onAppear { name = person.name ?? "" }
+        .task(id: "\(person.id)-\(person.faces.count)-\(model.storedFaces.count)") {
+            suggested = person.name == nil ? [] : model.suggestions(for: person)
+        }
     }
 }
 
@@ -220,7 +257,7 @@ struct FaceThumb: View {
     private func load() async -> NSImage? {
         guard let face else { return nil }
         if let p = face.cropPath {
-            let url = AppModel.faceCropDir.appendingPathComponent(p)
+            let url = model.faceCropDir.appendingPathComponent(p)
             if let img = NSImage(contentsOf: url) { return img }
         }
         guard let thumb = await model.thumbnail(for: face.localIdentifier, side: 800),

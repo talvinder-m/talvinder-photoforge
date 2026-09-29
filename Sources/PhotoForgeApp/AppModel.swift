@@ -13,11 +13,15 @@ import PFEditing
 import PFSafety
 import PFClassify
 
+enum DupSection: String, Hashable { case all, exact, near, burst, similar }
+
 enum SidebarItem: Hashable {
     case category(PhotoCategory)
     case folder(String)
-    case dashboard, allPhotos, favorites, screenshots, blurry, iCloudOnly, sharedAlbums
-    case duplicates, removalQueue, people
+    case album(Int64)
+    case duplicates(DupSection)
+    case dashboard, allPhotos, videos, favorites, screenshots, blurry, iCloudOnly, sharedAlbums
+    case removalQueue, people
     case activity, settings
 }
 
@@ -65,14 +69,15 @@ struct IndexStatus: Equatable {
 @Observable
 final class AppModel {
     // Services
-    private(set) var db: AppDatabase?
-    private(set) var cipher: VectorCipher?
+    var db: AppDatabase?
+    var cipher: VectorCipher?
     let photos = PhotoLibraryService()
     let jobs = JobManager(maxConcurrentJobs: 1)
     let renderer = EditRenderer()
     let policy = GenerativeEditPolicy()
     let faceModel = FaceEmbedding.load()
-    let superRes = SuperResolution(modelsDirectory: Bundle.main.resourceURL?.appendingPathComponent("Models"))
+    let superRes = SuperResolution(modelsDirectory: Bundle.main.resourceURL?.appendingPathComponent("Models"),
+                                   computeUnits: MachineProfile.detect().mlComputeUnits)
 
     // State
     var startupError: String?
@@ -98,16 +103,22 @@ final class AppModel {
     var folderIndex: [String: AlbumNode] = [:]
     var banner: String?
 
-    // Libraries: the System Photo Library (PhotoKit) plus any libraries/folders opened from disk.
-    var libraries: [LibraryRow] = []
+    // Libraries. Each has its own database; only one is open at a time.
+    let registry = LibraryRegistry(fileURL: AppModel.supportDir.appendingPathComponent("Libraries.json"))
+    var libraries: [LibraryEntry] = []
+    var activeEntry: LibraryEntry?
+    /// The open library's id inside its own database (used to scope queries).
     var activeLibraryID: Int64?
-    private var fileSources: [Int64: FileLibrarySource] = [:]
-    var activeLibrary: LibraryRow? { libraries.first { $0.id == activeLibraryID } }
-    var isSystemLibrary: Bool { activeLibrary?.isSystem ?? true }
+    private(set) var externalSource: FileLibrarySource?
+    private(set) var managedSource: ManagedLibrarySource?
+    var isSystemLibrary: Bool { (activeEntry?.kind ?? .applePhotos) == .applePhotos }
+    var isManagedLibrary: Bool { activeEntry?.kind == .photoForge }
+    var faceCropDir: URL { activeEntry?.faceCropDir ?? Self.supportDir.appendingPathComponent("FaceCrops", isDirectory: true) }
     /// Assets of the active library (the database load is already scoped to it).
     var visibleAssets: [AssetRow] { assets }
     var mediaSource: any MediaSource {
-        if let id = activeLibraryID, let src = fileSources[id] { return src }
+        if let m = managedSource { return m }
+        if let e = externalSource { return e }
         return photos
     }
     var canDelete: Bool { mediaSource.capabilities.canDelete }
@@ -127,76 +138,158 @@ final class AppModel {
     var faceStrictness = 0.5 { didSet { save("faceStrictness", faceStrictness) } }
     var classifyEnabled = true { didSet { save("classifyEnabled", classifyEnabled) } }
 
-    private var currentJob: UUID?
+    var currentJob: UUID?
     private var loadingSettings = false
-    private var storedFaces: [StoredFace] = []
+    var storedFaces: [StoredFace] = []
+    var importStatus: ImportProgress?
+
+    // This Mac
+    var machine = MachineProfile.detect()
+    var performanceMode: PerformanceMode = PerformanceMode(rawValue: UserDefaults.standard.string(forKey: "performanceMode") ?? "") ?? .automatic {
+        didSet { UserDefaults.standard.set(performanceMode.rawValue, forKey: "performanceMode"); applyMachineProfile() }
+    }
+    var analysisConcurrency = 2
+
+    /// Face id → id of the PersonVM it's shown under.
+    var faceOwnerIndex: [Int64: String] = [:]
+    var playRequest: AssetRow?
+    var importTask: Task<Void, Never>?
+
+    // PhotoForge albums (custom groups) of the open library
+    var albums: [PFAlbum] = []
+    var albumTree: [AlbumNode] = []
+
+    // Other apps' access
+    let apiServer = LocalAPIServer()
 
     static let supportDir: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return base.appendingPathComponent("PhotoForge", isDirectory: true)
     }()
-    static var faceCropDir: URL { supportDir.appendingPathComponent("FaceCrops", isDirectory: true) }
 
     // MARK: Startup
 
     func bootstrap() async {
+        machine = MachineProfile.detect()
+        applyMachineProfile()
+        await jobs.startMonitoringSystem()
+        Task { await self.consumeJobEvents() }
         do {
-            let db = try AppDatabase.open(at: Self.supportDir.appendingPathComponent("photoforge.sqlite"))
-            self.db = db
-            cipher = try VectorCipher(store: .file(Self.supportDir.appendingPathComponent("vector.key")))
-            loadSettings()
-            // Embeddings from different models can't be compared: rebuild face data if the model changed.
-            if let inUse = try? db.faceEmbeddingModels(), !inUse.isEmpty, inUse != [faceModel.name] {
-                _ = try? await db.deleteAllFaceData(faceCropDirectory: Self.faceCropDir, keepAnalysisEnabled: true)
-                banner = "Face grouping was upgraded to a more accurate model. Run Analyze Photos to rebuild People."
+            if !registry.exists {
+                // First launch of this version: give every existing library its own database.
+                try LibraryRegistry.upgradeCombinedDatabase(supportDir: Self.supportDir, registry: registry)
             }
-            await jobs.startMonitoringSystem()
-            Task { await self.consumeJobEvents() }
         } catch {
-            startupError = "Couldn't open PhotoForge's database: \(error.localizedDescription)"
+            startupError = "Couldn't prepare PhotoForge's libraries: \(error.localizedDescription)"
             return
         }
+        libraries = registry.entries
         access = photos.accessState
-        refreshLibraries()
-        let saved = db?.setting("activeLibraryID").flatMap(Int64.init)
-        if let saved, let lib = libraries.first(where: { $0.id == saved }), !lib.isSystem, let path = lib.path {
-            // Reopen the on-disk library the user was using last time.
-            if (try? await attachFileLibrary(id: lib.id, url: URL(fileURLWithPath: path))) != nil {
-                activeLibraryID = lib.id
-                await reloadFromDatabase()
-                await syncLibrary()
-            }
-        }
-        if activeLibraryID == nil {
-            activeLibraryID = try? db?.systemSourceID()
-            refreshLibraries()
+        if let entry = registry.active, await open(entry) {
+            // opened
+        } else if let apple = libraries.first(where: { $0.kind == .applePhotos }), await open(apple) {
+            // fell back to Apple Photos
+        } else {
+            startupError = "Couldn't open any library."
+            return
         }
         if access == .authorized || access == .limited {
             _ = await photos.requestAccess()          // registers the change observer; no prompt when already decided
-            if isSystemLibrary {
-                await reloadFromDatabase()
-                await syncLibrary()
-            }
             watchLibraryChanges()
         }
+        apiServer.restoreIfEnabled(model: self)
     }
 
     // MARK: Libraries
 
     func refreshLibraries() {
-        libraries = (try? db?.libraries()) ?? []
+        if let e = activeEntry {
+            var updated = e
+            updated.assetCount = stats.photos + stats.videos
+            updated.lastOpened = .now
+            registry.upsert(updated)
+            activeEntry = updated
+        }
+        libraries = registry.entries
+    }
+
+    /// Opens a library: its own database, key and photo source. Returns false (with a banner) on failure.
+    @discardableResult
+    func open(_ entry: LibraryEntry) async -> Bool {
+        await cancelAnalysis()
+        do {
+            try FileManager.default.createDirectory(at: entry.dataURL, withIntermediateDirectories: true)
+            let newDB = try AppDatabase.open(at: entry.databaseURL)
+            let newCipher = try VectorCipher(store: .file(entry.keyURL))
+            var sid: Int64
+            var ext: FileLibrarySource? = nil, managed: ManagedLibrarySource? = nil
+            switch entry.kind {
+            case .applePhotos:
+                sid = try newDB.systemSourceID()
+            case .external:
+                guard let path = entry.sourcePath else { throw CocoaError(.fileNoSuchFile) }
+                let src = try FileLibrarySource(url: URL(fileURLWithPath: path))
+                sid = try newDB.addLibrary(kind: src.inspection.kind == .folder ? "import_folder" : "photoslibrary_readonly",
+                                           name: entry.name, path: path)
+                src.register(try newDB.filePaths(sourceID: sid).mapValues { URL(fileURLWithPath: $0) })
+                ext = src
+            case .photoForge:
+                guard let path = entry.sourcePath else { throw CocoaError(.fileNoSuchFile) }
+                let url = URL(fileURLWithPath: path)
+                guard FileManager.default.fileExists(atPath: url.path) else {
+                    throw CocoaError(.fileNoSuchFile, userInfo: [NSLocalizedDescriptionKey:
+                        "The library “\(entry.name)” isn't available. If it's on an external drive, connect the drive and try again."])
+                }
+                _ = try PhotoForgePackage.open(url)
+                sid = try newDB.addLibrary(kind: "import_folder", name: entry.name, path: path)
+                let src = ManagedLibrarySource(root: url)
+                src.register(try newDB.filePaths(sourceID: sid))
+                managed = src
+            }
+            // Switch over.
+            db = newDB
+            cipher = newCipher
+            externalSource = ext
+            managedSource = managed
+            activeLibraryID = sid
+            activeEntry = entry
+            registry.activeID = entry.id
+            loadSettings()
+            if let inUse = try? newDB.faceEmbeddingModels(), !inUse.isEmpty, inUse != [faceModel.name] {
+                _ = try? await newDB.deleteAllFaceData(faceCropDirectory: entry.faceCropDir, keepAnalysisEnabled: true)
+                banner = "Face grouping was upgraded to a more accurate model. Run Analyze Photos to rebuild People."
+            }
+            ThumbnailCache.shared.removeAll()
+            assets = []; assetsByID = [:]; duplicateGroups = []; people = []; reviewFaces = []; storedFaces = []
+            categoryMembers = [:]; folderTree = []; folderIndex = [:]; albums = []
+            if selection == .iCloudOnly || selection == .sharedAlbums { selection = .allPhotos }
+            if case .folder = selection { selection = .allPhotos }
+            if case .album = selection { selection = .allPhotos }
+            await reloadFromDatabase()
+            refreshLibraries()
+            if entry.kind != .applePhotos || access == .authorized || access == .limited { await syncLibrary() }
+            return true
+        } catch {
+            banner = "Couldn't open “\(entry.name)”: \(error.localizedDescription)"
+            return false
+        }
+    }
+
+    func switchLibrary(_ id: UUID) async {
+        guard id != activeEntry?.id, let e = registry.entry(id) else { return }
+        await open(e)
     }
 
     /// Libraries found in the usual places that aren't already listed.
     func discoverLibraries() async -> [URL] {
-        let known = Set(libraries.compactMap(\.path))
+        let known = Set(libraries.compactMap(\.sourcePath))
         return await Task.detached { FileLibrarySource.discoverLibraries() }.value.filter { !known.contains($0.path) }
     }
 
     func chooseLibraryWithPanel() async {
         let panel = NSOpenPanel()
-        panel.title = "Choose a Photos Library or Folder"
-        panel.message = "Pick a Photos library (.photoslibrary), an iPhoto library, or any folder of photos. PhotoForge only reads it."
+        panel.title = "Open a Library or Folder"
+        panel.message = "Pick a PhotoForge Library (.pflibrary), a Photos library (.photoslibrary), an iPhoto library, or any folder of photos."
         panel.prompt = "Open"
         panel.canChooseDirectories = true
         panel.canChooseFiles = true
@@ -207,59 +300,40 @@ final class AppModel {
         await openLibrary(at: url)
     }
 
+    /// Adds (or reopens) a library at a path: a PhotoForge Library, or a read-only library/folder.
     func openLibrary(at url: URL) async {
-        guard let db else { return }
+        if let known = registry.entry(sourcePath: url.path) { await open(known); return }
         do {
-            let inspection = try FileLibrarySource.inspect(url)
-            let kind = inspection.kind == .folder ? "import_folder" : "photoslibrary_readonly"
-            let id = try db.addLibrary(kind: kind, name: inspection.name, path: url.path)
-            try await attachFileLibrary(id: id, url: url)
-            db.log("scan", "Opened \(inspection.detail.lowercased()) “\(inspection.name)” (read-only)")
-            await switchLibrary(id)
+            let entry: LibraryEntry
+            if PhotoForgePackage.isPackage(url) {
+                let m = try PhotoForgePackage.open(url)
+                entry = LibraryEntry(id: m.id, kind: .photoForge, name: m.name, sourcePath: url.path,
+                                     dataPath: url.appendingPathComponent("Database").path)
+            } else {
+                let inspection = try FileLibrarySource.inspect(url)
+                entry = LibraryEntry(kind: .external, name: inspection.name, sourcePath: url.path,
+                                     dataPath: Self.supportDir.appendingPathComponent("Libraries/\(UUID().uuidString)").path)
+            }
+            registry.upsert(entry)
+            libraries = registry.entries
+            if await open(entry) { db?.log("scan", "Opened library “\(entry.name)” (\(entry.kindLabel))") }
         } catch {
             banner = error.localizedDescription
         }
     }
 
-    @discardableResult
-    private func attachFileLibrary(id: Int64, url: URL) async throws -> FileLibrarySource {
-        if let s = fileSources[id] { return s }
-        let src = try FileLibrarySource(url: url)
-        if let saved = try? db?.filePaths(sourceID: id) {
-            src.register(saved.mapValues { URL(fileURLWithPath: $0) })
+    /// Removes a library from the list. Its photos are never touched. For read-only and Apple Photos
+    /// libraries PhotoForge's data can also be deleted; a PhotoForge Library keeps its data inside it.
+    func forgetLibrary(_ id: UUID, deleteData: Bool) async {
+        guard let e = registry.entry(id) else { return }
+        if id == activeEntry?.id {
+            guard let other = libraries.first(where: { $0.id != id }) else { banner = "You need at least one library."; return }
+            await open(other)
         }
-        fileSources[id] = src
-        return src
-    }
-
-    func switchLibrary(_ id: Int64) async {
-        guard id != activeLibraryID || assets.isEmpty else { return }
-        await cancelAnalysis()
-        if let lib = libraries.first(where: { $0.id == id }) ?? (try? db?.libraries())?.first(where: { $0.id == id }),
-           !lib.isSystem, let path = lib.path {
-            do { try await attachFileLibrary(id: id, url: URL(fileURLWithPath: path)) }
-            catch { banner = error.localizedDescription; return }
-        }
-        activeLibraryID = id
-        try? db?.touchLibrary(id)
-        db?.setSetting("activeLibraryID", String(id))
-        refreshLibraries()
-        ThumbnailCache.shared.removeAll()
-        assets = []; assetsByID = [:]; duplicateGroups = []; people = []; reviewFaces = []
-        if selection == .iCloudOnly || selection == .sharedAlbums { selection = .allPhotos }
-        if case .folder = selection { selection = .allPhotos }
-        await reloadFromDatabase()
-        if !isSystemLibrary || access == .authorized || access == .limited { await syncLibrary() }
-    }
-
-    /// Removes PhotoForge's data about a library (the library itself is untouched).
-    func forgetLibrary(_ id: Int64) async {
-        guard let lib = libraries.first(where: { $0.id == id }), !lib.isSystem else { return }
-        if id == activeLibraryID, let sys = try? db?.systemSourceID() { await switchLibrary(sys) }
-        fileSources[id] = nil
-        try? db?.removeLibrary(id)
-        db?.log("privacy", "Forgot library “\(lib.name)” and its analysis data")
-        refreshLibraries()
+        registry.remove(id)
+        libraries = registry.entries
+        if deleteData && e.kind == .external { try? FileManager.default.removeItem(at: e.dataURL) }
+        db?.log("privacy", "Removed library “\(e.name)” from the list\(deleteData ? " and deleted its analysis data" : "")")
     }
 
     func connectPhotos() async {
@@ -285,8 +359,12 @@ final class AppModel {
 
     func syncLibrary() async {
         guard let db, !syncing else { return }
-        if let id = activeLibraryID, let src = fileSources[id] {
+        if let id = activeLibraryID, let src = externalSource {
             await syncFileLibrary(db: db, id: id, source: src)
+            return
+        }
+        if let id = activeLibraryID, let src = managedSource {
+            await syncManagedLibrary(db: db, id: id, source: src)
             return
         }
         guard access == .authorized || access == .limited else { return }
@@ -372,14 +450,17 @@ final class AppModel {
         await rebuildDuplicates()
         await rebuildPeople()
         await rebuildFolders()
+        reloadAlbums()
     }
 
     // MARK: Folders & albums
 
     func rebuildFolders() async {
         var tree: [AlbumNode]
-        if let id = activeLibraryID, let src = fileSources[id] {
+        if let src = externalSource {
             tree = src.albums
+        } else if isManagedLibrary {
+            tree = []
         } else if access == .authorized || access == .limited {
             let svc = photos
             tree = await Task.detached(priority: .utility) { svc.albumTree() }.value
@@ -446,7 +527,9 @@ final class AppModel {
         guard let db, let cipher, currentJob == nil, let sid = activeLibraryID else { return }
         let options = AnalysisOptions(faceAnalysis: faceAnalysisEnabled, storeFaceCrops: storeFaceCrops,
                                       sceneSimilarity: sceneSimilarityEnabled, allowICloudDownloads: allowICloudDownloads,
-                                      faceCropDirectory: Self.faceCropDir, face: faceModel, classify: classifyEnabled)
+                                      faceCropDirectory: faceCropDir, face: faceModel, classify: classifyEnabled,
+                                      maxConcurrency: analysisConcurrency, ocrAccurate: machine.ocrAccurate && performanceMode != .batterySaver,
+                                      classifyImageSize: machine.classifyImageSize, faceImageSize: machine.faceImageSize)
         let job = AnalysisJob(db: db, source: mediaSource, sourceID: sid, cipher: cipher, options: options)
         status = IndexStatus(running: true, message: "Starting…")
         currentJob = await jobs.enqueue(job)
@@ -580,6 +663,18 @@ final class AppModel {
         }
         let ids = assetIDs.compactMap { assetsByID[$0]?.localIdentifier }
         guard !ids.isEmpty else { return false }
+        if let managed = managedSource {
+            var moved: [Int64] = []
+            for id in assetIDs {
+                guard let key = assetsByID[id]?.localIdentifier else { continue }
+                if (try? managed.moveToTrash(key)) != nil { moved.append(id) }
+            }
+            try? db.markDeleted(assetIDs: moved)
+            try? db.unqueue(moved)
+            db.log("delete", "Moved \(moved.count) item(s) to the library's Trash", assetCount: moved.count)
+            await reloadFromDatabase()
+            return !moved.isEmpty
+        }
         do {
             try await photos.delete(DeletionConfirmation(localIdentifiers: ids, userAcceptedCount: ids.count))
             try db.markDeleted(localIdentifiers: ids)
@@ -647,6 +742,9 @@ final class AppModel {
             return $0.faces.count > $1.faces.count
         }
         reviewFaces = r.review.compactMap { item in byFace[item.face.rawValue].map { ReviewFaceVM(face: $0, reason: item.reason) } }
+        var owners: [Int64: String] = [:]
+        for p in people { for f in p.faces { owners[f.id] = p.id } }
+        faceOwnerIndex = owners
     }
 
     func name(_ person: PersonVM, _ newName: String) async {
@@ -703,7 +801,7 @@ final class AppModel {
 
     func deleteAllFaceData() async {
         guard let db else { return }
-        _ = try? await db.deleteAllFaceData(faceCropDirectory: Self.faceCropDir)
+        _ = try? await db.deleteAllFaceData(faceCropDirectory: faceCropDir)
         faceAnalysisEnabled = false
         await reloadFromDatabase()
         banner = "All face data was deleted and face analysis is off. Turn it back on in Settings to rebuild."
@@ -713,7 +811,7 @@ final class AppModel {
         guard let db else { return }
         await cancelAnalysis()
         try? db.deleteAllAppData()
-        try? FileManager.default.removeItem(at: Self.faceCropDir)
+        try? FileManager.default.removeItem(at: faceCropDir)
         await reloadFromDatabase()
         banner = "All PhotoForge data was deleted. Your photos in Apple Photos were not touched."
         await syncLibrary()

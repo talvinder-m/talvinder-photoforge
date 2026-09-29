@@ -299,7 +299,7 @@ struct EditorView: View {
         do {
             let url = try await renderFull(type: .jpeg)
             defer { try? FileManager.default.removeItem(at: url) }
-            let newID = try await model.photos.addDerivative(fileURL: url, toAlbumNamed: "PhotoForge Edits")
+            let newID = try await model.saveDerivative(fileURL: url, suggestedName: BatchRename.stripExtension(asset.displayName) + " (edited).jpg", album: "PhotoForge Edits")
             let stack = state.stack(for: asset)
             try model.db?.saveEditProject(sourceAssetID: asset.id, name: "Edit \(Date().formatted())",
                                           stackJSON: try stack.encoded(), stackVersion: EditStack.currentVersion,
@@ -307,7 +307,7 @@ struct EditorView: View {
                                           outputPath: nil, modelsJSON: nil,
                                           sourceChecksum: state.sourceData.map { Data(SHA256.hash(data: $0)) })
             model.db?.log("edit", "Saved an edited copy to Photos (original unchanged)")
-            model.banner = "Saved to Photos as a new photo in the “PhotoForge Edits” album."
+            model.banner = "Saved as a new photo in the “PhotoForge Edits” album. The original is unchanged."
             dismiss()
             await model.syncLibrary()
         } catch {

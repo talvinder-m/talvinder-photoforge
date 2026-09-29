@@ -4,9 +4,19 @@ import PFCore
 import PFDatabase
 import PFPhotosBridge
 
+/// Opens .pflibrary packages (and photo folders) double-clicked in Finder.
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    static var pendingOpen: [URL] = []
+    static var handler: (([URL]) -> Void)?
+    func application(_ application: NSApplication, open urls: [URL]) {
+        if let h = Self.handler { h(urls) } else { Self.pendingOpen += urls }
+    }
+}
+
 @main
 struct PhotoForgeApp: App {
     @State private var model = AppModel()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {
         let args = CommandLine.arguments
@@ -24,10 +34,23 @@ struct PhotoForgeApp: App {
             RootView()
                 .environment(model)
                 .frame(minWidth: 1000, minHeight: 640)
-                .task { await model.bootstrap() }
+                .task {
+                    await model.bootstrap()
+                    AppDelegate.handler = { urls in Task { @MainActor in for u in urls { await model.openLibrary(at: u) } } }
+                    for u in AppDelegate.pendingOpen { await model.openLibrary(at: u) }
+                    AppDelegate.pendingOpen = []
+                }
         }
         .commands {
             CommandGroup(after: .newItem) {
+                Button("New PhotoForge Library…") { Task { await model.newPhotoForgeLibraryWithPanel() } }
+                    .keyboardShortcut("n", modifiers: [.command, .option])
+                Button("Open Library or Folder…") { Task { await model.chooseLibraryWithPanel() } }
+                    .keyboardShortcut("o", modifiers: [.command, .option])
+                Button("Add Photos & Videos…") { Task { await model.importWithPanel() } }
+                    .keyboardShortcut("i", modifiers: [.command, .shift])
+                    .disabled(!model.isManagedLibrary)
+                Divider()
                 Button("Rescan Library") { Task { await model.syncLibrary() } }
                     .keyboardShortcut("r", modifiers: [.command, .shift])
                 Button("Analyze Photos") { Task { await model.startAnalysis() } }
@@ -48,6 +71,11 @@ struct PhotoForgeApp: App {
         .defaultSize(ScreenFit.size(widthFraction: 0.85, heightFraction: 0.85))
         .windowResizability(.contentMinSize)
 
+        WindowGroup("Video", id: "player", for: Int64.self) { $assetID in
+            PlayerWindowRoot(assetID: assetID).environment(model)
+        }
+        .defaultSize(ScreenFit.size(widthFraction: 0.75, heightFraction: 0.75))
+
         WindowGroup("Slideshow", id: "slideshow", for: SlideshowRequest.self) { $request in
             if let request {
                 SlideshowView(request: request).environment(model)
@@ -57,7 +85,7 @@ struct PhotoForgeApp: App {
         .windowStyle(.hiddenTitleBar)
 
         Settings {
-            SettingsView().environment(model).frame(width: 560, height: 620)
+            SettingsView().environment(model).frame(width: 620, height: 680)
         }
     }
 }
@@ -148,6 +176,10 @@ struct DeniedView: View {
 struct MainView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
+    @State private var nearExpanded = true
+    @State private var dupExpanded = true
+    @State private var newAlbum: NewAlbumRequest?
+    @State private var showApplePhotosImport = false
 
     var body: some View {
         @Bindable var model = model
@@ -157,6 +189,7 @@ struct MainView: View {
                     Label("Dashboard", systemImage: "gauge.with.dots.needle.50percent").tag(SidebarItem.dashboard)
                     Label(model.isSystemLibrary ? "On This Mac" : "All Photos", systemImage: "photo.on.rectangle")
                         .tag(SidebarItem.allPhotos)
+                    Label("Videos", systemImage: "film").badge(model.stats.videos).tag(SidebarItem.videos)
                     Label("Favorites", systemImage: "heart").tag(SidebarItem.favorites)
                     Label("Screenshots", systemImage: "camera.viewfinder").tag(SidebarItem.screenshots)
                     Label("Blurry Photos", systemImage: "camera.metering.unknown").tag(SidebarItem.blurry)
@@ -168,6 +201,24 @@ struct MainView: View {
                         Label(c.title, systemImage: c.symbol)
                             .badge(model.categoryMembers[c]?.count ?? 0)
                             .tag(SidebarItem.category(c))
+                    }
+                }
+                Section {
+                    OutlineGroup(model.albumTree, children: \.childrenOrNil) { node in
+                        AlbumSidebarRow(node: node, newAlbum: $newAlbum)
+                    }
+                    if model.albumTree.isEmpty {
+                        Text("Select photos, then right-click › Add to Album").font(.caption).foregroundStyle(.secondary)
+                    }
+                } header: {
+                    HStack {
+                        Text("My Albums")
+                        Spacer()
+                        Menu {
+                            Button("New Album…") { newAlbum = NewAlbumRequest(isFolder: false) }
+                            Button("New Folder…") { newAlbum = NewAlbumRequest(isFolder: true) }
+                        } label: { Image(systemName: "plus") }
+                        .menuStyle(.borderlessButton).fixedSize().help("New album or folder")
                     }
                 }
                 if !model.folderTree.isEmpty {
@@ -191,8 +242,26 @@ struct MainView: View {
                     }
                 }
                 Section("Organize") {
-                    Label("Duplicates", systemImage: "square.on.square")
-                        .badge(model.duplicateGroups.count).tag(SidebarItem.duplicates)
+                    DisclosureGroup(isExpanded: $dupExpanded) {
+                        Label("Exact Duplicates", systemImage: "equal.square")
+                            .badge(model.duplicateGroups.filter { $0.type == .exact }.count)
+                            .tag(SidebarItem.duplicates(.exact))
+                        DisclosureGroup(isExpanded: $nearExpanded) {
+                            Label("Burst Shots", systemImage: "square.stack.3d.down.right")
+                                .badge(model.duplicateGroups.filter { $0.type == .burst }.count)
+                                .tag(SidebarItem.duplicates(.burst))
+                            Label("Similar Shots", systemImage: "rectangle.on.rectangle.angled")
+                                .badge(model.duplicateGroups.filter { $0.type == .similar }.count)
+                                .tag(SidebarItem.duplicates(.similar))
+                        } label: {
+                            Label("Near Duplicates", systemImage: "square.on.square.dashed")
+                                .badge(model.duplicateGroups.filter { $0.type != .exact }.count)
+                                .tag(SidebarItem.duplicates(.near))
+                        }
+                    } label: {
+                        Label("Duplicates", systemImage: "square.on.square")
+                            .badge(model.duplicateGroups.count).tag(SidebarItem.duplicates(.all))
+                    }
                     Label("Removal Queue", systemImage: "tray.full")
                         .badge(model.removalQueue.count).tag(SidebarItem.removalQueue)
                     Label("People", systemImage: "person.2.crop.square.stack")
@@ -209,14 +278,16 @@ struct MainView: View {
             switch model.selection ?? .dashboard {
             case .category(let c): PhotoGridView(filter: .category(c))
             case .folder(let id): PhotoGridView(filter: .folder(id))
+            case .album(let id): PhotoGridView(filter: .album(id))
             case .dashboard: DashboardView()
             case .allPhotos: PhotoGridView(filter: .onThisMac)
+            case .videos: PhotoGridView(filter: .videos)
             case .iCloudOnly: PhotoGridView(filter: .iCloudOnly)
             case .sharedAlbums: PhotoGridView(filter: .sharedAlbums)
             case .favorites: PhotoGridView(filter: .favorites)
             case .screenshots: PhotoGridView(filter: .screenshots)
             case .blurry: PhotoGridView(filter: .blurry)
-            case .duplicates: DuplicatesView()
+            case .duplicates(let section): DuplicatesView(section: section).id(section)
             case .removalQueue: RemovalQueueView()
             case .people: PeopleView()
             case .activity: ActivityView()
@@ -239,6 +310,30 @@ struct MainView: View {
             openWindow(id: "slideshow", value: req)
             model.slideshowRequest = nil
         }
+        .onChange(of: model.playRequest) { _, asset in
+            guard let asset else { return }
+            openWindow(id: "player", value: asset.id)
+            model.playRequest = nil
+        }
+        .sheet(item: $newAlbum) { req in NewAlbumSheet(request: req).environment(model) }
+        .sheet(isPresented: $showApplePhotosImport) { ApplePhotosImportSheet().environment(model) }
+        .onReceive(NotificationCenter.default.publisher(for: .showApplePhotosImport)) { _ in showApplePhotosImport = true }
+        .toolbar {
+            if model.isManagedLibrary {
+                ToolbarItem(placement: .navigation) {
+                    Menu {
+                        Button("Photos & Videos from Files…") { Task { await model.importWithPanel() } }
+                        Button("From Apple Photos…") { showApplePhotosImport = true }
+                    } label: { Label("Add", systemImage: "square.and.arrow.down") }
+                    .help("Add photos and videos to this library")
+                }
+            }
+        }
+        .dropDestination(for: URL.self) { urls, _ in
+            guard model.isManagedLibrary else { return false }
+            Task { await model.importFiles(urls) }
+            return true
+        }
     }
 }
 
@@ -246,6 +341,17 @@ struct IndexStatusFooter: View {
     @Environment(AppModel.self) private var model
     var body: some View {
         let s = model.status
+        if let imp = model.importStatus {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(imp.title).font(.caption).lineLimit(2)
+                ProgressView(value: imp.fraction).controlSize(.small)
+                Text("\(imp.done.formatted()) of \(imp.total.formatted()) · \(imp.summary)").font(.caption2).foregroundStyle(.secondary)
+                if imp.running { Button("Stop") { model.cancelImport() }.controlSize(.small) }
+            }
+            .padding(8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+        }
         if s.running || model.syncing || !s.message.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 Text(s.message.isEmpty ? "Working…" : s.message).font(.caption).lineLimit(2)
@@ -315,7 +421,7 @@ struct DashboardView: View {
 
                 GroupBox("Quick actions") {
                     HStack(spacing: 12) {
-                        QuickAction(title: "Find duplicates", symbol: "square.on.square") { model.selection = .duplicates }
+                        QuickAction(title: "Find duplicates", symbol: "square.on.square") { model.selection = .duplicates(.all) }
                         QuickAction(title: "Review people", symbol: "person.crop.rectangle.stack") { model.selection = .people }
                         QuickAction(title: "Blurry shots", symbol: "camera.metering.unknown") { model.selection = .blurry }
                         QuickAction(title: "Screenshots", symbol: "camera.viewfinder") { model.selection = .screenshots }
@@ -366,23 +472,28 @@ struct QuickAction: View {
 }
 
 
-/// Sidebar header: which library PhotoForge is showing, and a menu to switch or add one.
+/// Sidebar header: which library is open, and a menu to switch, create or add one.
 struct LibrarySwitcher: View {
     @Environment(AppModel.self) private var model
     @State private var discovered: [URL] = []
 
     var body: some View {
         Menu {
-            ForEach(model.libraries) { lib in
-                Button {
-                    Task { await model.switchLibrary(lib.id) }
-                } label: {
-                    if lib.id == model.activeLibraryID { Label(title(lib), systemImage: "checkmark") } else { Text(title(lib)) }
+            Section("Libraries") {
+                ForEach(model.libraries) { lib in
+                    Button {
+                        Task { await model.switchLibrary(lib.id) }
+                    } label: {
+                        let t = "\(lib.name) — \(lib.kindLabel)"
+                        if lib.id == model.activeEntry?.id { Label(t, systemImage: "checkmark") } else { Text(t) }
+                    }
                 }
             }
+            Divider()
+            Button("New PhotoForge Library…") { Task { await model.newPhotoForgeLibraryWithPanel() } }
+            Button("Open Library or Folder…") { Task { await model.chooseLibraryWithPanel() } }
             if !discovered.isEmpty {
-                Divider()
-                Section("Found on this Mac") {
+                Menu("Found on this Mac") {
                     ForEach(discovered, id: \.self) { url in
                         Button(url.deletingPathExtension().lastPathComponent + " — " + url.deletingLastPathComponent().path) {
                             Task { await model.openLibrary(at: url) }
@@ -390,28 +501,38 @@ struct LibrarySwitcher: View {
                     }
                 }
             }
-            Divider()
-            Button("Choose Library or Folder…") { Task { await model.chooseLibraryWithPanel() } }
+            if model.isManagedLibrary {
+                Divider()
+                Button("Add Photos & Videos…") { Task { await model.importWithPanel() } }
+                Button("Copy from Apple Photos…") { NotificationCenter.default.post(name: .showApplePhotosImport, object: nil) }
+            }
         } label: {
             HStack(spacing: 6) {
-                Image(systemName: model.isSystemLibrary ? "photo.stack" : "externaldrive")
+                Image(systemName: icon)
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(model.activeLibrary.map(title) ?? "System Photo Library").font(.callout.bold()).lineLimit(1)
-                    if !model.isSystemLibrary { Text("Read-only").font(.caption2).foregroundStyle(.secondary) }
+                    Text(model.activeEntry?.name ?? "Apple Photos").font(.callout.bold()).lineLimit(1)
+                    Text(model.activeEntry?.kindLabel ?? "").font(.caption2).foregroundStyle(.secondary)
                 }
             }
         }
         .menuStyle(.borderlessButton)
         .textCase(nil)
         .task { discovered = await model.discoverLibraries() }
-        .help("Switch between your System Photo Library and other libraries or folders")
+        .help("Switch libraries, create a PhotoForge Library, or open another library or folder")
     }
 
-    private func title(_ lib: LibraryRow) -> String {
-        lib.isSystem ? "System Photo Library" : "\(lib.name) (\(lib.assetCount.formatted()))"
+    private var icon: String {
+        switch model.activeEntry?.kind ?? .applePhotos {
+        case .applePhotos: "photo.stack"
+        case .photoForge: "books.vertical"
+        case .external: "externaldrive"
+        }
     }
 }
 
+extension Notification.Name {
+    static let showApplePhotosImport = Notification.Name("PhotoForge.showApplePhotosImport")
+}
 
 extension AlbumNode {
     /// OutlineGroup wants nil (not []) for leaves so no disclosure triangle is drawn.

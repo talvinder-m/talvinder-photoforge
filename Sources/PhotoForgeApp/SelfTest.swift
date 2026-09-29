@@ -13,6 +13,8 @@ import PFVision
 import PFSimilarity
 import PFPeople
 import PFEditing
+import AVFoundation
+import CoreVideo
 
 /// `PhotoForge --selftest` runs the app's real code paths (database, Vision, Core Image,
 /// grouping, clustering, privacy wipes) against synthetic data, without touching the Photos
@@ -369,8 +371,239 @@ enum SelfTest {
             return back == r
         }
 
+        // 15. This Mac
+        do {
+            let m = MachineProfile.detect()
+            print("     this Mac: \(m.summary) · \(m.tier.label) · GPU \(m.gpu) · macOS \(m.macOS) · Rosetta \(m.isTranslated)")
+            print("     tuned: \(m.analysisConcurrency) parallel · OCR \(m.ocrAccurate ? "accurate" : "fast") · cache \(m.thumbnailCacheMB) MB · compute \(m.computeUnits) · upscaler \(m.recommendedUpscaler)")
+            check(m.cores > 0 && m.memoryGB > 0 && m.analysisConcurrency >= 1, "machine profile detected")
+            #if arch(arm64)
+            check(m.isAppleSilicon, "Apple silicon recognised")
+            #endif
+        }
+
+        // 16. Video support
+        let videoURL = dir.appendingPathComponent("VideoFolder/clip.mp4")
+        attempt("video: write, probe, thumbnail, playable") {
+            try FileManager.default.createDirectory(at: videoURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            guard makeVideo(at: videoURL, frames: 20, image: scene) else { return false }
+            let p = MediaFiles.probe(videoURL)
+            let sem = DispatchSemaphore(value: 0)
+            var thumb: CGImage?, playable = false
+            Task.detached {
+                thumb = await MediaFiles.videoThumbnail(videoURL, maxPixel: 200)
+                playable = await MediaFiles.isNativelyPlayable(videoURL)
+                sem.signal()
+            }
+            sem.wait()
+            print("     video: \(p.mediaType) \(p.width)x\(p.height) \(String(format: "%.2f", p.duration)) s, thumbnail \(thumb != nil), native \(playable)")
+            return p.mediaType == "video" && p.width == 320 && p.duration > 1 && thumb != nil && playable
+        }
+        attempt("folders include videos") {
+            try writeJPEG(scene, to: videoURL.deletingLastPathComponent().appendingPathComponent("a.jpg"))
+            let src = try FileLibrarySource(url: videoURL.deletingLastPathComponent())
+            let found = try src.scan()
+            return found.count == 2 && found.contains { $0.mediaType == "video" }
+        }
+        #if canImport(VLCKit)
+        print("     VLC engine: bundled")
+        check(true, "VLC engine linked")
+        #else
+        print("INFO VLC engine not in this build; only formats macOS plays natively")
+        #endif
+
+        // 17. PhotoForge Library: create, import (skip duplicates), rename, album, trash, reopen
+        attempt("PhotoForge Library end-to-end") {
+            let (pkg, manifest) = try PhotoForgePackage.create(named: "Farm", in: dir)
+            guard PhotoForgePackage.isPackage(pkg), try PhotoForgePackage.open(pkg).id == manifest.id else { return false }
+            let dbURL = pkg.appendingPathComponent("Database/photoforge.sqlite")
+            var db: AppDatabase? = try AppDatabase.open(at: dbURL)
+            let sid = try db!.addLibrary(kind: "pflibrary", name: "Farm", path: pkg.path)
+            let managed = ManagedLibrarySource(root: pkg)
+            let inbox = dir.appendingPathComponent("Inbox")
+            try FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true)
+            try writeJPEG(scene, to: inbox.appendingPathComponent("IMG_1.jpg"), exifDate: "2021:06:01 09:00:00")
+            try writeJPEG(other, to: inbox.appendingPathComponent("IMG_2.jpg"))
+            try FileManager.default.copyItem(at: inbox.appendingPathComponent("IMG_1.jpg"), to: inbox.appendingPathComponent("copy of IMG_1.jpg"))
+            try FileManager.default.copyItem(at: videoURL, to: inbox.appendingPathComponent("clip.mp4"))
+            var seen = Set<Data>(), keys: [String] = [], skipped = 0
+            for f in try FileManager.default.contentsOfDirectory(at: inbox, includingPropertiesForKeys: nil).sorted(by: { $0.path < $1.path }) {
+                let h = try FileLibrarySource.sha256(of: f)
+                if !seen.insert(h).inserted { skipped += 1; continue }
+                let pr = MediaFiles.probe(f)
+                let rel = try managed.importFile(f, date: pr.captureDate)
+                let key = ManagedLibrarySource.newKey()
+                managed.set(key, relativePath: rel)
+                try db!.upsert([AssetUpsert(localIdentifier: key, mediaType: pr.mediaType, subtypeMask: 0, creationDate: pr.captureDate,
+                                            modificationDate: .now, pixelWidth: pr.width, pixelHeight: pr.height, duration: pr.duration,
+                                            favorite: false, hidden: false, burstIdentifier: nil, filePath: rel, availability: "local",
+                                            originalFilename: f.lastPathComponent, fileHash: h)], sourceID: sid, scanStamp: .now)
+                keys.append(key)
+            }
+            let rows = try db!.assets(sourceID: sid)
+            print("     library: \(rows.count) items (\(rows.filter(\.isVideo).count) video), \(skipped) duplicate skipped · \(rows.compactMap(\.filePath).sorted())")
+            guard rows.count == 3, skipped == 1, rows.filter(\.isVideo).count == 1,
+                  rows.contains(where: { $0.filePath == "Originals/2021/06/IMG_1.jpg" }) else { return false }
+            // Rename (name in the database + file on disk)
+            let first = rows.first { $0.filePath == "Originals/2021/06/IMG_1.jpg" }!
+            let newRel = try managed.renameFile(first.localIdentifier, to: "Goat Shed 001")
+            try db!.updateFileLocation(assetID: first.id, filePath: newRel, originalFilename: (newRel as NSString).lastPathComponent)
+            try db!.setTitles([(assetID: first.id, title: "Goat Shed 001")])
+            guard FileManager.default.fileExists(atPath: pkg.appendingPathComponent(newRel).path) else { return false }
+            // Album
+            let album = try db!.createAlbum(title: "Sheds", parentID: nil, isFolder: false, sourceID: sid, assetIDs: [first.id])
+            // Trash
+            let video = rows.first(where: \.isVideo)!
+            try managed.moveToTrash(video.localIdentifier)
+            try db!.markDeleted(assetIDs: [video.id])
+            let untracked = managed.untrackedFiles().count
+            // Reopen from disk, as after an app upgrade.
+            db = nil
+            let again = try AppDatabase.open(at: dbURL)
+            let back = try again.assets(sourceID: sid)
+            let named = back.first { $0.id == first.id }
+            let albums = try again.albums(sourceID: sid)
+            let trashed = FileManager.default.fileExists(atPath: pkg.appendingPathComponent("Trash/\(video.filePath!)").path)
+            print("     after reopen: \(back.count) items, name \(named?.displayName ?? "nil"), albums \(albums.map { "\($0.title):\($0.assetIDs.count)" }), trashed \(trashed), untracked \(untracked)")
+            return named?.displayName == "Goat Shed 001" && albums.first?.id == album && albums.first?.assetIDs == [first.id]
+                && trashed && untracked == 0 && back.count == 2
+        }
+
+        // 18. Per-library databases: splitting an older combined database, and carrying analysis across
+        attempt("older combined database splits into one per library") {
+            let support = dir.appendingPathComponent("Support")
+            try FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
+            let legacy = try AppDatabase.open(at: support.appendingPathComponent("photoforge.sqlite"))
+            let sys = try legacy.systemSourceID()
+            let ext = try legacy.addLibrary(kind: "photoslibrary_readonly", name: "Old Mac", path: "/Volumes/X/Old.photoslibrary")
+            let now = Date()
+            func up(_ k: String) -> AssetUpsert {
+                AssetUpsert(localIdentifier: k, mediaType: "image", subtypeMask: 0, creationDate: now, modificationDate: now,
+                            pixelWidth: 10, pixelHeight: 10, duration: 0, favorite: false, hidden: false, burstIdentifier: nil)
+            }
+            try legacy.upsert([up("S1"), up("S2")], sourceID: sys, scanStamp: now)
+            try legacy.upsert([up("pkg:E1")], sourceID: ext, scanStamp: now)
+            _ = try VectorCipher(store: .file(support.appendingPathComponent("vector.key")))
+            let registry = LibraryRegistry(fileURL: support.appendingPathComponent("Libraries.json"))
+            let entries = try LibraryRegistry.upgradeCombinedDatabase(supportDir: support, registry: registry)
+            let apple = entries.first { $0.kind == .applePhotos }, old = entries.first { $0.kind == .external }
+            guard let apple, let old else { return false }
+            let appleKeys = try AppDatabase.open(at: apple.databaseURL).assets().map(\.localIdentifier).sorted()
+            let oldKeys = try AppDatabase.open(at: old.databaseURL).assets().map(\.localIdentifier)
+            let keyCopied = FileManager.default.fileExists(atPath: old.keyURL.path)
+            let reloaded = LibraryRegistry(fileURL: support.appendingPathComponent("Libraries.json"))
+            let backups = (try? FileManager.default.contentsOfDirectory(atPath: support.appendingPathComponent("Backups").path)) ?? []
+            print("     split: apple \(appleKeys), \(old.name) \(oldKeys), key copied \(keyCopied), registry \(reloaded.entries.count), backups \(backups.count)")
+            return appleKeys == ["S1", "S2"] && oldKeys == ["pkg:E1"] && keyCopied && reloaded.entries.count == 2 && !backups.isEmpty
+        }
+        attempt("analysis, faces and people carry over between libraries") {
+            let cipher = try VectorCipher(store: .file(dir.appendingPathComponent("carry.key")))
+            let a = try AppDatabase.open(at: dir.appendingPathComponent("carryA.sqlite"))
+            let b = try AppDatabase.open(at: dir.appendingPathComponent("carryB.sqlite"))
+            let sa = try a.systemSourceID(), sb = try b.systemSourceID()
+            let now = Date()
+            try a.upsert([AssetUpsert(localIdentifier: "APPLE-1", mediaType: "image", subtypeMask: 0, creationDate: now, modificationDate: now,
+                                      pixelWidth: 640, pixelHeight: 640, duration: 0, favorite: false, hidden: false, burstIdentifier: nil)],
+                         sourceID: sa, scanStamp: now)
+            try b.upsert([AssetUpsert(localIdentifier: "pf:NEW-1", mediaType: "image", subtypeMask: 0, creationDate: now, modificationDate: now,
+                                      pixelWidth: 640, pixelHeight: 640, duration: 0, favorite: false, hidden: false, burstIdentifier: nil)],
+                         sourceID: sb, scanStamp: now)
+            let aid = try a.assets()[0].id, bid = try b.assets()[0].id
+            try a.saveAnalysis(assetID: aid, pHash: h1!.pHash, dHash: h1!.dHash, laplacianVariance: 100, noiseSigma: 2, meanLuma: 120,
+                               clipped: 0, sharpness: 0.5, noise: 0.8, exposure: 0.9, sceneEmbedding: nil, cipher: cipher)
+            let f = NewFace(box: CGRect(x: 0.1, y: 0.1, width: 0.2, height: 0.2), quality: 0.9, yaw: 0, pitch: 0, roll: 0,
+                            pixelSize: 120, cropPath: nil, embedding: [0.6, 0.8, 0])
+            try a.replaceFaces(assetID: aid, faces: [f], modelName: "sface", modelVersion: "1", cipher: cipher)
+            _ = try a.createPerson(named: "Ravi", faceIDs: [try a.storedFaces(cipher: cipher)[0].id], sourceID: sa)
+            try a.setTitles([(assetID: aid, title: "Ravi at the farm")])
+            let n = try b.copyAnalysis(from: a, sourceCipher: cipher, cipher: cipher, mapping: [aid: bid],
+                                       sourceCropDir: dir.appendingPathComponent("cropsA"), cropDir: dir.appendingPathComponent("cropsB"), newSourceID: sb)
+            let faces = try b.storedFaces(cipher: cipher), people = try b.persons()
+            let row = try b.assets()[0]
+            print("     carried \(n) item(s): faces \(faces.count), people \(people.map { $0.displayName ?? "?" }), name \(row.displayName), pHash \(row.pHash != nil)")
+            return faces.count == 1 && faces[0].embedding == [0.6, 0.8, 0] && people.first?.displayName == "Ravi"
+                && people.first?.confirmedFaceIDs == [faces[0].id] && row.pHash == h1!.pHash && row.displayName == "Ravi at the farm"
+        }
+        attempt("database backups") {
+            try FileManager.default.createDirectory(at: dir.appendingPathComponent("bk"), withIntermediateDirectories: true)
+            let db = try AppDatabase.open(at: dir.appendingPathComponent("bk/lib.sqlite"))
+            let u = try db.backup(reason: "test")
+            let ro = try AppDatabase.openReadOnly(at: u)
+            return FileManager.default.fileExists(atPath: u.path) && (try? ro.assets()) != nil
+        }
+
+        // 19. Sharing API: request parsing, tokens and permissions
+        do {
+            let secret = "pf_test_secret"
+            let tokens = [APIToken(name: "Viewer", secretHash: LocalAPIServer.hash(secret), scopes: [.read, .thumbnails])]
+            func req(_ line: String, auth: String?) -> LocalAPIServer.Request? {
+                var head = "\(line) HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+                if let auth { head += "Authorization: \(auth)\r\n" }
+                return LocalAPIServer.parse(Data(head.utf8))
+            }
+            let noAuth = req("GET /v1/assets?type=video&limit=5", auth: nil)
+            check(noAuth?.path == "/v1/assets" && noAuth?.query["type"] == "video" && noAuth?.query["limit"] == "5", "API request parsing")
+            func status(_ r: LocalAPIServer.Request?) -> Int {
+                guard let r else { return 400 }
+                switch LocalAPIServer.authenticate(r, tokens: tokens) {
+                case .failure(let resp): return resp.status
+                case .success(let i): return tokens[i].scopes.contains(LocalAPIServer.requiredScope(r.path)) ? 200 : 403
+                }
+            }
+            let s1 = status(noAuth)
+            let s2 = status(req("GET /v1/assets", auth: "Bearer wrong"))
+            let s3 = status(req("GET /v1/assets", auth: "Bearer \(secret)"))
+            let s4 = status(req("GET /v1/assets/3/thumbnail", auth: "Bearer \(secret)"))
+            let s5 = status(req("GET /v1/assets/3/original", auth: "Bearer \(secret)"))
+            print("     API: no token \(s1), wrong \(s2), list \(s3), thumbnail \(s4), original \(s5)")
+            check(s1 == 401 && s2 == 401 && s3 == 200 && s4 == 200 && s5 == 403, "API tokens and permissions")
+        }
+
+        // 20. Renaming rules
+        do {
+            var r = BatchRename(); r.mode = .pattern; r.pattern = "Farm {n}"; r.start = 1; r.padding = 3
+            let names = r.apply(to: ["a.jpg", "b.jpg"].map { BatchRename.Item(currentName: $0, date: nil, camera: nil) })
+            check(names == ["Farm 001", "Farm 002"], "batch rename (\(names))")
+        }
+
         print(failures == 0 ? "SELFTEST OK" : "SELFTEST FAILED (\(failures))")
         exit(failures == 0 ? 0 : 1)
+    }
+
+    /// A short H.264 clip (320×240) made from a still, for the video checks.
+    static func makeVideo(at url: URL, frames: Int, image: CGImage) -> Bool {
+        try? FileManager.default.removeItem(at: url)
+        guard let writer = try? AVAssetWriter(outputURL: url, fileType: .mp4) else { return false }
+        let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
+            AVVideoCodecKey: AVVideoCodecType.h264, AVVideoWidthKey: 320, AVVideoHeightKey: 240])
+        input.expectsMediaDataInRealTime = false
+        let adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: input, sourcePixelBufferAttributes: [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32ARGB,
+            kCVPixelBufferWidthKey as String: 320, kCVPixelBufferHeightKey as String: 240])
+        guard writer.canAdd(input) else { return false }
+        writer.add(input)
+        guard writer.startWriting() else { return false }
+        writer.startSession(atSourceTime: .zero)
+        for i in 0..<frames {
+            while !input.isReadyForMoreMediaData { Thread.sleep(forTimeInterval: 0.01) }
+            guard let pool = adaptor.pixelBufferPool else { return false }
+            var pb: CVPixelBuffer?
+            CVPixelBufferPoolCreatePixelBuffer(nil, pool, &pb)
+            guard let buf = pb else { return false }
+            CVPixelBufferLockBaseAddress(buf, [])
+            if let ctx = CGContext(data: CVPixelBufferGetBaseAddress(buf), width: 320, height: 240, bitsPerComponent: 8,
+                                   bytesPerRow: CVPixelBufferGetBytesPerRow(buf), space: CGColorSpaceCreateDeviceRGB(),
+                                   bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue) {
+                ctx.draw(image, in: CGRect(x: -CGFloat(i * 4), y: 0, width: 400, height: 400))
+            }
+            CVPixelBufferUnlockBaseAddress(buf, [])
+            guard adaptor.append(buf, withPresentationTime: CMTime(value: CMTimeValue(i), timescale: 10)) else { return false }
+        }
+        input.markAsFinished()
+        let sem = DispatchSemaphore(value: 0)
+        writer.finishWriting { sem.signal() }
+        sem.wait()
+        return writer.status == .completed
     }
 
     static func archName() -> String {

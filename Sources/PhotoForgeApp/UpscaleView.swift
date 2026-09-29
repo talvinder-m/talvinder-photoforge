@@ -290,9 +290,9 @@ struct UpscaleView: View {
             let url = FileManager.default.temporaryDirectory.appendingPathComponent("PhotoForge-upscaled-\(UUID().uuidString).jpg")
             try writeResult(to: url, type: .jpeg)
             defer { try? FileManager.default.removeItem(at: url) }
-            let id = try await model.photos.addDerivative(fileURL: url, toAlbumNamed: "PhotoForge Upscaled")
+            let id = try await model.saveDerivative(fileURL: url, suggestedName: BatchRename.stripExtension(asset.displayName) + " (2K).jpg", album: "PhotoForge Upscaled")
             provenance(outputID: id, outputPath: nil)
-            model.banner = "Saved the upscaled photo to Photos (album “PhotoForge Upscaled”). The original is unchanged."
+            model.banner = "Saved the upscaled photo (album “PhotoForge Upscaled”). The original is unchanged."
             dismiss()
             await model.syncLibrary()
         } catch {

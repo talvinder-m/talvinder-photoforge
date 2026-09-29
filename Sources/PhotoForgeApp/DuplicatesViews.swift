@@ -5,37 +5,51 @@ import PFSimilarity
 
 struct DuplicatesView: View {
     @Environment(AppModel.self) private var model
-    @State private var typeFilter: DuplicateGroupType? = nil
+    var section: DupSection = .all
     @State private var selectedGroupID: String?
 
-    private var groups: [DuplicateGroupVM] {
-        model.duplicateGroups.filter { typeFilter == nil || $0.type == typeFilter }
+    /// Types shown for the chosen sidebar entry. "Near Duplicates" includes burst and similar shots
+    /// as its own sub-sections.
+    private var types: [DuplicateGroupType] {
+        switch section {
+        case .all: [.exact, .near, .burst, .similar]
+        case .exact: [.exact]
+        case .near: [.near, .burst, .similar]
+        case .burst: [.burst]
+        case .similar: [.similar]
+        }
+    }
+
+    private var title: String {
+        switch section {
+        case .all: "Duplicates"
+        case .exact: "Exact Duplicates"
+        case .near: "Near Duplicates"
+        case .burst: "Burst Shots"
+        case .similar: "Similar Shots"
+        }
+    }
+
+    private static func heading(_ t: DuplicateGroupType) -> String {
+        switch t {
+        case .exact: "Exact duplicates"
+        case .near: "Near duplicates"
+        case .burst: "Near duplicates › Burst shots"
+        case .similar: "Near duplicates › Similar shots"
+        }
     }
 
     var body: some View {
-        let list = groups
+        let byType = Dictionary(grouping: model.duplicateGroups.filter { types.contains($0.type) }, by: \.type)
+        let list = types.flatMap { byType[$0] ?? [] }
         HSplitView {
-            VStack(spacing: 0) {
-                Picker("Type", selection: $typeFilter) {
-                    Text("All (\(model.duplicateGroups.count))").tag(DuplicateGroupType?.none)
-                    ForEach(DuplicateGroupType.allCases, id: \.self) { t in
-                        Text("\(t.pluralLabel) (\(model.duplicateGroups.filter { $0.type == t }.count))").tag(Optional(t))
-                    }
-                }
-                .labelsHidden().padding(8)
-                List(list, selection: $selectedGroupID) { g in
-                    HStack(spacing: 8) {
-                        if let first = g.members.first {
-                            AssetThumbnail(localIdentifier: first.localIdentifier, side: 120)
-                                .frame(width: 44, height: 44).clipShape(RoundedRectangle(cornerRadius: 4))
-                        }
-                        VStack(alignment: .leading) {
-                            Text(g.type.label).font(.callout.bold())
-                            Text("\(g.members.count) photos · \(g.members.first?.creationDate?.formatted(date: .abbreviated, time: .omitted) ?? "")")
-                                .font(.caption).foregroundStyle(.secondary)
+            List(selection: $selectedGroupID) {
+                ForEach(types, id: \.self) { t in
+                    if let gs = byType[t], !gs.isEmpty {
+                        Section("\(types.count > 1 ? Self.heading(t) : t.pluralLabel) (\(gs.count))") {
+                            ForEach(gs) { g in row(g).tag(g.id) }
                         }
                     }
-                    .tag(g.id)
                 }
             }
             .frame(minWidth: 240, idealWidth: 280, maxWidth: 340)
@@ -45,17 +59,31 @@ struct DuplicatesView: View {
                     GroupDetailView(group: g).id(g.id)
                 } else {
                     ContentUnavailableView {
-                        Label("No duplicates found", systemImage: "checkmark.seal")
+                        Label("Nothing here", systemImage: "checkmark.seal")
                     } description: {
                         Text(model.stats.hashed == 0
                              ? "Run Analyze Photos from the Dashboard first."
-                             : "Nothing to clean up at the current strictness. You can change it in Settings.")
+                             : "No \(title.lowercased()) at the current strictness. You can change it in Settings.")
                     }
                 }
             }
             .frame(minWidth: 500, maxWidth: .infinity, maxHeight: .infinity)
         }
-        .navigationTitle("Duplicates & Similar Photos")
+        .navigationTitle(title)
+    }
+
+    private func row(_ g: DuplicateGroupVM) -> some View {
+        HStack(spacing: 8) {
+            if let first = g.members.first {
+                AssetThumbnail(localIdentifier: first.localIdentifier, side: 120)
+                    .frame(width: 44, height: 44).clipShape(RoundedRectangle(cornerRadius: 4))
+            }
+            VStack(alignment: .leading) {
+                Text(g.type.label).font(.callout.bold())
+                Text("\(g.members.count) items · \(g.members.first?.creationDate?.formatted(date: .abbreviated, time: .omitted) ?? "")")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
     }
 }
 

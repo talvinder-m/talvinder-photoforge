@@ -20,5 +20,32 @@
 	<string>PhotoForge reads your photo library on this Mac to find duplicates, group faces into people, and let you edit photos. Nothing is uploaded.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>PhotoForge saves edited photos to your library as new photos. Your originals are never changed.</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>PhotoForge can write the names you give photos into Apple Photos as their titles. It only does this when you ask.</string>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key><string>PhotoForge Library</string>
+			<key>CFBundleTypeRole</key><string>Editor</string>
+			<key>LSHandlerRank</key><string>Owner</string>
+			<key>LSTypeIsPackage</key><true/>
+			<key>LSItemContentTypes</key>
+			<array><string>com.talvinder.photoforge.library</string></array>
+		</dict>
+	</array>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key><string>com.talvinder.photoforge.library</string>
+			<key>UTTypeDescription</key><string>PhotoForge Library</string>
+			<key>UTTypeConformsTo</key>
+			<array><string>com.apple.package</string><string>public.composite-content</string></array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array><string>pflibrary</string></array>
+			</dict>
+		</dict>
+	</array>
 </dict>
 </plist>

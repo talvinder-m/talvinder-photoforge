@@ -109,7 +109,8 @@ public final class LibraryRegistry: @unchecked Sendable {
         let db = try AppDatabase.open(at: legacy)
         try? db.backup(reason: "before-split", keep: 5)
         let sources = try db.sourceIDs()
-        let systemID = sources.first { $0.kind == "photokit_system" }?.id ?? (try db.systemSourceID())
+        let systemID: Int64
+        if let sys = sources.first(where: { $0.kind == "photokit_system" }) { systemID = sys.id } else { systemID = try db.systemSourceID() }
         let lastActive = db.setting("activeLibraryID").flatMap(Int64.init)
         var activeEntry: UUID?
 

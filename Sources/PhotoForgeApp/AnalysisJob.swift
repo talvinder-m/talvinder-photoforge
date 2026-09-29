@@ -19,6 +19,10 @@ struct AnalysisOptions: Sendable {
     var faceCropDirectory: URL
     var face: FaceEmbedding
     var classify: Bool = true
+    var maxConcurrency: Int = 4
+    var ocrAccurate: Bool = false
+    var classifyImageSize: Int = 1280
+    var faceImageSize: Int = 1600
 }
 
 /// The whole local analysis pipeline as one resumable background job.
@@ -93,12 +97,12 @@ struct AnalysisJob: BackgroundJob {
         guard !todo.isEmpty else { return }
         let rows = Dictionary(uniqueKeysWithValues: try db.assets(sourceID: sourceID).map { ($0.id, $0) })
         db.log("model", "Sorting \(todo.count) photos into categories", assetCount: todo.count, model: "Apple Vision (classify, text, barcodes)")
-        let analyzer = PhotoAnalyzer()
+        let analyzer = PhotoAnalyzer(accurateText: options.ocrAccurate)
         try await forEach(todo, ctx: ctx, verb: "Sorting") { item in
             guard let row = rows[item.id] else { return }
             do {
                 let md = await source.metadata(for: item.localIdentifier)
-                let img = try await source.analysisImage(for: item.localIdentifier, maxDimension: 1280,
+                let img = try await source.analysisImage(for: item.localIdentifier, maxDimension: CGFloat(options.classifyImageSize),
                                                          allowNetwork: options.allowICloudDownloads)
                 let out = try analyzer.analyze(img, width: row.pixelWidth, height: row.pixelHeight, metadata: md,
                                                isScreenshotSubtype: row.subtypeMask & 4 != 0)
@@ -126,7 +130,7 @@ struct AnalysisJob: BackgroundJob {
         let detector = FaceDetector()
         try await forEach(todo, ctx: ctx, verb: "Finding faces in") { item in
             do {
-                let img = try await source.analysisImage(for: item.localIdentifier, maxDimension: 1600,
+                let img = try await source.analysisImage(for: item.localIdentifier, maxDimension: CGFloat(options.faceImageSize),
                                                          allowNetwork: options.allowICloudDownloads)
                 let found = (try? detector.detect(in: img)) ?? []
                 var faces: [NewFace] = []
@@ -162,7 +166,7 @@ struct AnalysisJob: BackgroundJob {
         await ctx.report(0, of: items.count, verb, noun: "photos")
         while cursor < items.count {
             try await ctx.checkpoint()
-            let width = max(1, min(6, await ctx.concurrencyBudget()))
+            let width = max(1, min(options.maxConcurrency, await ctx.concurrencyBudget()))
             let batch = Array(items[cursor..<min(cursor + width * 4, items.count)])
             try await withThrowingTaskGroup(of: Void.self) { group in
                 var it = batch.makeIterator()

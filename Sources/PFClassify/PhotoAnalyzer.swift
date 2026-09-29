@@ -5,7 +5,9 @@ import PFCore
 
 /// Gathers classification signals with Apple Vision, entirely on-device.
 public struct PhotoAnalyzer: Sendable {
-    public init() {}
+    /// Accurate text recognition is slower; worth it on Apple silicon.
+    public var accurateText: Bool
+    public init(accurateText: Bool = false) { self.accurateText = accurateText }
 
     public struct Output: Sendable {
         public var signals: ClassificationSignals
@@ -44,7 +46,7 @@ public struct PhotoAnalyzer: Sendable {
         var text = "", chars = 0, textArea = 0.0
         if needOCR {
             let ocr = VNRecognizeTextRequest()
-            ocr.recognitionLevel = .fast
+            ocr.recognitionLevel = accurateText ? .accurate : .fast
             ocr.usesLanguageCorrection = false
             ocr.minimumTextHeight = 0.012
             try handler.perform([ocr])

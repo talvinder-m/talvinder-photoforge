@@ -226,6 +226,16 @@ public extension AppDatabase {
         }
     }
 
+    /// Apple Photos identifiers already copied into this (PhotoForge) library.
+    func importedFromPhotos() throws -> [String] {
+        try writer.read { db in
+            try String.fetchAll(db, sql: """
+                SELECT d.detailJSON FROM user_decisions d JOIN assets a ON a.id = d.subjectID
+                WHERE d.decisionType = 'imported_from_photos' AND a.isDeletedInSource = 0 AND d.detailJSON IS NOT NULL
+                """)
+        }
+    }
+
     func markDeleted(assetIDs: [Int64]) throws {
         try writer.write { db in
             for id in assetIDs { try db.execute(sql: "UPDATE assets SET isDeletedInSource = 1 WHERE id = ?", arguments: [id]) }

@@ -54,7 +54,13 @@ public final class SuperResolution: @unchecked Sendable {
     static let fsrcnnTile = 128
     static let esrganTile = 256
 
-    public init(modelsDirectory: URL?) { modelsDir = modelsDirectory }
+    private let computeUnits: MLComputeUnits
+
+    /// - Parameter computeUnits: `.all` uses the Neural Engine on Apple silicon; Intel Macs use CPU + GPU (Metal).
+    public init(modelsDirectory: URL?, computeUnits: MLComputeUnits = .cpuAndGPU) {
+        modelsDir = modelsDirectory
+        self.computeUnits = computeUnits
+    }
 
     public func isAvailable(_ m: Method) -> Bool {
         switch m {
@@ -117,7 +123,7 @@ public final class SuperResolution: @unchecked Sendable {
         if let m = cache[name] { return m }
         guard let url = modelURL(name) else { throw SRError.modelMissing(name) }
         let cfg = MLModelConfiguration()
-        cfg.computeUnits = .cpuAndGPU      // GPU via Metal on Intel Macs; no Neural Engine there
+        cfg.computeUnits = computeUnits    // GPU via Metal on Intel; Neural Engine too on Apple silicon
         let m = try MLModel(contentsOf: url, configuration: cfg)
         cache[name] = m
         return m

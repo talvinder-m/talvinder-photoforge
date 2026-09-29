@@ -9,15 +9,17 @@ enum GridFilter: Equatable {
     case onThisMac, favorites, screenshots, blurry, iCloudOnly, sharedAlbums
     case category(PhotoCategory)
     case folder(String)
+    case album(Int64)
+    case videos
 }
 
 enum GridSort: String, CaseIterable, Identifiable {
-    case newest = "Newest First", oldest = "Oldest First", sharpest = "Sharpest", largest = "Largest"
+    case newest = "Newest First", oldest = "Oldest First", name = "Name", sharpest = "Sharpest", largest = "Largest"
     var id: String { rawValue }
 }
 
 enum GridGrouping: String, CaseIterable, Identifiable {
-    case month = "Month", year = "Year", none = "None"
+    case month = "Month", year = "Year", name = "Name", none = "None"
     var id: String { rawValue }
 }
 
@@ -39,6 +41,8 @@ struct PhotoGridView: View {
     @State private var focused: AssetRow?
     @State private var search = ""
     @State private var searchHits: Set<Int64>? = nil
+    @State private var renameRequest: RenameRequest?
+    @State private var newAlbum: NewAlbumRequest?
 
     private var title: String {
         switch filter {
@@ -50,12 +54,24 @@ struct PhotoGridView: View {
         case .sharedAlbums: "Shared Albums"
         case .category(let c): c.title
         case .folder(let id): model.folderIndex[id]?.title ?? "Folder"
+        case .album(let id): model.albums.first { $0.id == id }?.title ?? "Album"
+        case .videos: "Videos"
         }
     }
 
     private var items: [AssetRow] {
-        var rows = model.visibleAssets.filter { $0.mediaType == "image" }
+        // Albums and folders show photos and videos; photo views show photos; Videos shows videos.
+        var rows: [AssetRow]
         switch filter {
+        case .videos: rows = model.visibleAssets.filter(\.isVideo)
+        case .album, .folder: rows = model.visibleAssets.filter { $0.mediaType == "image" || $0.isVideo }
+        default: rows = model.visibleAssets.filter { $0.mediaType == "image" }
+        }
+        switch filter {
+        case .videos: break
+        case .album(let id):
+            let ids = model.albumAssetIDs(id)
+            rows = rows.filter { ids.contains($0.id) }
         case .onThisMac: rows = rows.filter { !$0.isICloudOnly && !$0.isShared }
         case .favorites: rows = rows.filter(\.favorite)
         case .screenshots: rows = rows.filter { $0.subtypeMask & 4 != 0 }
@@ -76,11 +92,20 @@ struct PhotoGridView: View {
         case .oldest: rows.sort { ($0.creationDate ?? .distantPast) < ($1.creationDate ?? .distantPast) }
         case .sharpest: rows.sort { ($0.sharpness ?? 0) > ($1.sharpness ?? 0) }
         case .largest: rows.sort { $0.pixelWidth * $0.pixelHeight > $1.pixelWidth * $1.pixelHeight }
+        case .name: rows.sort { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
         }
         return rows
     }
 
     private func sections(_ rows: [AssetRow]) -> [GridSection] {
+        // Group by name: one section per name stem ("Farm Visit 001", "Farm Visit 002" → "Farm Visit").
+        if grouping == .name {
+            let groups = Dictionary(grouping: rows) { BatchRename.nameStem($0.displayName) }
+            return groups.keys.sorted { $0.localizedStandardCompare($1) == .orderedAscending }.map { k in
+                GridSection(id: "name:\(k)", title: k,
+                            items: groups[k]!.sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending })
+            }
+        }
         // Date sections only make sense when sorted by date.
         guard grouping != .none, sort == .newest || sort == .oldest else {
             return [GridSection(id: "all", title: "", items: rows)]
@@ -137,7 +162,10 @@ struct PhotoGridView: View {
             }
         }
         .navigationTitle(title)
-        .navigationSubtitle(selection.count > 1 ? "\(selection.count) selected of \(rows.count.formatted())" : "\(rows.count.formatted()) photos")
+        .navigationSubtitle(selection.count > 1 ? "\(selection.count) selected of \(rows.count.formatted())"
+                            : "\(rows.count.formatted()) \(filter == .videos ? "videos" : "items")")
+        .sheet(item: $renameRequest) { r in RenameSheet(request: r).environment(model) }
+        .sheet(item: $newAlbum) { r in NewAlbumSheet(request: r).environment(model) }
         .inspector(isPresented: $showPreview) {
             PreviewPane(asset: focused)
                 .inspectorColumnWidth(min: 260, ideal: 340, max: 620)
@@ -145,7 +173,7 @@ struct PhotoGridView: View {
         .toolbar {
             ToolbarItemGroup {
                 Picker("Group", selection: $grouping) { ForEach(GridGrouping.allCases) { Text($0.rawValue).tag($0) } }
-                    .pickerStyle(.menu).help("Group photos into sections by month or year")
+                    .pickerStyle(.menu).help("Group into sections by month, year or name")
                 Picker("Sort", selection: $sort) { ForEach(GridSort.allCases) { Text($0.rawValue).tag($0) } }
                     .pickerStyle(.menu)
                 Slider(value: $tileSize, in: 80...320) { Text("Thumbnail size") }.frame(width: 110)
@@ -156,6 +184,11 @@ struct PhotoGridView: View {
                                          startAt: selection.count == 1 ? selection.first : nil)
                 } label: { Label("Slideshow", systemImage: "play.rectangle") }
                 .help(selection.count > 1 ? "Play the selected photos as a slideshow" : "Play these photos as a slideshow")
+                .disabled(rows.isEmpty)
+                Button { renameRequest = RenameRequest(assetIDs: selection.isEmpty ? rows.map(\.id) : rows.filter { selection.contains($0.id) }.map(\.id)) } label: {
+                    Label("Rename", systemImage: "character.cursor.ibeam")
+                }
+                .help(selection.isEmpty ? "Rename everything shown here" : "Rename the selected items")
                 .disabled(rows.isEmpty)
                 if !selection.isEmpty {
                     Button { queueSelection() } label: { Label("Queue for Removal", systemImage: "tray.and.arrow.down") }
@@ -194,11 +227,33 @@ struct PhotoGridView: View {
                 }
                 .font(.caption).foregroundStyle(.white).shadow(radius: 2).padding(5)
             }
+            .overlay(alignment: .bottomTrailing) {
+                if row.isVideo {
+                    HStack(spacing: 3) {
+                        Image(systemName: "play.fill")
+                        Text(MediaFiles.duration(row.duration))
+                    }
+                    .font(.caption2.bold()).foregroundStyle(.white).shadow(radius: 2).padding(5)
+                }
+            }
+            .overlay(alignment: .topLeading) {
+                if grouping == .name || sort == .name || row.title != nil {
+                    Text(row.displayName).font(.caption2).lineLimit(1).padding(.horizontal, 4).padding(.vertical, 2)
+                        .background(.black.opacity(0.45), in: RoundedRectangle(cornerRadius: 3)).foregroundStyle(.white).padding(4)
+                }
+            }
             .contentShape(Rectangle())
-            .onTapGesture(count: 2) { model.editingAsset = row }
+            .onTapGesture(count: 2) { if row.isVideo { model.playRequest = row } else { model.editingAsset = row } }
             .onTapGesture { select(row, extend: NSEvent.modifierFlags.contains(.command)) }
             .contextMenu {
-                Button("Edit…") { model.editingAsset = row }
+                let ids = selection.contains(row.id) ? Array(selection) : [row.id]
+                if row.isVideo { Button("Play") { model.playRequest = row } } else { Button("Edit…") { model.editingAsset = row } }
+                Button(ids.count > 1 ? "Rename \(ids.count) Items…" : "Rename…") { renameRequest = RenameRequest(assetIDs: ids) }
+                AddToAlbumMenu(ids: ids) { newAlbum = NewAlbumRequest(isFolder: false, assetIDs: ids) }
+                if case .album(let aid) = filter {
+                    Button("Remove from Album") { model.removeFromAlbum(aid, ids) }
+                }
+                Divider()
                 Button("Play Slideshow from Here") { model.startSlideshow(items, title: title, startAt: row.id) }
                 Button("Upscale to 2K…") { model.upscaleRequest = row }
                     .disabled(max(row.pixelWidth, row.pixelHeight) >= 2048)
@@ -283,6 +338,7 @@ struct AssetThumbnail: View {
     let side: Double
     var contentMode: ContentMode = .fill
     @State private var image: NSImage?
+    @State private var tried = false
 
     var body: some View {
         Rectangle()
@@ -290,6 +346,8 @@ struct AssetThumbnail: View {
             .overlay {
                 if let image {
                     Image(nsImage: image).resizable().aspectRatio(contentMode: contentMode)
+                } else if tried {
+                    Image(systemName: "photo").font(.title2).foregroundStyle(.tertiary)
                 } else {
                     ProgressView().controlSize(.small)
                 }
@@ -300,6 +358,7 @@ struct AssetThumbnail: View {
                 let img = await model.thumbnail(for: localIdentifier, side: side)
                 if let img { ThumbnailCache.shared.set(img, localIdentifier, side) }
                 image = img
+                tried = true
             }
     }
 }
@@ -314,32 +373,62 @@ final class ThumbnailCache: @unchecked Sendable {
         cache.setObject(img, forKey: "\(id)@\(Int(side))" as NSString, cost: cost)
     }
     func removeAll() { cache.removeAllObjects() }
+    func configure(megabytes: Int) { cache.totalCostLimit = megabytes * 1_000_000 }
 }
 
 /// Right-hand preview pane: large preview on top, details below. Resizable and hideable.
 struct PreviewPane: View {
     @Environment(AppModel.self) private var model
     let asset: AssetRow?
+    @State private var showFaces = false
+    @State private var name = ""
+    @State private var renaming = false
 
     var body: some View {
         if let a = asset {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    AssetThumbnail(localIdentifier: a.localIdentifier, side: 1400, contentMode: .fit)
-                        .aspectRatio(CGFloat(max(a.pixelWidth, 1)) / CGFloat(max(a.pixelHeight, 1)), contentMode: .fit)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .onTapGesture(count: 2) { model.editingAsset = a }
                     HStack {
-                        Button { model.editingAsset = a } label: { Label("Edit", systemImage: "slider.horizontal.3").frame(maxWidth: .infinity) }
+                        if renaming {
+                            TextField("Name", text: $name).textFieldStyle(.roundedBorder)
+                                .onSubmit {
+                                    renaming = false
+                                    Task { await model.rename([a.id], to: [BatchRename.clean(name)], renameFiles: model.isManagedLibrary, writeToPhotos: false) }
+                                }
+                        } else {
+                            Text(a.displayName).font(.headline).lineLimit(2).textSelection(.enabled)
+                            Spacer()
+                            Button { name = BatchRename.stripExtension(a.displayName); renaming = true } label: { Image(systemName: "pencil") }
+                                .buttonStyle(.borderless).help("Rename")
+                        }
+                    }
+                    if a.isVideo {
+                        AssetThumbnail(localIdentifier: a.localIdentifier, side: 900, contentMode: .fit)
+                            .aspectRatio(CGFloat(max(a.pixelWidth, 16)) / CGFloat(max(a.pixelHeight, 9)), contentMode: .fit)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay { Image(systemName: "play.circle.fill").font(.system(size: 44)).foregroundStyle(.white).shadow(radius: 4) }
+                            .onTapGesture { model.playRequest = a }
+                        Button { model.playRequest = a } label: { Label("Play", systemImage: "play.fill").frame(maxWidth: .infinity) }
                             .buttonStyle(.borderedProminent)
-                        Button { model.upscaleRequest = a } label: { Label("Upscale", systemImage: "arrow.up.left.and.arrow.down.right").frame(maxWidth: .infinity) }
-                            .disabled(max(a.pixelWidth, a.pixelHeight) >= 2048)
-                            .help("Upscale to 2K with AI")
+                    } else {
+                        FaceTaggingImage(asset: a, showFaces: showFaces)
+                            .onTapGesture(count: 2) { model.editingAsset = a }
+                        HStack {
+                            Button { model.editingAsset = a } label: { Label("Edit", systemImage: "slider.horizontal.3").frame(maxWidth: .infinity) }
+                                .buttonStyle(.borderedProminent)
+                            Button { model.upscaleRequest = a } label: { Label("Upscale", systemImage: "arrow.up.left.and.arrow.down.right").frame(maxWidth: .infinity) }
+                                .disabled(max(a.pixelWidth, a.pixelHeight) >= 2048)
+                                .help("Upscale to 2K with AI")
+                        }
+                        Toggle(isOn: $showFaces) { Label("Show & tag faces", systemImage: "person.crop.square") }
+                            .toggleStyle(.switch)
+                            .help("Show detected faces. Click a face to say who it is, or drag a box around a face that was missed.")
                     }
                     Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 6) {
                         InfoRow("Date", a.creationDate?.formatted(date: .abbreviated, time: .shortened) ?? "Unknown")
                         InfoRow("Size", "\(a.pixelWidth) × \(a.pixelHeight)  (\(String(format: "%.1f", Double(a.pixelWidth * a.pixelHeight) / 1e6)) MP)")
-                        InfoRow("Type", a.subtypeMask & 4 != 0 ? "Screenshot" : a.subtypeMask & 8 != 0 ? "Live Photo" : "Photo")
+                        InfoRow("Type", a.isVideo ? "Video · \(MediaFiles.duration(a.duration))" : a.subtypeMask & 4 != 0 ? "Screenshot" : a.subtypeMask & 8 != 0 ? "Live Photo" : "Photo")
+                        if let f = a.originalFilename, f != a.displayName { InfoRow("File", f) }
                         InfoRow("Favorite", a.favorite ? "Yes" : "No")
                         InfoRow("Stored", a.storageLabel)
                         if let s = a.sharpness { InfoRow("Sharpness", Self.pct(s)) }
@@ -355,9 +444,18 @@ struct PreviewPane: View {
                         Text("People").font(.headline)
                         ForEach(people) { p in Label(p.title, systemImage: "person.crop.circle") }
                     }
+                    let inAlbums = model.albums.filter { $0.assetIDs.contains(a.id) }
+                    if !inAlbums.isEmpty {
+                        Divider()
+                        Text("Albums").font(.headline)
+                        ForEach(inAlbums) { al in
+                            Button { model.selection = .album(al.id) } label: { Label(al.title, systemImage: "rectangle.stack") }.buttonStyle(.link)
+                        }
+                    }
                 }
                 .padding()
             }
+            .onChange(of: a.id) { renaming = false }
         } else {
             ContentUnavailableView("No selection", systemImage: "photo",
                                    description: Text("Click a photo to preview it here. Double-click to edit. ⌘-click to select several."))
