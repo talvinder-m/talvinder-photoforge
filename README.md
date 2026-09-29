@@ -1,9 +1,9 @@
 # PhotoForge
 
-A private, on-device photo manager for macOS that works alongside Apple Photos. It finds duplicates, groups faces into people, and edits photos without ever touching your originals.
+A private, on-device photo and video manager for macOS. Use it with Apple Photos, or keep your own PhotoForge libraries on any drive. It finds duplicates, groups faces into people, plays almost any video format, and edits photos without ever touching your originals.
 
 **Download:** [Latest release](../../releases/latest) → `PhotoForge-1.0.x.zip`
-Universal app for Intel and Apple Silicon Macs. Requires **macOS 14 Sonoma or later**.
+Universal app that runs natively on Intel Macs and on every Apple silicon Mac (M1, M2, M3, M4, M5). Requires **macOS 14 Sonoma or later**, which every Apple silicon Mac can run.
 
 ## Install
 
@@ -19,7 +19,12 @@ Each new build is a new unsigned version, so macOS may ask for Photos permission
 
 | Area | What you get |
 |---|---|
-| **Libraries** | Your System Photo Library (through Apple Photos), plus any other Photos library, iPhoto library or folder on the Mac or an external drive. Switch from the sidebar. Other libraries are read directly and **never modified**; PhotoForge reads a copy of their database. |
+| **Libraries** | As many libraries as you like, each with **its own database**, switchable from the sidebar without restarting. **Apple Photos** (through Photos). **PhotoForge Libraries**: your own library on any drive, independent of Apple Photos. Drag in or import photos and videos; duplicates are skipped. It can **copy your Apple Photos library** into one, carrying over names, categories, faces and people so nothing is rescanned. **Other Photos/iPhoto libraries and folders** are read directly and never modified. |
+| **Keeps your work** | Library data lives outside the app. Installing a new version never needs a rescan, and the database is backed up automatically before an upgrade. Move a library's data to another drive, back up and restore from Settings. See [docs/LIBRARY_FORMAT.md](docs/LIBRARY_FORMAT.md). |
+| **Names & albums** | Rename one photo or thousands at once, by pattern (`Farm Visit {date} {n}`), find & replace, or prefix/suffix. Sort and **group by name**. In a PhotoForge Library the files are renamed too; in Apple Photos the name can also be written as the photo's Title. **My Albums**: your own albums and folders in any library. |
+| **Videos** | A **Videos** section, duration badges, and a player window. Apple's hardware-accelerated player handles MP4/MOV/M4V; the bundled **VLC engine** plays everything else (MKV, AVI, WMV, FLV, WebM, MPEG-TS, 3GP, …). |
+| **This Mac** | On first launch (and if the hardware changes) PhotoForge checks the processor, cores, memory, GPU and Neural Engine and tunes itself: parallel analysis, text-recognition accuracy, image sizes, thumbnail cache, and whether AI runs on the Neural Engine. Settings › This Mac shows the result, with a Battery saver / Maximum speed override. |
+| **Sharing with other apps** | An optional, read-only, token-protected API on this Mac only, so other software can use a library with your permission. See [docs/API.md](docs/API.md). |
 | **Library view** | Photos grouped into month or year sections, each with its own grid and a pinned header. Resizable, hideable preview pane. Favorites, screenshots, and a blurry-photo finder. ⌘-click to select several. |
 | **Categories** | Documents, Receipts & Bills, Screenshots, WhatsApp, Social Media, QR & Barcodes and Camera Photos, from Apple's on-device image classification, page detection, text recognition and barcode detection, plus file names and camera data. Each photo shows *why* it's in a category, and you can add or remove it (remembered). **Search** finds text inside photos (e.g. an invoice number) and file names. |
 | **Folders & Albums** | An expandable sidebar tree: your Photos albums, folders and smart albums; the folder hierarchy of iPhoto libraries and folders; albums of other Photos libraries; otherwise Year › Month. |
@@ -28,9 +33,9 @@ Each new build is a new unsigned version, so macOS may ask for Photos permission
 | **iCloud** | Its own sidebar section: *iCloud Photos* (stored in iCloud, not downloaded to this Mac) and *Shared Albums*. "On This Mac" shows only what's stored locally. |
 | **AI upscale to 2K** | Upscale to 2K (2048 px) or Full HD with **AI Detail** (FSRCNN, recommended) or **AI Strong** (Real-ESRGAN, for very small or soft images). Compare against standard resizing at 100% on any part of the photo. Saves as a new photo or exports; the original is kept and the model used is recorded. Runs on the GPU through Metal via Core ML. |
 | **Analysis** | A background scan you can pause, resume or stop. It slows down on battery or when the Mac is hot, and resumes where it left off after quitting. |
-| **Duplicates** | Four separate kinds: *exact* (identical files), *near* (resized, re-saved or lightly edited copies), *burst* and *similar* shots. Side-by-side comparison with sharpness, exposure, noise, size and favorite status. An explained "Best" recommendation, plus "not similar" and "exclude" feedback that's remembered. |
+| **Duplicates** | Two groups in the sidebar: **Exact Duplicates** (identical files) and **Near Duplicates** (resized, re-saved or lightly edited copies), with **Burst Shots** and **Similar Shots** as sub-sections of Near Duplicates. Side-by-side comparison with sharpness, exposure, noise, size and favorite status. An explained "Best" recommendation, plus "not similar" and "exclude" feedback that's remembered. |
 | **Safe removal** | Nothing is deleted from the duplicates screen. Photos you don't keep go to a **Removal Queue**. Deleting from there needs your confirmation *and* Photos' own prompt, and moves photos to Recently Deleted (recoverable for 30 days). |
-| **People** | Faces are detected and grouped on your Mac, and groups stay "Possible Person" until you name them. You can merge people, mark "Not this person" (remembered for future grouping), hide people, work through a review queue for uncertain faces, and adjust grouping strictness. |
+| **People** | Faces are detected and grouped on your Mac, and groups stay "Possible Person" until you name them. **Tag faces yourself**: in the preview pane turn on *Show & tag faces*, click a face and type a name, or drag a box around a face that was missed. PhotoForge immediately gathers that person's other photos and offers "Is this …?" suggestions to accept or reject. Settings › Face data lets you rename, merge or delete people and re-detect faces. You can merge people, mark "Not this person" (remembered for future grouping), hide people, work through a review queue for uncertain faces, and adjust grouping strictness. |
 | **Editor** | Non-destructive exposure, contrast, highlights, shadows, whites, blacks, temperature, tint, vibrance, saturation, clarity, dehaze, sharpening, noise reduction, vignette and grain, plus straighten, aspect crop and flip. Includes before/after and side-by-side views, undo/redo, and revert. **Save as New Photo** adds the edit to a "PhotoForge Edits" album and keeps the original. **Export** writes JPEG, HEIC, PNG or TIFF, with options to keep or strip metadata and remove location. |
 | **Privacy** | Everything runs locally, with no network use and no analytics. Face data is encrypted at rest. One click deletes all face data, or all PhotoForge data. An optional activity log shows what the app did. |
 
@@ -73,8 +78,15 @@ FSRCNN is the most faithful and restores sharpness. Real-ESRGAN adds strong synt
 ## Not in this version
 
 - **AI generative editing** (inpainting, outpainting, object removal). It needs large diffusion models that are impractical on Intel Macs. The safety policy for it is already implemented and tested (`PFSafety`).
-- **Natural-language search**, OCR search, and videos in duplicate detection.
+- **Natural-language search**, and videos in duplicate detection or face grouping.
+- **macOS 13 and older.** The app uses frameworks introduced in macOS 14. Every Apple silicon Mac (M1–M5) can run macOS 14 or later.
 - **Notarized, Keychain-backed builds.** These need an Apple Developer ID. For ad-hoc builds, the face-data encryption key is stored in a protected file (0600 permissions) in the app's data folder, because the Keychain would prompt after every update.
+
+## Third-party components
+
+- **VLCKit** (VideoLAN), LGPL-2.1, is bundled unmodified as a dynamic framework in `PhotoForge.app/Contents/Frameworks`. Its source code is at https://code.videolan.org/videolan/VLCKit.
+- **SFace** (OpenCV Zoo), **FSRCNN** and **Real-ESRGAN compact** models are converted to Core ML at build time.
+- **GRDB** (MIT) is used for the database.
 
 ## For developers
 

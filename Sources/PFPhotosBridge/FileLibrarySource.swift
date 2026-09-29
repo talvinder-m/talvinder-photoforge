@@ -473,7 +473,7 @@ public final class FileLibrarySource: MediaSource, @unchecked Sendable {
         return .url(u)
     }
 
-    static func sha256(of u: URL) throws -> Data {
+    public static func sha256(of u: URL) throws -> Data {
         let h = try FileHandle(forReadingFrom: u)
         defer { try? h.close() }
         var hasher = SHA256()
