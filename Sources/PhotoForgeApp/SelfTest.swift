@@ -418,7 +418,7 @@ enum SelfTest {
             guard PhotoForgePackage.isPackage(pkg), try PhotoForgePackage.open(pkg).id == manifest.id else { return false }
             let dbURL = pkg.appendingPathComponent("Database/photoforge.sqlite")
             var db: AppDatabase? = try AppDatabase.open(at: dbURL)
-            let sid = try db!.addLibrary(kind: "pflibrary", name: "Farm", path: pkg.path)
+            let sid = try db!.addLibrary(kind: "import_folder", name: "Farm", path: pkg.path)
             let managed = ManagedLibrarySource(root: pkg)
             let inbox = dir.appendingPathComponent("Inbox")
             try FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true)
