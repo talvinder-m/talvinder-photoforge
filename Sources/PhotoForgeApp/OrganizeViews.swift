@@ -2,6 +2,7 @@ import SwiftUI
 import PFCore
 import PFDatabase
 import PFPhotosBridge
+import PFClassify
 
 // MARK: - Albums
 
