@@ -1,0 +1,1261 @@
+Fetching https://github.com/groue/GRDB.swift.git
+[1/114057] Fetching grdb.swift
+Fetched https://github.com/groue/GRDB.swift.git from cache (18.96s)
+Computing version for https://github.com/groue/GRDB.swift.git
+Computed https://github.com/groue/GRDB.swift.git at 7.11.1 (20.00s)
+Creating working copy for https://github.com/groue/GRDB.swift.git
+Working copy of https://github.com/groue/GRDB.swift.git resolved at 7.11.1
+Building for debugging...
+[0/20] Write sources
+[3/20] Write PhotoForgeApp-entitlement.plist
+[3/20] Write sources
+[11/20] Copying PrivacyInfo.xcprivacy
+[12/20] Copying Info.plist
+[13/20] Write sources
+[15/20] Copying VLCKit.framework
+[16/20] Write swift-version--79AA4F9932D1E87A.txt
+[18/72] Compiling PFCore BatchRename.swift
+[19/72] Compiling PFCore AlbumRule.swift
+[20/72] Emitting module PFCore
+[21/73] Emitting module GRDB
+[22/97] Compiling PFCore Models.swift
+[23/104] Compiling PFSimilarity PerceptualHash.swift
+[24/105] Emitting module PFSimilarity
+[25/105] Compiling PFSimilarity DuplicateScoring.swift
+[26/105] Compiling PFVision EmbeddingPipeline.swift
+[27/105] Compiling PFVision FaceDetector.swift
+[28/105] Compiling GRDB RowAdapter.swift
+[29/105] Compiling GRDB RowDecodingError.swift
+[30/105] Compiling GRDB SQL.swift
+[31/105] Compiling GRDB SQLInterpolation.swift
+[32/105] Compiling GRDB SQLRequest.swift
+[33/105] Compiling GRDB SchedulingWatchdog.swift
+[34/105] Compiling GRDB SerializedDatabase.swift
+[35/105] Compiling GRDB Statement.swift
+[36/105] Compiling GRDB StatementAuthorizer.swift
+[37/105] Compiling GRDB StatementColumnConvertible.swift
+[38/105] Compiling GRDB CGFloat.swift
+[39/105] Compiling GRDB Data.swift
+[40/105] Compiling GRDB DatabaseDateComponents.swift
+[41/105] Compiling GRDB DatabaseValueConvertible+ReferenceConvertible.swift
+[42/105] Compiling GRDB Date.swift
+[43/105] Compiling GRDB Decimal.swift
+[44/105] Compiling GRDB NSData.swift
+[45/105] Compiling GRDB NSNull.swift
+[46/105] Compiling GRDB NSNumber.swift
+[47/105] Compiling GRDB NSString.swift
+[48/105] Compiling GRDB SQLiteDateParser.swift
+[49/105] Compiling GRDB URL.swift
+[50/129] Compiling PFSimilarity QualityMetrics.swift
+[51/131] Emitting module PFSafety
+[52/131] Compiling PFSafety GenerativeEditPolicy.swift
+[53/134] Compiling GRDB UUID.swift
+[54/134] Compiling GRDB DatabaseValueConvertible+Decodable.swift
+[55/134] Compiling GRDB DatabaseValueConvertible+Encodable.swift
+[56/134] Compiling GRDB DatabaseValueConvertible+RawRepresentable.swift
+[57/134] Compiling GRDB JSONRequiredEncoder.swift
+[58/134] Compiling GRDB Optional.swift
+[59/134] Compiling GRDB StandardLibrary.swift
+[60/134] Compiling GRDB TransactionClock.swift
+[61/134] Compiling GRDB TransactionObserver.swift
+[62/134] Compiling GRDB WALSnapshot.swift
+[63/134] Compiling GRDB WALSnapshotTransaction.swift
+[64/134] Compiling GRDB Database+Dump.swift
+[65/134] Compiling GRDB DatabaseReader+dump.swift
+[66/134] Compiling GRDB DumpFormat.swift
+[67/134] Compiling GRDB DebugDumpFormat.swift
+[68/134] Compiling GRDB JSONDumpFormat.swift
+[69/134] Compiling GRDB LineDumpFormat.swift
+[70/134] Compiling GRDB ListDumpFormat.swift
+[71/134] Compiling GRDB QuoteDumpFormat.swift
+[72/134] Compiling GRDB FTS3.swift
+[73/134] Compiling GRDB FTS3Pattern.swift
+[74/134] Compiling GRDB FTS3TokenizerDescriptor.swift
+[75/134] Compiling GRDB FTS4.swift
+[76/134] Compiling GRDB FTS5.swift
+[77/158] Compiling GRDB Configuration.swift
+[78/158] Compiling GRDB Cursor.swift
+[79/158] Compiling GRDB Database+SQLCipher.swift
+[80/158] Compiling GRDB Database+Schema.swift
+[81/158] Compiling GRDB Database+Statements.swift
+[82/158] Compiling GRDB Database.swift
+[83/158] Compiling GRDB DatabaseBackupProgress.swift
+[84/158] Compiling GRDB DatabaseCollation.swift
+[85/158] Compiling GRDB DatabaseError.swift
+[86/158] Compiling GRDB DatabaseFunction.swift
+[87/158] Compiling GRDB DatabasePool.swift
+[88/158] Compiling GRDB DatabasePublishers.swift
+[89/158] Compiling GRDB DatabaseQueue.swift
+[90/158] Compiling GRDB DatabaseReader.swift
+[91/158] Compiling GRDB DatabaseRegion.swift
+[92/158] Compiling GRDB DatabaseRegionObservation.swift
+[93/158] Compiling GRDB DatabaseSchemaCache.swift
+[94/158] Compiling GRDB DatabaseSchemaSource.swift
+[95/158] Compiling GRDB DatabaseSnapshot.swift
+[96/158] Compiling GRDB DatabaseSnapshotPool.swift
+[97/158] Compiling GRDB DatabaseValue.swift
+[98/158] Compiling GRDB DatabaseValueConvertible.swift
+[99/158] Compiling GRDB DatabaseWriter.swift
+[100/158] Compiling GRDB DispatchQueueActor.swift
+[101/182] Compiling GRDB FTS5CustomTokenizer.swift
+[102/182] Compiling GRDB FTS5Pattern.swift
+[103/182] Compiling GRDB FTS5Tokenizer.swift
+[104/182] Compiling GRDB FTS5TokenizerDescriptor.swift
+[105/182] Compiling GRDB FTS5WrapperTokenizer.swift
+[106/182] Compiling GRDB Fixits.swift
+[107/182] Compiling GRDB JSONColumn.swift
+[108/182] Compiling GRDB SQLJSONExpressible.swift
+[109/182] Compiling GRDB SQLJSONFunctions.swift
+[110/182] Compiling GRDB DatabaseMigrator.swift
+[111/182] Compiling GRDB Migration.swift
+[112/182] Compiling GRDB FTS3+QueryInterface.swift
+[113/182] Compiling GRDB FTS5+QueryInterface.swift
+[114/182] Compiling GRDB ForeignKey.swift
+[115/182] Compiling GRDB Association.swift
+[116/182] Compiling GRDB AssociationAggregate.swift
+[117/182] Compiling GRDB BelongsToAssociation.swift
+[118/182] Compiling GRDB HasManyAssociation.swift
+[119/182] Compiling GRDB HasManyThroughAssociation.swift
+[120/182] Compiling GRDB HasOneAssociation.swift
+[121/182] Compiling GRDB HasOneThroughAssociation.swift
+[122/182] Compiling GRDB JoinAssociation.swift
+[123/182] Compiling GRDB CommonTableExpression.swift
+[124/182] Compiling GRDB QueryInterfaceRequest.swift
+[127/206] Emitting module PFVision
+[128/206] Compiling PFVision SuperResolution.swift
+[129/207] Emitting module PFPhotosBridge
+[130/207] Compiling PFPhotosBridge MediaFiles.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/MediaFiles.swift:49:40: warning: 'duration' was deprecated in macOS 13.0: Use load(.duration) instead
+ 47 |             if nativeVideoExtensions.contains(url.pathExtension.lowercased()) {
+ 48 |                 let a = AVURLAsset(url: url)
+ 49 |                 d = CMTimeGetSeconds(a.duration)
+    |                                        `- warning: 'duration' was deprecated in macOS 13.0: Use load(.duration) instead
+ 50 |                 if let t = a.tracks(withMediaType: .video).first {
+ 51 |                     let s = t.naturalSize.applying(t.preferredTransform)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/MediaFiles.swift:50:30: warning: 'tracks(withMediaType:)' was deprecated in macOS 13.0: Use loadTracks(withMediaType:) instead
+ 48 |                 let a = AVURLAsset(url: url)
+ 49 |                 d = CMTimeGetSeconds(a.duration)
+ 50 |                 if let t = a.tracks(withMediaType: .video).first {
+    |                              `- warning: 'tracks(withMediaType:)' was deprecated in macOS 13.0: Use loadTracks(withMediaType:) instead
+ 51 |                     let s = t.naturalSize.applying(t.preferredTransform)
+ 52 |                     w = Int(abs(s.width)); h = Int(abs(s.height))
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/MediaFiles.swift:51:31: warning: 'naturalSize' was deprecated in macOS 13.0: Use load(.naturalSize) instead
+ 49 |                 d = CMTimeGetSeconds(a.duration)
+ 50 |                 if let t = a.tracks(withMediaType: .video).first {
+ 51 |                     let s = t.naturalSize.applying(t.preferredTransform)
+    |                               `- warning: 'naturalSize' was deprecated in macOS 13.0: Use load(.naturalSize) instead
+ 52 |                     w = Int(abs(s.width)); h = Int(abs(s.height))
+ 53 |                 }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/MediaFiles.swift:51:54: warning: 'preferredTransform' was deprecated in macOS 13.0: Use load(.preferredTransform) instead
+ 49 |                 d = CMTimeGetSeconds(a.duration)
+ 50 |                 if let t = a.tracks(withMediaType: .video).first {
+ 51 |                     let s = t.naturalSize.applying(t.preferredTransform)
+    |                                                      `- warning: 'preferredTransform' was deprecated in macOS 13.0: Use load(.preferredTransform) instead
+ 52 |                     w = Int(abs(s.width)); h = Int(abs(s.height))
+ 53 |                 }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/MediaFiles.swift:54:26: warning: 'creationDate' was deprecated in macOS 13.0: Use load(.creationDate) instead
+ 52 |                     w = Int(abs(s.width)); h = Int(abs(s.height))
+ 53 |                 }
+ 54 |                 date = a.creationDate?.dateValue
+    |                          `- warning: 'creationDate' was deprecated in macOS 13.0: Use load(.creationDate) instead
+ 55 |             }
+ 56 |             return Probe(mediaType: "video", width: w, height: h, captureDate: date, duration: d.isFinite ? d : 0, isScreenshot: false)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/MediaFiles.swift:54:40: warning: 'dateValue' was deprecated in macOS 13.0: Use load(.dateValue) instead
+ 52 |                     w = Int(abs(s.width)); h = Int(abs(s.height))
+ 53 |                 }
+ 54 |                 date = a.creationDate?.dateValue
+    |                                        `- warning: 'dateValue' was deprecated in macOS 13.0: Use load(.dateValue) instead
+ 55 |             }
+ 56 |             return Probe(mediaType: "video", width: w, height: h, captureDate: date, duration: d.isFinite ? d : 0, isScreenshot: false)
+[131/207] Compiling PFPhotosBridge FileLibrarySource.swift
+[132/208] Compiling PFVision VisionFeaturePrintEmbedder.swift
+[133/210] Compiling GRDB ForeignKeyDefinition.swift
+[134/210] Compiling GRDB IndexDefinition.swift
+[135/210] Compiling GRDB TableAlteration.swift
+[136/210] Compiling GRDB TableDefinition.swift
+[137/210] Compiling GRDB VirtualTableModule.swift
+[138/210] Compiling GRDB TableRecord+Association.swift
+[139/210] Compiling GRDB TableRecord+QueryInterfaceRequest.swift
+[140/210] Compiling GRDB EncodableRecord+Encodable.swift
+[141/210] Compiling GRDB EncodableRecord.swift
+[142/210] Compiling GRDB FetchableRecord+Decodable.swift
+[143/210] Compiling GRDB FetchableRecord+TableRecord.swift
+[144/210] Compiling GRDB FetchableRecord.swift
+[145/210] Compiling GRDB MutablePersistableRecord+DAO.swift
+[146/210] Compiling GRDB MutablePersistableRecord+Delete.swift
+[147/210] Compiling GRDB MutablePersistableRecord+Insert.swift
+[148/210] Compiling GRDB MutablePersistableRecord+Save.swift
+[149/210] Compiling GRDB MutablePersistableRecord+Update.swift
+[150/210] Compiling GRDB MutablePersistableRecord+Upsert.swift
+[151/210] Compiling GRDB MutablePersistableRecord.swift
+[152/210] Compiling GRDB PersistableRecord+Insert.swift
+[153/210] Compiling GRDB PersistableRecord+Save.swift
+[154/210] Compiling GRDB PersistableRecord+Upsert.swift
+[155/210] Compiling GRDB PersistableRecord.swift
+[156/210] Compiling GRDB Record.swift
+[157/210] Compiling GRDB TableRecord.swift
+[158/210] Compiling GRDB CaseInsensitiveIdentifier.swift
+[159/210] Compiling GRDB Inflections+English.swift
+[160/210] Compiling GRDB Inflections.swift
+[161/210] Compiling GRDB Mutex.swift
+[162/210] Compiling GRDB OnDemandFuture.swift
+[163/210] Compiling GRDB OrderedDictionary.swift
+[164/210] Compiling GRDB Pool.swift
+[165/210] Compiling GRDB ReadWriteLock.swift
+[166/210] Compiling GRDB ReceiveValuesOn.swift
+[167/210] Compiling GRDB Refinable.swift
+[168/210] Compiling GRDB Utils.swift
+[169/210] Compiling GRDB DatabaseCancellable.swift
+[170/210] Compiling GRDB ValueConcurrentObserver.swift
+[171/210] Compiling GRDB ValueWriteOnlyObserver.swift
+[172/210] Compiling GRDB Fetch.swift
+[173/210] Compiling GRDB Map.swift
+[174/210] Compiling GRDB RemoveDuplicates.swift
+[175/210] Compiling GRDB Trace.swift
+[176/210] Compiling GRDB ValueReducer.swift
+[177/210] Compiling GRDB SharedValueObservation.swift
+[178/210] Compiling GRDB ValueObservation.swift
+[179/210] Compiling GRDB ValueObservationScheduler.swift
+[180/210] Compiling GRDB resource_bundle_accessor.swift
+[181/210] Emitting module PFPeople
+[182/210] Compiling PFPeople ConstrainedClustering.swift
+[183/212] Compiling GRDB RequestProtocols.swift
+[184/212] Compiling GRDB Column.swift
+[185/212] Compiling GRDB DatabasePromise.swift
+[186/212] Compiling GRDB SQLAssociation.swift
+[187/212] Compiling GRDB SQLCollection.swift
+[188/212] Compiling GRDB SQLExpression.swift
+[189/212] Compiling GRDB SQLForeignKeyRequest.swift
+[190/212] Compiling GRDB SQLFunctions.swift
+[191/212] Compiling GRDB SQLOperators.swift
+[192/212] Compiling GRDB SQLOrdering.swift
+[193/212] Compiling GRDB SQLRelation.swift
+[194/212] Compiling GRDB SQLSelection.swift
+[195/212] Compiling GRDB SQLSubquery.swift
+[196/212] Compiling GRDB Table.swift
+[197/212] Compiling GRDB SQLColumnGenerator.swift
+[198/212] Compiling GRDB SQLGenerationContext.swift
+[199/212] Compiling GRDB SQLIndexGenerator.swift
+[200/212] Compiling GRDB SQLQueryGenerator.swift
+[201/212] Compiling GRDB SQLTableAlterationGenerator.swift
+[202/212] Compiling GRDB SQLTableGenerator.swift
+[203/212] Compiling GRDB TableAlias.swift
+[204/212] Compiling GRDB SQLInterpolation+QueryInterface.swift
+[205/212] Compiling GRDB ColumnDefinition.swift
+[206/212] Compiling GRDB Database+SchemaDefinition.swift
+[207/215] Compiling PFPhotosBridge PhotoLibraryService.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/PhotoLibraryService.swift:256:17: warning: capture of 'manager' with non-sendable type 'PHCachingImageManager' in a '@Sendable' closure
+254 |                 opts.isSynchronous = true                  // on this background queue
+255 |                 var result: Result<CGImage, Error> = .failure(PhotoForgeError.corruptImage)
+256 |                 manager.requestImage(for: asset, targetSize: CGSize(width: maxDimension, height: maxDimension),
+    |                 `- warning: capture of 'manager' with non-sendable type 'PHCachingImageManager' in a '@Sendable' closure
+257 |                                      contentMode: .aspectFit, options: opts) { image, info in
+258 |                     if let err = info?[PHImageErrorKey] as? Error { result = .failure(err); return }
+
+/Applications/Xcode_16.4.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk/System/Library/Frameworks/Photos.framework/Headers/PHImageManager.h:212:12: note: class 'PHCachingImageManager' does not conform to the 'Sendable' protocol
+210 | 
+211 | OS_EXPORT
+212 | @interface PHCachingImageManager : PHImageManager
+    |            `- note: class 'PHCachingImageManager' does not conform to the 'Sendable' protocol
+213 | 
+214 | // During fast scrolling clients should set this to improve responsiveness
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/PhotoLibraryService.swift:3:1: warning: add '@preconcurrency' to suppress 'Sendable'-related warnings from module 'Photos'
+  1 | import Foundation
+  2 | import ImageIO
+  3 | import Photos
+    | `- warning: add '@preconcurrency' to suppress 'Sendable'-related warnings from module 'Photos'
+  4 | import AppKit
+  5 | import CryptoKit
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/PhotoLibraryService.swift:284:17: warning: capture of 'manager' with non-sendable type 'PHCachingImageManager' in a '@Sendable' closure
+282 |                 opts.isSynchronous = true
+283 |                 var out: NSImage?
+284 |                 manager.requestImage(for: asset, targetSize: CGSize(width: side, height: side),
+    |                 `- warning: capture of 'manager' with non-sendable type 'PHCachingImageManager' in a '@Sendable' closure
+285 |                                      contentMode: .aspectFill, options: opts) { image, _ in
+286 |                     // Render to a bitmap here so drawing it later costs nothing.
+
+/Applications/Xcode_16.4.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk/System/Library/Frameworks/Photos.framework/Headers/PHImageManager.h:212:12: note: class 'PHCachingImageManager' does not conform to the 'Sendable' protocol
+210 | 
+211 | OS_EXPORT
+212 | @interface PHCachingImageManager : PHImageManager
+    |            `- note: class 'PHCachingImageManager' does not conform to the 'Sendable' protocol
+213 | 
+214 | // During fast scrolling clients should set this to improve responsiveness
+[208/220] Emitting module PFJobs
+[209/220] Compiling PFJobs JobManager.swift
+[210/223] Emitting module PFDatabase
+[211/224] Compiling PFDatabase LibraryRegistry.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFDatabase/LibraryRegistry.swift:110:9: warning: result of 'try?' is unused
+108 |         }
+109 |         let db = try AppDatabase.open(at: legacy)
+110 |         try? db.backup(reason: "before-split", keep: 5)
+    |         `- warning: result of 'try?' is unused
+111 |         let sources = try db.sourceIDs()
+112 |         let systemID: Int64
+[212/224] Compiling PFDatabase Migrations.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFDatabase/LibraryRegistry.swift:110:9: warning: result of 'try?' is unused
+108 |         }
+109 |         let db = try AppDatabase.open(at: legacy)
+110 |         try? db.backup(reason: "before-split", keep: 5)
+    |         `- warning: result of 'try?' is unused
+111 |         let sources = try db.sourceIDs()
+112 |         let systemID: Int64
+[213/224] Compiling PFClassify PhotoAnalyzer.swift
+[214/224] Compiling PFClassify Categories.swift
+[215/224] Emitting module PFClassify
+[216/224] Compiling PFEditing EditStack.swift
+[217/224] Emitting module PFEditing
+[218/224] Compiling PFEditing EditRenderer.swift
+[219/224] Compiling PFDatabase AppDatabase.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFDatabase/AppDatabase.swift:30:13: warning: result of 'try?' is unused
+ 28 |         let (applied, complete) = try pool.read { d in (try migrator.appliedMigrations(d), try migrator.hasCompletedMigrations(d)) }
+ 29 |         if !applied.isEmpty && !complete {
+ 30 |             try? db.backup(reason: "before-upgrade")
+    |             `- warning: result of 'try?' is unused
+ 31 |         }
+ 32 |         try migrator.migrate(pool)
+[220/224] Compiling PFDatabase LibraryData.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFDatabase/AppDatabase.swift:30:13: warning: result of 'try?' is unused
+ 28 |         let (applied, complete) = try pool.read { d in (try migrator.appliedMigrations(d), try migrator.hasCompletedMigrations(d)) }
+ 29 |         if !applied.isEmpty && !complete {
+ 30 |             try? db.backup(reason: "before-upgrade")
+    |             `- warning: result of 'try?' is unused
+ 31 |         }
+ 32 |         try migrator.migrate(pool)
+[221/224] Compiling PFDatabase Repository.swift
+[222/239] Emitting module PhotoForgeApp
+[223/239] Compiling PhotoForgeApp FaceModels.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LocalAPIServer.swift:269:61: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+267 |                     if let e = need(.thumbnails) { return e }
+268 |                     let size = min(2048, max(64, Double(req.query["size"] ?? "") ?? 512))
+269 |                     guard let img = await model.mediaSource.thumbnail(for: asset.localIdentifier, side: size),
+    |                                                             `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+270 |                           let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil),
+271 |                           let jpeg = Self.jpeg(cg) else { return .error(404, "No thumbnail available") }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:29: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+273 |         if let p = face.cropPath {
+274 |             let url = model.faceCropDir.appendingPathComponent(p)
+275 |             let img = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+    |                             `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+276 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+277 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+:1:1: note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+1 | @_nonSendable(_assumed)
+  | `- note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:34: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+273 |         if let p = face.cropPath {
+274 |             let url = model.faceCropDir.appendingPathComponent(p)
+275 |             let img = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+    |                                  `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+276 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+277 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+:1:1: note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+1 | @_nonSendable(_assumed)
+  | `- note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:280:15: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+278 |                 else { return nil }
+279 |                 return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+280 |             }.value
+    |               `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+281 |             if let img { ThumbnailCache.shared.set(img, key, 0); return img }
+282 |         }
+
+:1:1: note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+1 | @_nonSendable(_assumed)
+  | `- note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:29: warning: non-sendable type 'Task<NSImage?, Never>' cannot exit main actor-isolated context in call to nonisolated property 'value'; this is an error in the Swift 6 language mode
+273 |         if let p = face.cropPath {
+274 |             let url = model.faceCropDir.appendingPathComponent(p)
+275 |             let img = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+    |                             `- warning: non-sendable type 'Task<NSImage?, Never>' cannot exit main actor-isolated context in call to nonisolated property 'value'; this is an error in the Swift 6 language mode
+276 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+277 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+_Concurrency.Task:2:23: note: generic struct 'Task' does not conform to the 'Sendable' protocol
+1 | @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+2 | @frozen public struct Task<Success, Failure> : Sendable where Success : Sendable, Failure : Error {
+  |                       `- note: generic struct 'Task' does not conform to the 'Sendable' protocol
+3 | }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:280:15: warning: non-sendable type 'NSImage?' of nonisolated property 'value' cannot be sent to main actor-isolated context; this is an error in the Swift 6 language mode
+278 |                 else { return nil }
+279 |                 return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+280 |             }.value
+    |               `- warning: non-sendable type 'NSImage?' of nonisolated property 'value' cannot be sent to main actor-isolated context; this is an error in the Swift 6 language mode
+281 |             if let img { ThumbnailCache.shared.set(img, key, 0); return img }
+282 |         }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+[224/239] Compiling PhotoForgeApp FaceTaggingView.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LocalAPIServer.swift:269:61: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+267 |                     if let e = need(.thumbnails) { return e }
+268 |                     let size = min(2048, max(64, Double(req.query["size"] ?? "") ?? 512))
+269 |                     guard let img = await model.mediaSource.thumbnail(for: asset.localIdentifier, side: size),
+    |                                                             `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+270 |                           let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil),
+271 |                           let jpeg = Self.jpeg(cg) else { return .error(404, "No thumbnail available") }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:29: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+273 |         if let p = face.cropPath {
+274 |             let url = model.faceCropDir.appendingPathComponent(p)
+275 |             let img = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+    |                             `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+276 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+277 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+:1:1: note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+1 | @_nonSendable(_assumed)
+  | `- note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:34: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+273 |         if let p = face.cropPath {
+274 |             let url = model.faceCropDir.appendingPathComponent(p)
+275 |             let img = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+    |                                  `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+276 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+277 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+:1:1: note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+1 | @_nonSendable(_assumed)
+  | `- note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:280:15: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+278 |                 else { return nil }
+279 |                 return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+280 |             }.value
+    |               `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+281 |             if let img { ThumbnailCache.shared.set(img, key, 0); return img }
+282 |         }
+
+:1:1: note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+1 | @_nonSendable(_assumed)
+  | `- note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:29: warning: non-sendable type 'Task<NSImage?, Never>' cannot exit main actor-isolated context in call to nonisolated property 'value'; this is an error in the Swift 6 language mode
+273 |         if let p = face.cropPath {
+274 |             let url = model.faceCropDir.appendingPathComponent(p)
+275 |             let img = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+    |                             `- warning: non-sendable type 'Task<NSImage?, Never>' cannot exit main actor-isolated context in call to nonisolated property 'value'; this is an error in the Swift 6 language mode
+276 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+277 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+_Concurrency.Task:2:23: note: generic struct 'Task' does not conform to the 'Sendable' protocol
+1 | @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+2 | @frozen public struct Task<Success, Failure> : Sendable where Success : Sendable, Failure : Error {
+  |                       `- note: generic struct 'Task' does not conform to the 'Sendable' protocol
+3 | }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:280:15: warning: non-sendable type 'NSImage?' of nonisolated property 'value' cannot be sent to main actor-isolated context; this is an error in the Swift 6 language mode
+278 |                 else { return nil }
+279 |                 return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+280 |             }.value
+    |               `- warning: non-sendable type 'NSImage?' of nonisolated property 'value' cannot be sent to main actor-isolated context; this is an error in the Swift 6 language mode
+281 |             if let img { ThumbnailCache.shared.set(img, key, 0); return img }
+282 |         }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+[225/239] Compiling PhotoForgeApp LibraryViews.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LocalAPIServer.swift:269:61: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+267 |                     if let e = need(.thumbnails) { return e }
+268 |                     let size = min(2048, max(64, Double(req.query["size"] ?? "") ?? 512))
+269 |                     guard let img = await model.mediaSource.thumbnail(for: asset.localIdentifier, side: size),
+    |                                                             `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+270 |                           let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil),
+271 |                           let jpeg = Self.jpeg(cg) else { return .error(404, "No thumbnail available") }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:29: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+273 |         if let p = face.cropPath {
+274 |             let url = model.faceCropDir.appendingPathComponent(p)
+275 |             let img = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+    |                             `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+276 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+277 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+:1:1: note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+1 | @_nonSendable(_assumed)
+  | `- note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:34: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+273 |         if let p = face.cropPath {
+274 |             let url = model.faceCropDir.appendingPathComponent(p)
+275 |             let img = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+    |                                  `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+276 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+277 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+:1:1: note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+1 | @_nonSendable(_assumed)
+  | `- note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:280:15: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+278 |                 else { return nil }
+279 |                 return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+280 |             }.value
+    |               `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+281 |             if let img { ThumbnailCache.shared.set(img, key, 0); return img }
+282 |         }
+
+:1:1: note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+1 | @_nonSendable(_assumed)
+  | `- note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:29: warning: non-sendable type 'Task<NSImage?, Never>' cannot exit main actor-isolated context in call to nonisolated property 'value'; this is an error in the Swift 6 language mode
+273 |         if let p = face.cropPath {
+274 |             let url = model.faceCropDir.appendingPathComponent(p)
+275 |             let img = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+    |                             `- warning: non-sendable type 'Task<NSImage?, Never>' cannot exit main actor-isolated context in call to nonisolated property 'value'; this is an error in the Swift 6 language mode
+276 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+277 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+_Concurrency.Task:2:23: note: generic struct 'Task' does not conform to the 'Sendable' protocol
+1 | @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+2 | @frozen public struct Task<Success, Failure> : Sendable where Success : Sendable, Failure : Error {
+  |                       `- note: generic struct 'Task' does not conform to the 'Sendable' protocol
+3 | }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:280:15: warning: non-sendable type 'NSImage?' of nonisolated property 'value' cannot be sent to main actor-isolated context; this is an error in the Swift 6 language mode
+278 |                 else { return nil }
+279 |                 return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+280 |             }.value
+    |               `- warning: non-sendable type 'NSImage?' of nonisolated property 'value' cannot be sent to main actor-isolated context; this is an error in the Swift 6 language mode
+281 |             if let img { ThumbnailCache.shared.set(img, key, 0); return img }
+282 |         }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+[226/239] Compiling PhotoForgeApp LocalAPIServer.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LocalAPIServer.swift:269:61: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+267 |                     if let e = need(.thumbnails) { return e }
+268 |                     let size = min(2048, max(64, Double(req.query["size"] ?? "") ?? 512))
+269 |                     guard let img = await model.mediaSource.thumbnail(for: asset.localIdentifier, side: size),
+    |                                                             `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+270 |                           let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil),
+271 |                           let jpeg = Self.jpeg(cg) else { return .error(404, "No thumbnail available") }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:29: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+273 |         if let p = face.cropPath {
+274 |             let url = model.faceCropDir.appendingPathComponent(p)
+275 |             let img = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+    |                             `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+276 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+277 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+:1:1: note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+1 | @_nonSendable(_assumed)
+  | `- note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:34: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+273 |         if let p = face.cropPath {
+274 |             let url = model.faceCropDir.appendingPathComponent(p)
+275 |             let img = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+    |                                  `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+276 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+277 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+:1:1: note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+1 | @_nonSendable(_assumed)
+  | `- note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:280:15: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+278 |                 else { return nil }
+279 |                 return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+280 |             }.value
+    |               `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+281 |             if let img { ThumbnailCache.shared.set(img, key, 0); return img }
+282 |         }
+
+:1:1: note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+1 | @_nonSendable(_assumed)
+  | `- note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:29: warning: non-sendable type 'Task<NSImage?, Never>' cannot exit main actor-isolated context in call to nonisolated property 'value'; this is an error in the Swift 6 language mode
+273 |         if let p = face.cropPath {
+274 |             let url = model.faceCropDir.appendingPathComponent(p)
+275 |             let img = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+    |                             `- warning: non-sendable type 'Task<NSImage?, Never>' cannot exit main actor-isolated context in call to nonisolated property 'value'; this is an error in the Swift 6 language mode
+276 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+277 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+_Concurrency.Task:2:23: note: generic struct 'Task' does not conform to the 'Sendable' protocol
+1 | @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+2 | @frozen public struct Task<Success, Failure> : Sendable where Success : Sendable, Failure : Error {
+  |                       `- note: generic struct 'Task' does not conform to the 'Sendable' protocol
+3 | }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:280:15: warning: non-sendable type 'NSImage?' of nonisolated property 'value' cannot be sent to main actor-isolated context; this is an error in the Swift 6 language mode
+278 |                 else { return nil }
+279 |                 return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+280 |             }.value
+    |               `- warning: non-sendable type 'NSImage?' of nonisolated property 'value' cannot be sent to main actor-isolated context; this is an error in the Swift 6 language mode
+281 |             if let img { ThumbnailCache.shared.set(img, key, 0); return img }
+282 |         }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+[227/239] Compiling PhotoForgeApp MachineProfile.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LocalAPIServer.swift:269:61: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+267 |                     if let e = need(.thumbnails) { return e }
+268 |                     let size = min(2048, max(64, Double(req.query["size"] ?? "") ?? 512))
+269 |                     guard let img = await model.mediaSource.thumbnail(for: asset.localIdentifier, side: size),
+    |                                                             `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+270 |                           let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil),
+271 |                           let jpeg = Self.jpeg(cg) else { return .error(404, "No thumbnail available") }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:29: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+273 |         if let p = face.cropPath {
+274 |             let url = model.faceCropDir.appendingPathComponent(p)
+275 |             let img = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+    |                             `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+276 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+277 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+:1:1: note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+1 | @_nonSendable(_assumed)
+  | `- note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:34: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+273 |         if let p = face.cropPath {
+274 |             let url = model.faceCropDir.appendingPathComponent(p)
+275 |             let img = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+    |                                  `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+276 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+277 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+:1:1: note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+1 | @_nonSendable(_assumed)
+  | `- note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:280:15: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+278 |                 else { return nil }
+279 |                 return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+280 |             }.value
+    |               `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+281 |             if let img { ThumbnailCache.shared.set(img, key, 0); return img }
+282 |         }
+
+:1:1: note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+1 | @_nonSendable(_assumed)
+  | `- note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:29: warning: non-sendable type 'Task<NSImage?, Never>' cannot exit main actor-isolated context in call to nonisolated property 'value'; this is an error in the Swift 6 language mode
+273 |         if let p = face.cropPath {
+274 |             let url = model.faceCropDir.appendingPathComponent(p)
+275 |             let img = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+    |                             `- warning: non-sendable type 'Task<NSImage?, Never>' cannot exit main actor-isolated context in call to nonisolated property 'value'; this is an error in the Swift 6 language mode
+276 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+277 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+_Concurrency.Task:2:23: note: generic struct 'Task' does not conform to the 'Sendable' protocol
+1 | @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+2 | @frozen public struct Task<Success, Failure> : Sendable where Success : Sendable, Failure : Error {
+  |                       `- note: generic struct 'Task' does not conform to the 'Sendable' protocol
+3 | }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:280:15: warning: non-sendable type 'NSImage?' of nonisolated property 'value' cannot be sent to main actor-isolated context; this is an error in the Swift 6 language mode
+278 |                 else { return nil }
+279 |                 return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+280 |             }.value
+    |               `- warning: non-sendable type 'NSImage?' of nonisolated property 'value' cannot be sent to main actor-isolated context; this is an error in the Swift 6 language mode
+281 |             if let img { ThumbnailCache.shared.set(img, key, 0); return img }
+282 |         }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+[228/239] Compiling PhotoForgeApp OrganizeViews.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LocalAPIServer.swift:269:61: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+267 |                     if let e = need(.thumbnails) { return e }
+268 |                     let size = min(2048, max(64, Double(req.query["size"] ?? "") ?? 512))
+269 |                     guard let img = await model.mediaSource.thumbnail(for: asset.localIdentifier, side: size),
+    |                                                             `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+270 |                           let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil),
+271 |                           let jpeg = Self.jpeg(cg) else { return .error(404, "No thumbnail available") }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:29: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+273 |         if let p = face.cropPath {
+274 |             let url = model.faceCropDir.appendingPathComponent(p)
+275 |             let img = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+    |                             `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+276 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+277 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+:1:1: note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+1 | @_nonSendable(_assumed)
+  | `- note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:34: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+273 |         if let p = face.cropPath {
+274 |             let url = model.faceCropDir.appendingPathComponent(p)
+275 |             let img = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+    |                                  `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+276 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+277 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+:1:1: note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+1 | @_nonSendable(_assumed)
+  | `- note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:280:15: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+278 |                 else { return nil }
+279 |                 return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+280 |             }.value
+    |               `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+281 |             if let img { ThumbnailCache.shared.set(img, key, 0); return img }
+282 |         }
+
+:1:1: note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+1 | @_nonSendable(_assumed)
+  | `- note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:29: warning: non-sendable type 'Task<NSImage?, Never>' cannot exit main actor-isolated context in call to nonisolated property 'value'; this is an error in the Swift 6 language mode
+273 |         if let p = face.cropPath {
+274 |             let url = model.faceCropDir.appendingPathComponent(p)
+275 |             let img = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+    |                             `- warning: non-sendable type 'Task<NSImage?, Never>' cannot exit main actor-isolated context in call to nonisolated property 'value'; this is an error in the Swift 6 language mode
+276 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+277 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+_Concurrency.Task:2:23: note: generic struct 'Task' does not conform to the 'Sendable' protocol
+1 | @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+2 | @frozen public struct Task<Success, Failure> : Sendable where Success : Sendable, Failure : Error {
+  |                       `- note: generic struct 'Task' does not conform to the 'Sendable' protocol
+3 | }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:280:15: warning: non-sendable type 'NSImage?' of nonisolated property 'value' cannot be sent to main actor-isolated context; this is an error in the Swift 6 language mode
+278 |                 else { return nil }
+279 |                 return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+280 |             }.value
+    |               `- warning: non-sendable type 'NSImage?' of nonisolated property 'value' cannot be sent to main actor-isolated context; this is an error in the Swift 6 language mode
+281 |             if let img { ThumbnailCache.shared.set(img, key, 0); return img }
+282 |         }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+[229/239] Compiling PhotoForgeApp PeopleViews.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LocalAPIServer.swift:269:61: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+267 |                     if let e = need(.thumbnails) { return e }
+268 |                     let size = min(2048, max(64, Double(req.query["size"] ?? "") ?? 512))
+269 |                     guard let img = await model.mediaSource.thumbnail(for: asset.localIdentifier, side: size),
+    |                                                             `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+270 |                           let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil),
+271 |                           let jpeg = Self.jpeg(cg) else { return .error(404, "No thumbnail available") }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:29: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+273 |         if let p = face.cropPath {
+274 |             let url = model.faceCropDir.appendingPathComponent(p)
+275 |             let img = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+    |                             `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+276 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+277 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+:1:1: note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+1 | @_nonSendable(_assumed)
+  | `- note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:34: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+273 |         if let p = face.cropPath {
+274 |             let url = model.faceCropDir.appendingPathComponent(p)
+275 |             let img = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+    |                                  `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+276 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+277 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+:1:1: note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+1 | @_nonSendable(_assumed)
+  | `- note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:280:15: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+278 |                 else { return nil }
+279 |                 return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+280 |             }.value
+    |               `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+281 |             if let img { ThumbnailCache.shared.set(img, key, 0); return img }
+282 |         }
+
+:1:1: note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+1 | @_nonSendable(_assumed)
+  | `- note: conformance of 'NSImage' to 'Sendable' has been explicitly marked unavailable here
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:29: warning: non-sendable type 'Task<NSImage?, Never>' cannot exit main actor-isolated context in call to nonisolated property 'value'; this is an error in the Swift 6 language mode
+273 |         if let p = face.cropPath {
+274 |             let url = model.faceCropDir.appendingPathComponent(p)
+275 |             let img = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+    |                             `- warning: non-sendable type 'Task<NSImage?, Never>' cannot exit main actor-isolated context in call to nonisolated property 'value'; this is an error in the Swift 6 language mode
+276 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+277 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+_Concurrency.Task:2:23: note: generic struct 'Task' does not conform to the 'Sendable' protocol
+1 | @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+2 | @frozen public struct Task<Success, Failure> : Sendable where Success : Sendable, Failure : Error {
+  |                       `- note: generic struct 'Task' does not conform to the 'Sendable' protocol
+3 | }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:280:15: warning: non-sendable type 'NSImage?' of nonisolated property 'value' cannot be sent to main actor-isolated context; this is an error in the Swift 6 language mode
+278 |                 else { return nil }
+279 |                 return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+280 |             }.value
+    |               `- warning: non-sendable type 'NSImage?' of nonisolated property 'value' cannot be sent to main actor-isolated context; this is an error in the Swift 6 language mode
+281 |             if let img { ThumbnailCache.shared.set(img, key, 0); return img }
+282 |         }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+[230/239] Compiling PhotoForgeApp AnalysisJob.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Features.swift:312:21: warning: result of 'try?' is unused
+310 |                         folders[key] = f; parent = f
+311 |                     }
+312 |                     try? db.createAlbum(title: m.path.last ?? "Album", parentID: parent, isFolder: false, sourceID: sid, assetIDs: members)
+    |                     `- warning: result of 'try?' is unused
+313 |                 }
+314 |             }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Features.swift:577:13: warning: result of 'try?' is unused
+575 |             try? db.addFaces([faceID], toPerson: pid)
+576 |         } else {
+577 |             try? db.createPerson(named: n, faceIDs: [faceID], sourceID: activeLibraryID)
+    |             `- warning: result of 'try?' is unused
+578 |         }
+579 |         db.log("edit", "Identified a face as \(n)")
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:133:27: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+131 | 
+132 |     func thumbnail(for key: String, side: Double) async -> NSImage? {
+133 |         await mediaSource.thumbnail(for: key, side: side)
+    |                           `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+134 |     }
+135 | 
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:860:13: warning: result of 'try?' is unused
+858 |             try? db.addFaces(person.faces.map(\.id), toPerson: pid)
+859 |         } else {
+860 |             try? db.createPerson(named: trimmed, faceIDs: person.faces.map(\.id), sourceID: activeLibraryID)
+    |             `- warning: result of 'try?' is unused
+861 |         }
+862 |         db.log("edit", "Named a person (\(person.faces.count) faces confirmed)")
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:887:42: warning: result of 'try?' is unused
+885 |     func assign(_ face: StoredFace, to person: PersonVM) async {
+886 |         if let pid = person.personID { try? db?.addFaces([face.id], toPerson: pid) }
+887 |         else if let name = person.name { try? db?.createPerson(named: name, faceIDs: person.faces.map(\.id) + [face.id], sourceID: activeLibraryID) }
+    |                                          `- warning: result of 'try?' is unused
+888 |         await rebuildPeople()
+889 |     }
+[231/239] Compiling PhotoForgeApp AppModel+Features.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Features.swift:312:21: warning: result of 'try?' is unused
+310 |                         folders[key] = f; parent = f
+311 |                     }
+312 |                     try? db.createAlbum(title: m.path.last ?? "Album", parentID: parent, isFolder: false, sourceID: sid, assetIDs: members)
+    |                     `- warning: result of 'try?' is unused
+313 |                 }
+314 |             }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Features.swift:577:13: warning: result of 'try?' is unused
+575 |             try? db.addFaces([faceID], toPerson: pid)
+576 |         } else {
+577 |             try? db.createPerson(named: n, faceIDs: [faceID], sourceID: activeLibraryID)
+    |             `- warning: result of 'try?' is unused
+578 |         }
+579 |         db.log("edit", "Identified a face as \(n)")
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:133:27: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+131 | 
+132 |     func thumbnail(for key: String, side: Double) async -> NSImage? {
+133 |         await mediaSource.thumbnail(for: key, side: side)
+    |                           `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+134 |     }
+135 | 
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:860:13: warning: result of 'try?' is unused
+858 |             try? db.addFaces(person.faces.map(\.id), toPerson: pid)
+859 |         } else {
+860 |             try? db.createPerson(named: trimmed, faceIDs: person.faces.map(\.id), sourceID: activeLibraryID)
+    |             `- warning: result of 'try?' is unused
+861 |         }
+862 |         db.log("edit", "Named a person (\(person.faces.count) faces confirmed)")
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:887:42: warning: result of 'try?' is unused
+885 |     func assign(_ face: StoredFace, to person: PersonVM) async {
+886 |         if let pid = person.personID { try? db?.addFaces([face.id], toPerson: pid) }
+887 |         else if let name = person.name { try? db?.createPerson(named: name, faceIDs: person.faces.map(\.id) + [face.id], sourceID: activeLibraryID) }
+    |                                          `- warning: result of 'try?' is unused
+888 |         await rebuildPeople()
+889 |     }
+[232/239] Compiling PhotoForgeApp AppModel+Organize.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Features.swift:312:21: warning: result of 'try?' is unused
+310 |                         folders[key] = f; parent = f
+311 |                     }
+312 |                     try? db.createAlbum(title: m.path.last ?? "Album", parentID: parent, isFolder: false, sourceID: sid, assetIDs: members)
+    |                     `- warning: result of 'try?' is unused
+313 |                 }
+314 |             }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Features.swift:577:13: warning: result of 'try?' is unused
+575 |             try? db.addFaces([faceID], toPerson: pid)
+576 |         } else {
+577 |             try? db.createPerson(named: n, faceIDs: [faceID], sourceID: activeLibraryID)
+    |             `- warning: result of 'try?' is unused
+578 |         }
+579 |         db.log("edit", "Identified a face as \(n)")
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:133:27: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+131 | 
+132 |     func thumbnail(for key: String, side: Double) async -> NSImage? {
+133 |         await mediaSource.thumbnail(for: key, side: side)
+    |                           `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+134 |     }
+135 | 
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:860:13: warning: result of 'try?' is unused
+858 |             try? db.addFaces(person.faces.map(\.id), toPerson: pid)
+859 |         } else {
+860 |             try? db.createPerson(named: trimmed, faceIDs: person.faces.map(\.id), sourceID: activeLibraryID)
+    |             `- warning: result of 'try?' is unused
+861 |         }
+862 |         db.log("edit", "Named a person (\(person.faces.count) faces confirmed)")
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:887:42: warning: result of 'try?' is unused
+885 |     func assign(_ face: StoredFace, to person: PersonVM) async {
+886 |         if let pid = person.personID { try? db?.addFaces([face.id], toPerson: pid) }
+887 |         else if let name = person.name { try? db?.createPerson(named: name, faceIDs: person.faces.map(\.id) + [face.id], sourceID: activeLibraryID) }
+    |                                          `- warning: result of 'try?' is unused
+888 |         await rebuildPeople()
+889 |     }
+[233/239] Compiling PhotoForgeApp AppModel.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Features.swift:312:21: warning: result of 'try?' is unused
+310 |                         folders[key] = f; parent = f
+311 |                     }
+312 |                     try? db.createAlbum(title: m.path.last ?? "Album", parentID: parent, isFolder: false, sourceID: sid, assetIDs: members)
+    |                     `- warning: result of 'try?' is unused
+313 |                 }
+314 |             }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Features.swift:577:13: warning: result of 'try?' is unused
+575 |             try? db.addFaces([faceID], toPerson: pid)
+576 |         } else {
+577 |             try? db.createPerson(named: n, faceIDs: [faceID], sourceID: activeLibraryID)
+    |             `- warning: result of 'try?' is unused
+578 |         }
+579 |         db.log("edit", "Identified a face as \(n)")
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:133:27: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+131 | 
+132 |     func thumbnail(for key: String, side: Double) async -> NSImage? {
+133 |         await mediaSource.thumbnail(for: key, side: side)
+    |                           `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+134 |     }
+135 | 
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:860:13: warning: result of 'try?' is unused
+858 |             try? db.addFaces(person.faces.map(\.id), toPerson: pid)
+859 |         } else {
+860 |             try? db.createPerson(named: trimmed, faceIDs: person.faces.map(\.id), sourceID: activeLibraryID)
+    |             `- warning: result of 'try?' is unused
+861 |         }
+862 |         db.log("edit", "Named a person (\(person.faces.count) faces confirmed)")
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:887:42: warning: result of 'try?' is unused
+885 |     func assign(_ face: StoredFace, to person: PersonVM) async {
+886 |         if let pid = person.personID { try? db?.addFaces([face.id], toPerson: pid) }
+887 |         else if let name = person.name { try? db?.createPerson(named: name, faceIDs: person.faces.map(\.id) + [face.id], sourceID: activeLibraryID) }
+    |                                          `- warning: result of 'try?' is unused
+888 |         await rebuildPeople()
+889 |     }
+[234/239] Compiling PhotoForgeApp DuplicatesViews.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Features.swift:312:21: warning: result of 'try?' is unused
+310 |                         folders[key] = f; parent = f
+311 |                     }
+312 |                     try? db.createAlbum(title: m.path.last ?? "Album", parentID: parent, isFolder: false, sourceID: sid, assetIDs: members)
+    |                     `- warning: result of 'try?' is unused
+313 |                 }
+314 |             }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Features.swift:577:13: warning: result of 'try?' is unused
+575 |             try? db.addFaces([faceID], toPerson: pid)
+576 |         } else {
+577 |             try? db.createPerson(named: n, faceIDs: [faceID], sourceID: activeLibraryID)
+    |             `- warning: result of 'try?' is unused
+578 |         }
+579 |         db.log("edit", "Identified a face as \(n)")
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:133:27: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+131 | 
+132 |     func thumbnail(for key: String, side: Double) async -> NSImage? {
+133 |         await mediaSource.thumbnail(for: key, side: side)
+    |                           `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+134 |     }
+135 | 
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:860:13: warning: result of 'try?' is unused
+858 |             try? db.addFaces(person.faces.map(\.id), toPerson: pid)
+859 |         } else {
+860 |             try? db.createPerson(named: trimmed, faceIDs: person.faces.map(\.id), sourceID: activeLibraryID)
+    |             `- warning: result of 'try?' is unused
+861 |         }
+862 |         db.log("edit", "Named a person (\(person.faces.count) faces confirmed)")
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:887:42: warning: result of 'try?' is unused
+885 |     func assign(_ face: StoredFace, to person: PersonVM) async {
+886 |         if let pid = person.personID { try? db?.addFaces([face.id], toPerson: pid) }
+887 |         else if let name = person.name { try? db?.createPerson(named: name, faceIDs: person.faces.map(\.id) + [face.id], sourceID: activeLibraryID) }
+    |                                          `- warning: result of 'try?' is unused
+888 |         await rebuildPeople()
+889 |     }
+[235/239] Compiling PhotoForgeApp EditorView.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Features.swift:312:21: warning: result of 'try?' is unused
+310 |                         folders[key] = f; parent = f
+311 |                     }
+312 |                     try? db.createAlbum(title: m.path.last ?? "Album", parentID: parent, isFolder: false, sourceID: sid, assetIDs: members)
+    |                     `- warning: result of 'try?' is unused
+313 |                 }
+314 |             }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Features.swift:577:13: warning: result of 'try?' is unused
+575 |             try? db.addFaces([faceID], toPerson: pid)
+576 |         } else {
+577 |             try? db.createPerson(named: n, faceIDs: [faceID], sourceID: activeLibraryID)
+    |             `- warning: result of 'try?' is unused
+578 |         }
+579 |         db.log("edit", "Identified a face as \(n)")
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:133:27: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+131 | 
+132 |     func thumbnail(for key: String, side: Double) async -> NSImage? {
+133 |         await mediaSource.thumbnail(for: key, side: side)
+    |                           `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+134 |     }
+135 | 
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:860:13: warning: result of 'try?' is unused
+858 |             try? db.addFaces(person.faces.map(\.id), toPerson: pid)
+859 |         } else {
+860 |             try? db.createPerson(named: trimmed, faceIDs: person.faces.map(\.id), sourceID: activeLibraryID)
+    |             `- warning: result of 'try?' is unused
+861 |         }
+862 |         db.log("edit", "Named a person (\(person.faces.count) faces confirmed)")
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:887:42: warning: result of 'try?' is unused
+885 |     func assign(_ face: StoredFace, to person: PersonVM) async {
+886 |         if let pid = person.personID { try? db?.addFaces([face.id], toPerson: pid) }
+887 |         else if let name = person.name { try? db?.createPerson(named: name, faceIDs: person.faces.map(\.id) + [face.id], sourceID: activeLibraryID) }
+    |                                          `- warning: result of 'try?' is unused
+888 |         await rebuildPeople()
+889 |     }
+[236/239] Compiling PhotoForgeApp FaceCalibrationRun.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Features.swift:312:21: warning: result of 'try?' is unused
+310 |                         folders[key] = f; parent = f
+311 |                     }
+312 |                     try? db.createAlbum(title: m.path.last ?? "Album", parentID: parent, isFolder: false, sourceID: sid, assetIDs: members)
+    |                     `- warning: result of 'try?' is unused
+313 |                 }
+314 |             }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Features.swift:577:13: warning: result of 'try?' is unused
+575 |             try? db.addFaces([faceID], toPerson: pid)
+576 |         } else {
+577 |             try? db.createPerson(named: n, faceIDs: [faceID], sourceID: activeLibraryID)
+    |             `- warning: result of 'try?' is unused
+578 |         }
+579 |         db.log("edit", "Identified a face as \(n)")
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:133:27: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+131 | 
+132 |     func thumbnail(for key: String, side: Double) async -> NSImage? {
+133 |         await mediaSource.thumbnail(for: key, side: side)
+    |                           `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+134 |     }
+135 | 
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:860:13: warning: result of 'try?' is unused
+858 |             try? db.addFaces(person.faces.map(\.id), toPerson: pid)
+859 |         } else {
+860 |             try? db.createPerson(named: trimmed, faceIDs: person.faces.map(\.id), sourceID: activeLibraryID)
+    |             `- warning: result of 'try?' is unused
+861 |         }
+862 |         db.log("edit", "Named a person (\(person.faces.count) faces confirmed)")
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:887:42: warning: result of 'try?' is unused
+885 |     func assign(_ face: StoredFace, to person: PersonVM) async {
+886 |         if let pid = person.personID { try? db?.addFaces([face.id], toPerson: pid) }
+887 |         else if let name = person.name { try? db?.createPerson(named: name, faceIDs: person.faces.map(\.id) + [face.id], sourceID: activeLibraryID) }
+    |                                          `- warning: result of 'try?' is unused
+888 |         await rebuildPeople()
+889 |     }
+[237/246] Compiling PhotoForgeApp PhotoForgeApp.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/VideoPlayerView.swift:166:48: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+164 |         Task { @MainActor in
+165 |             position = Double(player.position)
+166 |             timeText = player.time.stringValue ?? ""
+    |                                                `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+167 |             if let len = player.media?.length.stringValue, !len.isEmpty { lengthText = len }
+168 |         }
+[238/246] Compiling PhotoForgeApp SelfTest.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/VideoPlayerView.swift:166:48: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+164 |         Task { @MainActor in
+165 |             position = Double(player.position)
+166 |             timeText = player.time.stringValue ?? ""
+    |                                                `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+167 |             if let len = player.media?.length.stringValue, !len.isEmpty { lengthText = len }
+168 |         }
+[239/246] Compiling PhotoForgeApp SettingsViews.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/VideoPlayerView.swift:166:48: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+164 |         Task { @MainActor in
+165 |             position = Double(player.position)
+166 |             timeText = player.time.stringValue ?? ""
+    |                                                `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+167 |             if let len = player.media?.length.stringValue, !len.isEmpty { lengthText = len }
+168 |         }
+[240/246] Compiling PhotoForgeApp SlideshowView.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/VideoPlayerView.swift:166:48: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+164 |         Task { @MainActor in
+165 |             position = Double(player.position)
+166 |             timeText = player.time.stringValue ?? ""
+    |                                                `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+167 |             if let len = player.media?.length.stringValue, !len.isEmpty { lengthText = len }
+168 |         }
+[241/246] Compiling PhotoForgeApp UpscaleView.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/VideoPlayerView.swift:166:48: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+164 |         Task { @MainActor in
+165 |             position = Double(player.position)
+166 |             timeText = player.time.stringValue ?? ""
+    |                                                `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+167 |             if let len = player.media?.length.stringValue, !len.isEmpty { lengthText = len }
+168 |         }
+[242/246] Compiling PhotoForgeApp VideoPlayerView.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/VideoPlayerView.swift:166:48: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+164 |         Task { @MainActor in
+165 |             position = Double(player.position)
+166 |             timeText = player.time.stringValue ?? ""
+    |                                                `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+167 |             if let len = player.media?.length.stringValue, !len.isEmpty { lengthText = len }
+168 |         }
+[243/246] Compiling PhotoForgeApp WindowSupport.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/VideoPlayerView.swift:166:48: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+164 |         Task { @MainActor in
+165 |             position = Double(player.position)
+166 |             timeText = player.time.stringValue ?? ""
+    |                                                `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+167 |             if let len = player.media?.length.stringValue, !len.isEmpty { lengthText = len }
+168 |         }
+[243/246] Write Objects.LinkFileList
+[244/246] Linking PhotoForgeApp
+[245/246] Applying PhotoForgeApp
+Build complete! (79.64s)

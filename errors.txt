@@ -1,0 +1,15 @@
+    |                                  `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+    |                             `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+    |                             `- warning: non-sendable type 'Task<NSImage?, Never>' cannot exit main actor-isolated context in call to nonisolated property 'value'; this is an error in the Swift 6 language mode
+    |                 `- warning: capture of 'manager' with non-sendable type 'PHCachingImageManager' in a '@Sendable' closure
+    |               `- warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+    |               `- warning: non-sendable type 'NSImage?' of nonisolated property 'value' cannot be sent to main actor-isolated context; this is an error in the Swift 6 language mode
+    | `- warning: add '@preconcurrency' to suppress 'Sendable'-related warnings from module 'Photos'
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/PhotoLibraryService.swift:256:17: warning: capture of 'manager' with non-sendable type 'PHCachingImageManager' in a '@Sendable' closure
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/PhotoLibraryService.swift:284:17: warning: capture of 'manager' with non-sendable type 'PHCachingImageManager' in a '@Sendable' closure
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/PhotoLibraryService.swift:3:1: warning: add '@preconcurrency' to suppress 'Sendable'-related warnings from module 'Photos'
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:29: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:29: warning: non-sendable type 'Task<NSImage?, Never>' cannot exit main actor-isolated context in call to nonisolated property 'value'; this is an error in the Swift 6 language mode
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:275:34: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:280:15: warning: conformance of 'NSImage' to 'Sendable' is unavailable; this is an error in the Swift 6 language mode
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:280:15: warning: non-sendable type 'NSImage?' of nonisolated property 'value' cannot be sent to main actor-isolated context; this is an error in the Swift 6 language mode

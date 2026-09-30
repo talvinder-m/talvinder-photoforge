@@ -1,0 +1,157 @@
+[0/1] Planning build
+Building for debugging...
+[0/10] Write sources
+[0/10] /Users/runner/work/talvinder-photoforge/talvinder-photoforge/.build/arm64-apple-macosx/debug/PhotoForgePackageTests.derived/runner.swift
+[0/10] Write sources
+[8/13] Write swift-version--79AA4F9932D1E87A.txt
+[10/17] Compiling PFEditingTests EditingAndPolicyTests.swift
+[11/17] Emitting module PFEditingTests
+[12/19] Compiling PFPeopleTests ClusteringTests.swift
+[13/19] Emitting module PFPeopleTests
+[14/22] Compiling PFDatabaseTests DatabaseTests.swift
+[15/22] Emitting module PFDatabaseTests
+[16/24] Compiling PFCoreTests AlbumRuleTests.swift
+[17/24] Emitting module PFCoreTests
+[18/24] Compiling PFCoreTests BatchRenameTests.swift
+[19/24] Emitting module PFClassifyTests
+[20/24] Compiling PFClassifyTests ClassificationRuleTests.swift
+[21/24] Emitting module PFSimilarityTests
+[22/24] Compiling PFSimilarityTests SimilarityTests.swift
+[23/26] Emitting module PhotoForgePackageTests
+[24/26] Compiling PhotoForgePackageTests runner.swift
+[24/26] Write Objects.LinkFileList
+[25/26] Linking PhotoForgePackageTests
+Build complete! (8.45s)
+Test Suite 'All tests' started at 2026-09-30 07:33:49.119.
+Test Suite 'All tests' passed at 2026-09-30 07:33:49.121.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.003) seconds
+◇ Test run started.
+↳ Testing Library Version: 124.4
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Quality metrics" started.
+◇ Suite "Duplicate grouping and best-shot scoring" started.
+◇ Suite "App database" started.
+◇ Suite "Perceptual hashing" started.
+◇ Suite "Batch rename" started.
+◇ Suite "Photo classification rules" started.
+◇ Suite AlbumRuleTests started.
+◇ Suite "Generative edit policy" started.
+◇ Suite "Edit stack" started.
+◇ Suite "Constrained face clustering" started.
+◇ Test sharpBeatsBlurred() started.
+◇ Test noiseEstimateIsCalibrated() started.
+◇ Test notSimilarFeedbackIsRespected() started.
+◇ Test missingFactorsAreNotPenalised() started.
+◇ Test bestShotIsExplained() started.
+◇ Test constraintsRejectBadData() started.
+◇ Test exactAndNearDuplicatesAreSeparateGroups() started.
+◇ Test excludedAssetsNeverAppear() started.
+◇ Test deleteAllFaceDataRemovesEverythingFaceRelated() started.
+◇ Test storageRoundTripPreservesBits() started.
+◇ Test differentScenesAreFarApart() started.
+◇ Test migrationCreatesSchema() started.
+◇ Test bkTreeMatchesBruteForce() started.
+◇ Test patternWithCounterAndDate() started.
+◇ Test dHashDetectsGradientDirection() started.
+◇ Test exposureChangeDoesNotMoveHash() started.
+◇ Test uniquing() started.
+◇ Test unsafeCharactersAndEmptyResults() started.
+◇ Test nameTokenDropsExtension() started.
+◇ Test findReplaceAndPrefix() started.
+◇ Test stems() started.
+◇ Test qrCode() started.
+◇ Test plainPhotoWithASignIsNotADocument() started.
+◇ Test whatsappByNameAndByShape() started.
+◇ Test noDuplicateTableEntries() started.
+◇ Test screenshotFullOfTextIsNotADocument() started.
+◇ Test documentAndReceipt() started.
+◇ Test cameraPhoto() started.
+◇ Test socialMedia() started.
+◇ Test screenshotBySubtypeAndName() started.
+◇ Test peopleTogether() started.
+◇ Test allVersusAny() started.
+◇ Test nameContainsIgnoresCase() started.
+◇ Test personAny() started.
+◇ Test filtersAlwaysApply() started.
+◇ Test tagIgnoresCase() started.
+◇ Test roundTrips() started.
+◇ Test lowQualityFacesGoToReviewNotToAPerson() started.
+◇ Test generativeLayersCarryDisclosure() started.
+◇ Test undoRedoAndRevert() started.
+◇ Test rejectsRecipesFromTheFuture() started.
+◇ Test confirmedPersonsAreStableAndNeverMerged() started.
+◇ Test roundTripsThroughJSON() started.
+◇ Test cannotLinkSeparatesFaces() started.
+◇ Test recoversDistinctPeople() started.
+◇ Test mustLinkKeepsFacesTogether() started.
+◇ Test ordinaryEditsAreUnaffected() started.
+◇ Test neverSexualisesARealPersonEvenWithAdultModeOn() started.
+◇ Test adaptiveThresholdRisesForPoorPairs() started.
+◇ Test clusteringIsDeterministic() started.
+◇ Test minorsAreAHardBlockInEveryPath() started.
+◇ Test lawfulOwnAdultMediaCanBeEditedLocallyWhenEnabled() started.
+◇ Test adultModeOffIsASoftBlock() started.
+✔ Test notSimilarFeedbackIsRespected() passed after 0.363 seconds.
+✔ Test bestShotIsExplained() passed after 0.363 seconds.
+✔ Test missingFactorsAreNotPenalised() passed after 0.363 seconds.
+✔ Test exactAndNearDuplicatesAreSeparateGroups() passed after 0.363 seconds.
+✔ Test constraintsRejectBadData() passed after 0.363 seconds.
+✔ Test excludedAssetsNeverAppear() passed after 0.363 seconds.
+✔ Test sharpBeatsBlurred() passed after 0.363 seconds.
+✔ Test storageRoundTripPreservesBits() passed after 0.363 seconds.
+✔ Test bkTreeMatchesBruteForce() passed after 0.363 seconds.
+✔ Test migrationCreatesSchema() passed after 0.363 seconds.
+✔ Test patternWithCounterAndDate() passed after 0.363 seconds.
+✔ Test dHashDetectsGradientDirection() passed after 0.363 seconds.
+✔ Test noiseEstimateIsCalibrated() passed after 0.364 seconds.
+✔ Test uniquing() passed after 0.363 seconds.
+✔ Test unsafeCharactersAndEmptyResults() passed after 0.363 seconds.
+✔ Test nameTokenDropsExtension() passed after 0.363 seconds.
+✔ Test stems() passed after 0.363 seconds.
+✔ Test findReplaceAndPrefix() passed after 0.363 seconds.
+✔ Test qrCode() passed after 0.363 seconds.
+✔ Test plainPhotoWithASignIsNotADocument() passed after 0.363 seconds.
+✔ Test noDuplicateTableEntries() passed after 0.363 seconds.
+✔ Test whatsappByNameAndByShape() passed after 0.363 seconds.
+✔ Test screenshotFullOfTextIsNotADocument() passed after 0.363 seconds.
+✔ Test documentAndReceipt() passed after 0.363 seconds.
+✔ Test cameraPhoto() passed after 0.363 seconds.
+✔ Test socialMedia() passed after 0.363 seconds.
+✔ Test peopleTogether() passed after 0.363 seconds.
+✔ Test screenshotBySubtypeAndName() passed after 0.363 seconds.
+✔ Test allVersusAny() passed after 0.363 seconds.
+✔ Test personAny() passed after 0.363 seconds.
+✔ Test nameContainsIgnoresCase() passed after 0.363 seconds.
+✔ Test filtersAlwaysApply() passed after 0.363 seconds.
+✔ Test roundTrips() passed after 0.363 seconds.
+✔ Test tagIgnoresCase() passed after 0.363 seconds.
+✔ Test differentScenesAreFarApart() passed after 0.364 seconds.
+✔ Test generativeLayersCarryDisclosure() passed after 0.363 seconds.
+✔ Test undoRedoAndRevert() passed after 0.363 seconds.
+✔ Test rejectsRecipesFromTheFuture() passed after 0.363 seconds.
+✔ Test roundTripsThroughJSON() passed after 0.363 seconds.
+✔ Test lowQualityFacesGoToReviewNotToAPerson() passed after 0.363 seconds.
+✔ Test exposureChangeDoesNotMoveHash() passed after 0.363 seconds.
+✔ Test confirmedPersonsAreStableAndNeverMerged() passed after 0.363 seconds.
+✔ Test ordinaryEditsAreUnaffected() passed after 0.363 seconds.
+✔ Test cannotLinkSeparatesFaces() passed after 0.363 seconds.
+✔ Test neverSexualisesARealPersonEvenWithAdultModeOn() passed after 0.362 seconds.
+✔ Test recoversDistinctPeople() passed after 0.363 seconds.
+✔ Test adaptiveThresholdRisesForPoorPairs() passed after 0.363 seconds.
+✔ Test minorsAreAHardBlockInEveryPath() passed after 0.362 seconds.
+✔ Test lawfulOwnAdultMediaCanBeEditedLocallyWhenEnabled() passed after 0.362 seconds.
+✔ Test adultModeOffIsASoftBlock() passed after 0.362 seconds.
+✔ Suite "Duplicate grouping and best-shot scoring" passed after 0.365 seconds.
+✔ Suite "Quality metrics" passed after 0.365 seconds.
+✔ Suite "Perceptual hashing" passed after 0.365 seconds.
+✔ Suite "Batch rename" passed after 0.365 seconds.
+✔ Suite "Photo classification rules" passed after 0.365 seconds.
+✔ Suite AlbumRuleTests passed after 0.365 seconds.
+✔ Suite "Edit stack" passed after 0.365 seconds.
+✔ Suite "Generative edit policy" passed after 0.365 seconds.
+✔ Test deleteAllFaceDataRemovesEverythingFaceRelated() passed after 0.376 seconds.
+✔ Suite "App database" passed after 0.377 seconds.
+✔ Test mustLinkKeepsFacesTogether() passed after 0.395 seconds.
+✔ Test clusteringIsDeterministic() passed after 0.422 seconds.
+✔ Suite "Constrained face clustering" passed after 0.424 seconds.
+✔ Test run with 53 tests passed after 0.424 seconds.

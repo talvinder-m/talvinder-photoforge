@@ -1,0 +1,9 @@
+SRBENCH: 24 photos
+  ×2:
+    AI Detail (FSRCNN) — recommended PSNR 37.11 dB   sharpness 99% of original   0.04 s/photo
+    AI Strong (Real-ESRGAN) PSNR 27.97 dB   sharpness 578% of original   0.55 s/photo
+    Standard (Lanczos) PSNR 36.51 dB   sharpness 70% of original   0.01 s/photo
+  ×4:
+    AI Detail (FSRCNN) — recommended PSNR 29.42 dB   sharpness 56% of original   0.02 s/photo
+    AI Strong (Real-ESRGAN) PSNR 25.96 dB   sharpness 235% of original   0.56 s/photo
+    Standard (Lanczos) PSNR 28.61 dB   sharpness 26% of original   0.00 s/photo

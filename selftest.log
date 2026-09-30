@@ -1,0 +1,153 @@
+2026-09-30 07:40:56.100 PhotoForge[13278:39219] FBBA: creating VNFaceBBoxAligner from VNFaceDetectorRevision2: VNFaceDetectorRevision2
+IOServiceMatchingfailed for: AppleM2ScalerParavirtDriver
+PhotoForge self-test · Version 15.7.9 (Build 24G830) · arm64
+PASS render synthetic images
+PASS perceptual hashes computed
+PASS pHash: exposure change 0 bits, different scene 36 bits
+PASS quality metrics
+PASS Vision feature print
+     feature-print cosine: same scene 0.998, different 0.938
+PASS feature prints rank the matching scene higher
+PASS Vision face detector runs
+     face model: SFace face-recognition model (OpenCV, Apache-2.0) · Core ML · on-device
+PASS SFace model bundled and loads
+PASS face embedding runs (128-d, |v|=1.0000)
+PASS database end-to-end
+PASS near-duplicate group from real image hashes (["near:[1, 2]"])
+PASS editor adjustments render (640x640, extent (0.0, 0.0, 640.0, 640.0))
+PASS editor crop + straighten + flip (320x320, extent (0.0, 0.0, 320.0, 320.0))
+PASS export jpeg
+PASS export heic
+PASS export png
+PASS export tiff
+PASS edit recipe round-trips
+PASS clusterer runs on real embeddings
+     library kind: photosLibrary; assets: ["pkg:LOCAL-1 local=true url=true", "pkg:CLOUD-2 local=false url=true", "pkg:SHOT-4 local=true url=true"]
+PASS read-only Photos library reader
+     legacy kind: legacyLibrary, 3 photos, 3 with EXIF 2014 dates
+PASS iPhoto-style folder library reader
+     system: 3 photos, 1 iCloud-only, 1 shared · other: 1
+PASS libraries are kept separate in the database
+PASS FSRCNN models bundled
+PASS Real-ESRGAN model bundled
+     FSRCNN ×2: 640x640 in 0.22 s, PSNR vs original 43.45 dB
+PASS upscale fast produces the requested size
+     Real-ESRGAN x4v3: 640x640 in 3.61 s, PSNR vs original 37.44 dB
+PASS upscale best produces the requested size
+     Lanczos: 640x640 in 0.02 s, PSNR vs original 41.16 dB
+PASS upscale standard produces the requested size
+PASS 2K output size keeps aspect ratio (2048×1365)
+     invoice photo → ["document 0.90: A page was detected with 156 characters of text", "receipt 0.95: Mentions “total”, “subtotal”, “gst”, “cgst”"]
+       OCR: 156 chars, page confidence 0.99, labels ["document", "printed_page", "screenshot"]
+PASS photographed invoice → Documents + Receipts (not Camera Photos)
+PASS QR code detected
+PASS ordinary camera photo → Camera Photos only (["camera"])
+     canon: make=Canon model=Canon EOS 80D camera=Optional(true); wa: exif=Optional(true) camera=Optional(false)
+PASS camera metadata and stripped-file detection
+     albums:
+      Bills [album, 1]
+      Trips [folder, 1]
+        Goa [album, 1]
+     iPhoto folders: 2014 [directory, 3] |   05 [directory, 3] |     03 [directory, 3] | 
+PASS albums & folders tree
+PASS slideshow request encodes for its window
+     this Mac: Apple M1 (Virtual) · 3 cores · 7 GB · Apple silicon · GPU Apple Paravirtual device · macOS macOS 15.7.9 · Rosetta false
+     tuned: 4 parallel · OCR accurate · cache 300 MB · compute all · upscaler fast
+PASS machine profile detected
+PASS Apple silicon recognised
+     video: video 320x240 2.00 s, thumbnail true, native true
+PASS video: write, probe, thumbnail, playable
+PASS folders include videos
+     VLC engine: bundled
+PASS VLC engine linked
+     library: 3 items (1 video), 1 duplicate skipped · ["Originals/2021/06/IMG_1.jpg", "Originals/2026/09/IMG_2.jpg", "Originals/2026/09/clip.mp4"]
+     after reopen: 2 items, name Goat Shed 001, albums ["Sheds:1"], trashed true, untracked 0
+PASS PhotoForge Library end-to-end
+     split: apple ["S1", "S2"], Old Mac ["pkg:E1"], key copied true, registry 2, backups 1
+PASS older combined database splits into one per library
+     carried 1 item(s): faces 1, people ["Ravi"], name Ravi at the farm, pHash true
+PASS analysis, faces and people carry over between libraries
+PASS database backups
+PASS API request parsing
+     API: no token 401, wrong 401, list 200, thumbnail 200, original 403
+PASS API tokens and permissions
+     tags ["Strawberries": 3], search 3, smart matched 4, frozen 4 smart=false
+PASS smart albums and tags are stored and matched
+PASS batch rename (["Farm 001", "Farm 002"])
+SELFTEST OK
+== x86_64 slice (Rosetta)
+2026-09-30 07:41:27.809 PhotoForge[13778:40738] FBBA: creating VNFaceBBoxAligner from VNFaceDetectorRevision2: VNFaceDetectorRevision2
+PhotoForge self-test · Version 15.7.9 (Build 24G830) · x86_64
+PASS render synthetic images
+PASS perceptual hashes computed
+PASS pHash: exposure change 0 bits, different scene 36 bits
+PASS quality metrics
+PASS Vision feature print
+     feature-print cosine: same scene 0.998, different 0.938
+PASS feature prints rank the matching scene higher
+PASS Vision face detector runs
+     face model: SFace face-recognition model (OpenCV, Apache-2.0) · Core ML · on-device
+PASS SFace model bundled and loads
+PASS face embedding runs (128-d, |v|=1.0000)
+PASS database end-to-end
+PASS near-duplicate group from real image hashes (["near:[1, 2]"])
+PASS editor adjustments render (640x640, extent (0.0, 0.0, 640.0, 640.0))
+PASS editor crop + straighten + flip (320x320, extent (0.0, 0.0, 320.0, 320.0))
+PASS export jpeg
+PASS export heic
+PASS export png
+PASS export tiff
+PASS edit recipe round-trips
+PASS clusterer runs on real embeddings
+     library kind: photosLibrary; assets: ["pkg:LOCAL-1 local=true url=true", "pkg:CLOUD-2 local=false url=true", "pkg:SHOT-4 local=true url=true"]
+PASS read-only Photos library reader
+     legacy kind: legacyLibrary, 3 photos, 3 with EXIF 2014 dates
+PASS iPhoto-style folder library reader
+     system: 3 photos, 1 iCloud-only, 1 shared · other: 1
+PASS libraries are kept separate in the database
+PASS FSRCNN models bundled
+PASS Real-ESRGAN model bundled
+     FSRCNN ×2: 640x640 in 0.39 s, PSNR vs original 43.45 dB
+PASS upscale fast produces the requested size
+     Real-ESRGAN x4v3: 640x640 in 27.98 s, PSNR vs original 37.48 dB
+PASS upscale best produces the requested size
+     Lanczos: 640x640 in 0.03 s, PSNR vs original 41.16 dB
+PASS upscale standard produces the requested size
+PASS 2K output size keeps aspect ratio (2048×1365)
+     invoice photo → ["document 0.90: A page was detected with 156 characters of text", "receipt 0.95: Mentions “total”, “subtotal”, “gst”, “cgst”"]
+       OCR: 156 chars, page confidence 0.99, labels ["document", "printed_page", "screenshot"]
+PASS photographed invoice → Documents + Receipts (not Camera Photos)
+PASS QR code detected
+PASS ordinary camera photo → Camera Photos only (["camera"])
+     canon: make=Canon model=Canon EOS 80D camera=Optional(true); wa: exif=Optional(true) camera=Optional(false)
+PASS camera metadata and stripped-file detection
+     albums:
+      Bills [album, 1]
+      Trips [folder, 1]
+        Goa [album, 1]
+     iPhoto folders: 2014 [directory, 3] |   05 [directory, 3] |     03 [directory, 3] | 
+PASS albums & folders tree
+PASS slideshow request encodes for its window
+     this Mac: Apple M1 (Virtual) · 3 cores · 7 GB · Apple silicon · GPU Apple Paravirtual device · macOS macOS 15.7.9 · Rosetta true
+     tuned: 4 parallel · OCR accurate · cache 300 MB · compute all · upscaler fast
+PASS machine profile detected
+     video: video 320x240 2.00 s, thumbnail true, native true
+PASS video: write, probe, thumbnail, playable
+PASS folders include videos
+     VLC engine: bundled
+PASS VLC engine linked
+     library: 3 items (1 video), 1 duplicate skipped · ["Originals/2021/06/IMG_1.jpg", "Originals/2026/09/IMG_2.jpg", "Originals/2026/09/clip.mp4"]
+     after reopen: 2 items, name Goat Shed 001, albums ["Sheds:1"], trashed true, untracked 0
+PASS PhotoForge Library end-to-end
+     split: apple ["S1", "S2"], Old Mac ["pkg:E1"], key copied true, registry 2, backups 1
+PASS older combined database splits into one per library
+     carried 1 item(s): faces 1, people ["Ravi"], name Ravi at the farm, pHash true
+PASS analysis, faces and people carry over between libraries
+PASS database backups
+PASS API request parsing
+     API: no token 401, wrong 401, list 200, thumbnail 200, original 403
+PASS API tokens and permissions
+     tags ["Strawberries": 3], search 3, smart matched 4, frozen 4 smart=false
+PASS smart albums and tags are stored and matched
+PASS batch rename (["Farm 001", "Farm 002"])
+SELFTEST OK
