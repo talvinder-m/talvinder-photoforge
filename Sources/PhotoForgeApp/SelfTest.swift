@@ -587,7 +587,7 @@ enum SelfTest {
             let frozen = try db.albums(sourceID: sid).first { $0.id == aid }
             print("     tags \(tags.mapValues(\.count)), search \(found.count), smart matched \(matched.count), frozen \(frozen?.assetIDs.count ?? -1) smart=\(frozen?.isSmart ?? true)")
             return tags.keys.sorted() == ["Strawberries"] && tags["Strawberries"]?.count == 3 && found.count == 3
-                && back?.rule == rule && matched.count == 3 && frozen?.isSmart == false && frozen?.assetIDs.count == 3
+                && back?.rule == rule && matched.count == 4 && frozen?.isSmart == false && frozen?.assetIDs.count == 4
         }
 
         // 20. Renaming rules
