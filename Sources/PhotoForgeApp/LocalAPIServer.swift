@@ -243,7 +243,10 @@ final class LocalAPIServer {
             case "albums":
                 if let e = need(.read) { return e }
                 return .json(model.albums.map { ["id": $0.id, "title": $0.title, "parent": $0.parentID ?? NSNull(),
-                                                 "isFolder": $0.isFolder, "count": $0.assetIDs.count] as [String: Any] })
+                                                 "isFolder": $0.isFolder, "smart": $0.isSmart, "count": model.members(of: $0).count] as [String: Any] })
+            case "tags":
+                if let e = need(.read) { return e }
+                return .json(model.tagNames.map { ["name": $0, "count": model.userTags[$0]?.count ?? 0] as [String: Any] })
             case "assets":
                 if rest.count == 1 {
                     if let e = need(.read) { return e }
@@ -254,7 +257,8 @@ final class LocalAPIServer {
                     if let e = need(.read) { return e }
                     var item = Self.item(asset, categories: model.categoryMembers)
                     item["people"] = model.faces(in: id).compactMap { model.person(forFace: $0.id)?.name }
-                    item["albums"] = model.albums.filter { $0.assetIDs.contains(id) }.map(\.id)
+                    item["albums"] = model.albumsContaining(id).map(\.id)
+                    item["tags"] = model.tags(of: id)
                     item["text"] = (try? db.ocrText(assetID: id)) ?? NSNull()
                     return .json(item)
                 }
@@ -288,6 +292,7 @@ final class LocalAPIServer {
         var rows = model.assets
         if let t = q["type"], ["image", "video"].contains(t) { rows = rows.filter { $0.mediaType == t } }
         if let c = q["category"], let cat = PhotoCategory(rawValue: c) { let ids = model.categoryMembers[cat] ?? []; rows = rows.filter { ids.contains($0.id) } }
+        if let t = q["tag"] { let ids = model.userTags.first { $0.key.caseInsensitiveCompare(t) == .orderedSame }?.value ?? []; rows = rows.filter { ids.contains($0.id) } }
         if let a = q["album"], let aid = Int64(a) { let ids = model.albumAssetIDs(aid); rows = rows.filter { ids.contains($0.id) } }
         if let p = q["person"], let pid = Int64(p), let person = model.people.first(where: { $0.personID == pid }) {
             let ids = Set(person.faces.map(\.assetID)); rows = rows.filter { ids.contains($0.id) }

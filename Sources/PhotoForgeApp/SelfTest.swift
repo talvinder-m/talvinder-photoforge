@@ -559,6 +559,37 @@ enum SelfTest {
             check(s1 == 401 && s2 == 401 && s3 == 200 && s4 == 200 && s5 == 403, "API tokens and permissions")
         }
 
+        // 21. Smart albums and tags
+        attempt("smart albums and tags are stored and matched") {
+            let db = try AppDatabase.open(at: dir.appendingPathComponent("smart.sqlite"))
+            let sid = try db.systemSourceID()
+            let now = Date()
+            let names = ["Farm Visit 001", "Farm Visit 002", "Goat shed", "IMG_9.JPG"]
+            try db.upsert(names.enumerated().map { i, _ in
+                AssetUpsert(localIdentifier: "S\(i)", mediaType: "image", subtypeMask: 0, creationDate: now, modificationDate: now,
+                            pixelWidth: 10, pixelHeight: 10, duration: 0, favorite: false, hidden: false, burstIdentifier: nil)
+            }, sourceID: sid, scanStamp: now)
+            let rows = try db.assets().sorted { $0.localIdentifier < $1.localIdentifier }
+            try db.setTitles(zip(rows, names).map { (assetID: $0.0.id, title: $0.1) })
+            try db.addTag("Strawberry", to: [rows[1].id, rows[2].id])
+            try db.addTag("strawberry", to: [rows[3].id])                  // same tag, other case
+            try db.addTag("Shed", to: [rows[2].id])
+            try db.removeTag("Shed", from: [rows[2].id])
+            try db.renameTag("Strawberry", to: "Strawberries")
+            let tags = try db.userTags(sourceID: sid)
+            let found = try db.searchText("strawber", sourceID: sid)
+            var rule = AlbumRule(); rule.nameContains = "farm"; rule.tags = ["strawberries"]; rule.match = .any
+            let aid = try db.createAlbum(title: "Farm", parentID: nil, isFolder: false, sourceID: sid, rule: rule)
+            let back = try db.albums(sourceID: sid).first { $0.id == aid }
+            let items = try db.assets().map { AlbumRule.Item(id: $0.id, name: $0.displayName, isVideo: false, favorite: false) }
+            let matched = back?.rule?.evaluate(items, AlbumRule.Context(tagAssets: tags)) ?? []
+            try db.setAlbumRule(aid, nil, freeze: Array(matched))
+            let frozen = try db.albums(sourceID: sid).first { $0.id == aid }
+            print("     tags \(tags.mapValues(\.count)), search \(found.count), smart matched \(matched.count), frozen \(frozen?.assetIDs.count ?? -1) smart=\(frozen?.isSmart ?? true)")
+            return tags.keys.sorted() == ["Strawberries"] && tags["Strawberries"]?.count == 3 && found.count == 3
+                && back?.rule == rule && matched.count == 3 && frozen?.isSmart == false && frozen?.assetIDs.count == 3
+        }
+
         // 20. Renaming rules
         do {
             var r = BatchRename(); r.mode = .pattern; r.pattern = "Farm {n}"; r.start = 1; r.padding = 3

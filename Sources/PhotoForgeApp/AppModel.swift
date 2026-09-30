@@ -19,6 +19,7 @@ enum SidebarItem: Hashable {
     case category(PhotoCategory)
     case folder(String)
     case album(Int64)
+    case tag(String)
     case duplicates(DupSection)
     case dashboard, allPhotos, videos, favorites, screenshots, blurry, iCloudOnly, sharedAlbums
     case removalQueue, people
@@ -91,6 +92,8 @@ final class AppModel {
     var status = IndexStatus()
     var syncing = false
     var duplicateGroups: [DuplicateGroupVM] = []
+    /// Every group found by the last full scan, before hiding ones already dealt with.
+    private var allDuplicateGroups: [DuplicateGroupVM] = []
     var removalQueue: [(assetID: Int64, reason: String)] = []
     var people: [PersonVM] = []
     var reviewFaces: [ReviewFaceVM] = []
@@ -159,6 +162,10 @@ final class AppModel {
 
     // PhotoForge albums (custom groups) of the open library
     var albums: [PFAlbum] = [] { didSet { dataVersion &+= 1 } }
+    /// Tags you added → items.
+    var userTags: [String: Set<Int64>] = [:] { didSet { dataVersion &+= 1 } }
+    /// Current members of each smart album (recomputed when photos, people or tags change).
+    var smartAlbumMembers: [Int64: Set<Int64>] = [:]
     var albumTree: [AlbumNode] = []
 
     // Other apps' access
@@ -262,12 +269,14 @@ final class AppModel {
                 banner = "Face grouping was upgraded to a more accurate model. Run Analyze Photos to rebuild People."
             }
             ThumbnailCache.shared.removeAll()
-            assets = []; assetsByID = [:]; duplicateGroups = []; people = []; reviewFaces = []; storedFaces = []
+            assets = []; assetsByID = [:]; duplicateGroups = []; allDuplicateGroups = []; people = []; reviewFaces = []; storedFaces = []
+            userTags = [:]; smartAlbumMembers = [:]
             categoryMembers = [:]; folderTree = []; folderIndex = [:]; albums = []
             if selection == .iCloudOnly || selection == .sharedAlbums { selection = .allPhotos }
             if case .folder = selection { selection = .allPhotos }
             if case .album = selection { selection = .allPhotos }
-            await reloadFromDatabase()
+            if case .tag = selection { selection = .allPhotos }
+            await reloadFromDatabase(full: true)
             refreshLibraries()
             if entry.kind != .applePhotos || access == .authorized || access == .limited { await syncLibrary() }
             return true
@@ -359,7 +368,10 @@ final class AppModel {
 
     // MARK: Library sync (metadata stage)
 
-    func syncLibrary() async {
+    /// Brings the database up to date with the library. For Apple Photos this reads only
+    /// what changed since last time (Photos' change history), so deleting a photo or a change
+    /// made in Photos doesn't re-read the whole library. `full` forces a complete re-read.
+    func syncLibrary(full: Bool = false) async {
         guard let db, !syncing else { return }
         if let id = activeLibraryID, let src = externalSource {
             await syncFileLibrary(db: db, id: id, source: src)
@@ -372,25 +384,40 @@ final class AppModel {
         guard access == .authorized || access == .limited else { return }
         syncing = true
         defer { syncing = false }
-        let stamp = Date()
+        let svc = photos
+        let tokenKey = "photosChangeToken"
+        let saved = db.setting(tokenKey).flatMap { Data(base64Encoded: $0) }
+        let delta = await Task.detached(priority: .userInitiated) { svc.fetchDelta(sinceArchivedToken: full ? nil : saved) }.value
         do {
             let source = try db.systemSourceID()
+            if !full, saved != nil, !delta.requiresFullReconcile {
+                let changed = Array(delta.inserted.union(delta.updated)), deleted = Array(delta.deleted)
+                if changed.isEmpty && deleted.isEmpty {
+                    if let t = delta.newTokenArchive { db.setSetting(tokenKey, t.base64EncodedString()) }
+                    return
+                }
+                let stamp = Date()
+                try await Task.detached(priority: .userInitiated) {
+                    let snaps = svc.snapshots(for: changed, includeLocation: false)
+                    try db.upsert(snaps.map(Self.upsert), sourceID: source, scanStamp: stamp)
+                    try db.markDeleted(localIdentifiers: deleted)
+                }.value
+                if let t = delta.newTokenArchive { db.setSetting(tokenKey, t.base64EncodedString()) }
+                db.log("scan", "Library updated: \(changed.count) new or changed, \(deleted.count) removed")
+                refreshLibraries()
+                await reloadFromDatabase()
+                return
+            }
+            let stamp = Date()
             var count = 0
             for try await batch in photos.allAssets(batchSize: 500, includeLocation: false) {
-                let rows = batch.map { a in
-                    AssetUpsert(localIdentifier: a.localIdentifier, mediaType: a.mediaType.rawValue,
-                                subtypeMask: Int(a.subtypeMask), creationDate: a.creationDate,
-                                modificationDate: a.modificationDate, pixelWidth: a.pixelWidth,
-                                pixelHeight: a.pixelHeight, duration: a.duration, favorite: a.isFavorite,
-                                hidden: a.isHidden, burstIdentifier: a.burstIdentifier,
-                                assetSource: a.isShared ? "shared" : "library", filePath: nil,
-                                availability: a.locallyAvailable.map { $0 ? "local" : "cloud_only" })
-                }
+                let rows = batch.map(Self.upsert)
                 try await Task.detached { try db.upsert(rows, sourceID: source, scanStamp: stamp) }.value
                 count += rows.count
                 status.message = "Reading library… \(count.formatted()) items"
             }
-            let removed = try db.markUnseenDeleted(sourceID: source, scanStamp: stamp)
+            let removed = try await Task.detached { try db.markUnseenDeleted(sourceID: source, scanStamp: stamp) }.value
+            if let t = delta.newTokenArchive { db.setSetting(tokenKey, t.base64EncodedString()) }
             db.log("scan", "Library synced: \(count) items\(removed > 0 ? ", \(removed) removed from Photos" : "")", assetCount: count)
             if !status.running { status.message = "" }
             refreshLibraries()
@@ -398,6 +425,16 @@ final class AppModel {
         } catch {
             banner = "Couldn't read the Photos library: \(error.localizedDescription)"
         }
+    }
+
+    nonisolated static func upsert(_ a: AssetSnapshot) -> AssetUpsert {
+        AssetUpsert(localIdentifier: a.localIdentifier, mediaType: a.mediaType.rawValue,
+                    subtypeMask: Int(a.subtypeMask), creationDate: a.creationDate,
+                    modificationDate: a.modificationDate, pixelWidth: a.pixelWidth,
+                    pixelHeight: a.pixelHeight, duration: a.duration, favorite: a.isFavorite,
+                    hidden: a.isHidden, burstIdentifier: a.burstIdentifier,
+                    assetSource: a.isShared ? "shared" : "library", filePath: nil,
+                    availability: a.locallyAvailable.map { $0 ? "local" : "cloud_only" })
     }
 
     private func syncFileLibrary(db: AppDatabase, id: Int64, source: FileLibrarySource) async {
@@ -420,7 +457,7 @@ final class AppModel {
                 try await Task.detached { try db.upsert(part, sourceID: id, scanStamp: stamp) }.value
                 status.message = "Reading “\(source.inspection.name)”… \(min(chunk + 1000, rows.count).formatted()) items"
             }
-            _ = try db.markUnseenDeleted(sourceID: id, scanStamp: stamp)
+            _ = try await Task.detached { try db.markUnseenDeleted(sourceID: id, scanStamp: stamp) }.value
             db.log("scan", "Read \(rows.count) items from “\(source.inspection.name)” (read-only)", assetCount: rows.count)
             status.message = ""
             refreshLibraries()
@@ -431,12 +468,16 @@ final class AppModel {
         }
     }
 
-    func reloadFromDatabase() async {
+    /// Reloads what the app shows from the database. A full reload also regroups duplicates
+    /// and people and re-reads Photos' albums (seconds on a big library); the default light
+    /// reload only refreshes the photo list and tidies the existing groups, which is instant.
+    func reloadFromDatabase(full: Bool = false) async {
         guard let db else { return }
         let sid = activeLibraryID
         let loaded = try? await Task.detached { () -> ([AssetRow], LibraryStats, [(assetID: Int64, reason: String)], [ActivityEntry]) in
             (try db.assets(sourceID: sid), try db.stats(sourceID: sid), try db.removalQueue(sourceID: sid), try db.activity())
         }.value
+        if let t = try? await Task.detached(operation: { try db.userTags(sourceID: sid) }).value { userTags = t }
         if let raw = try? await Task.detached(operation: { try db.categoryMembers(sourceID: sid) }).value {
             var m: [PhotoCategory: Set<Int64>] = [:]
             for (k, v) in raw { if let c = PhotoCategory(rawValue: k) { m[c] = v } }
@@ -449,16 +490,51 @@ final class AppModel {
             removalQueue = q
             activity = act
         }
-        await rebuildDuplicates()
-        await rebuildPeople()
-        await rebuildFolders()
+        if full || allDuplicateGroups.isEmpty && people.isEmpty {
+            await rebuildDuplicates()
+            await rebuildPeople()
+            await rebuildFolders()
+        } else {
+            pruneToExistingAssets()
+            await rebuildFolders(includePhotosAlbums: false)
+        }
         reloadAlbums()
+    }
+
+    /// After deletions, renames or queue changes: drop missing items from the duplicate groups
+    /// and people, refresh their details, and hide groups that are already dealt with.
+    func pruneToExistingAssets() {
+        allDuplicateGroups = allDuplicateGroups.compactMap { g in
+            let members = g.members.compactMap { assetsByID[$0.id] }
+            guard members.count > 1 else { return nil }
+            return DuplicateGroupVM(id: g.id, type: g.type, members: members, scores: g.scores,
+                                    recommended: g.recommended.flatMap { assetsByID[$0] != nil ? $0 : nil },
+                                    explanation: g.explanation, similarity: g.similarity)
+        }
+        applyQueueFilter()
+        if storedFaces.contains(where: { assetsByID[$0.assetID] == nil }) {
+            storedFaces.removeAll { assetsByID[$0.assetID] == nil }
+            people = people.compactMap { p in
+                var p = p
+                p.faces.removeAll { assetsByID[$0.assetID] == nil }
+                return p.faces.isEmpty && p.personID == nil ? nil : p
+            }
+        }
+    }
+
+    /// Hides groups whose extra members are all already queued for removal.
+    func applyQueueFilter() {
+        let queued = Set(removalQueue.map(\.assetID))
+        duplicateGroups = allDuplicateGroups.filter { g in g.members.filter { !queued.contains($0.id) }.count > 1 }
     }
 
     // MARK: Folders & albums
 
-    func rebuildFolders() async {
+    func rebuildFolders(includePhotosAlbums: Bool = true) async {
         var tree: [AlbumNode]
+        if !includePhotosAlbums, isSystemLibrary, !folderTree.isEmpty, !folderTree.contains(where: { $0.id.hasPrefix("date:") }) {
+            return      // Photos' own albums: re-read only on a full reload
+        }
         if let src = externalSource {
             tree = src.albums
         } else if isManagedLibrary {
@@ -572,7 +648,7 @@ final class AppModel {
                 case .failed: banner = "Analysis stopped with an error: \(error ?? "unknown")"
                 default: break
                 }
-                await reloadFromDatabase()
+                await reloadFromDatabase(full: true)
             case .throttled(let reason):
                 status.throttle = reason
             default:
@@ -628,9 +704,8 @@ final class AppModel {
             }
             .sorted { ($0.type.order, -$0.members.count) < ($1.type.order, -$1.members.count) }
         }.value
-        // Hide groups whose extra members are all already queued for removal.
-        let queued = Set(removalQueue.map(\.assetID))
-        duplicateGroups = groups.filter { g in g.members.filter { !queued.contains($0.id) }.count > 1 }
+        allDuplicateGroups = groups
+        applyQueueFilter()
     }
 
     /// "Keep best": everything else in the group goes to the removal queue (not deleted).
@@ -640,22 +715,40 @@ final class AppModel {
         try? db.queueForRemoval(others, reason: "\(group.type.label) of a photo you kept", groupID: group.id)
         for k in keepIDs { try? db.recordDecision("keep", subjectType: "asset", subjectID: k, detail: group.id) }
         db.log("delete", "Queued \(others.count) photo(s) for review before removal", assetCount: others.count)
-        await reloadFromDatabase()
+        await reloadQueue()
     }
 
     func markNotSimilar(_ group: DuplicateGroupVM) async {
-        try? db?.addNotSimilar(group.members.map(\.id))
-        await reloadFromDatabase()
+        let ids = group.members.map(\.id)
+        let db = db
+        await Task.detached { try? db?.addNotSimilar(ids) }.value
+        allDuplicateGroups.removeAll { $0.id == group.id }
+        applyQueueFilter()
     }
 
     func excludeFromScans(_ ids: [Int64]) async {
-        try? db?.excludeFromScans(ids)
-        await reloadFromDatabase()
+        let db = db
+        await Task.detached { try? db?.excludeFromScans(ids) }.value
+        let gone = Set(ids)
+        allDuplicateGroups = allDuplicateGroups.compactMap { g in
+            let m = g.members.filter { !gone.contains($0.id) }
+            return m.count > 1 ? DuplicateGroupVM(id: g.id, type: g.type, members: m, scores: g.scores,
+                                                  recommended: g.recommended, explanation: g.explanation, similarity: g.similarity) : nil
+        }
+        applyQueueFilter()
     }
 
     func restoreFromQueue(_ ids: [Int64]) async {
         try? db?.unqueue(ids)
-        await reloadFromDatabase()
+        await reloadQueue()
+    }
+
+    /// Only the Removal Queue changed: re-read it and re-filter the groups (no rescan).
+    func reloadQueue() async {
+        guard let db else { return }
+        let sid = activeLibraryID
+        if let q = try? await Task.detached(operation: { try db.removalQueue(sourceID: sid) }).value { removalQueue = q }
+        applyQueueFilter()
     }
 
     /// Deletes through PhotoKit (moves to Photos' Recently Deleted). Callers must have shown
@@ -669,21 +762,24 @@ final class AppModel {
         let ids = assetIDs.compactMap { assetsByID[$0]?.localIdentifier }
         guard !ids.isEmpty else { return false }
         if let managed = managedSource {
-            var moved: [Int64] = []
-            for id in assetIDs {
-                guard let key = assetsByID[id]?.localIdentifier else { continue }
-                if (try? managed.moveToTrash(key)) != nil { moved.append(id) }
-            }
-            try? db.markDeleted(assetIDs: moved)
-            try? db.unqueue(moved)
+            let pairs = assetIDs.compactMap { id in assetsByID[id].map { (id, $0.localIdentifier) } }
+            let moved: [Int64] = await Task.detached(priority: .userInitiated) {
+                var moved: [Int64] = []
+                for (id, key) in pairs where (try? managed.moveToTrash(key)) != nil { moved.append(id) }
+                try? db.markDeleted(assetIDs: moved)
+                try? db.unqueue(moved)
+                return moved
+            }.value
             db.log("delete", "Moved \(moved.count) item(s) to the library's Trash", assetCount: moved.count)
             await reloadFromDatabase()
             return !moved.isEmpty
         }
         do {
             try await photos.delete(DeletionConfirmation(localIdentifiers: ids, userAcceptedCount: ids.count))
-            try db.markDeleted(localIdentifiers: ids)
-            try db.unqueue(assetIDs)
+            try await Task.detached {
+                try db.markDeleted(localIdentifiers: ids)
+                try db.unqueue(assetIDs)
+            }.value
             db.log("delete", "Moved \(ids.count) photo(s) to Recently Deleted in Photos", assetCount: ids.count)
             await reloadFromDatabase()
             return true
@@ -750,6 +846,7 @@ final class AppModel {
         var owners: [Int64: String] = [:]
         for p in people { for f in p.faces { owners[f.id] = p.id } }
         faceOwnerIndex = owners
+        if albums.contains(where: \.isSmart) { reloadAlbums() }
     }
 
     func name(_ person: PersonVM, _ newName: String) async {
@@ -808,7 +905,7 @@ final class AppModel {
         guard let db else { return }
         _ = try? await db.deleteAllFaceData(faceCropDirectory: faceCropDir)
         faceAnalysisEnabled = false
-        await reloadFromDatabase()
+        await reloadFromDatabase(full: true)
         banner = "All face data was deleted and face analysis is off. Turn it back on in Settings to rebuild."
     }
 
@@ -817,9 +914,9 @@ final class AppModel {
         await cancelAnalysis()
         try? db.deleteAllAppData()
         try? FileManager.default.removeItem(at: faceCropDir)
-        await reloadFromDatabase()
+        await reloadFromDatabase(full: true)
         banner = "All PhotoForge data was deleted. Your photos in Apple Photos were not touched."
-        await syncLibrary()
+        await syncLibrary(full: true)
     }
 
     func refreshActivity() async {

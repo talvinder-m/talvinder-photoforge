@@ -8,6 +8,13 @@ public struct PFAlbum: Sendable, Identifiable, Hashable {
     public let title: String
     public let isFolder: Bool
     public let assetIDs: [Int64]
+    /// Set for smart albums: membership comes from the rule, not from `assetIDs`.
+    public let rule: AlbumRule?
+    public var isSmart: Bool { rule != nil }
+    public init(id: Int64, parentID: Int64?, title: String, isFolder: Bool, assetIDs: [Int64], rule: AlbumRule? = nil) {
+        self.id = id; self.parentID = parentID; self.title = title; self.isFolder = isFolder
+        self.assetIDs = assetIDs; self.rule = rule
+    }
 }
 
 public struct PersonSummary: Sendable, Identifiable, Hashable {
@@ -51,24 +58,82 @@ public extension AppDatabase {
                 WHERE a.isDeletedInSource = 0 ORDER BY m.addedAt
                 """) { members[r["albumID"], default: []].append(r["assetID"]) }
             return try Row.fetchAll(db, sql: """
-                SELECT id, parentID, title, isFolder FROM pf_albums WHERE (? IS NULL OR sourceLibraryID = ?)
+                SELECT id, parentID, title, isFolder, rule FROM pf_albums WHERE (? IS NULL OR sourceLibraryID = ?)
                 ORDER BY isFolder DESC, title COLLATE NOCASE
                 """, arguments: [sourceID, sourceID]).map {
                 PFAlbum(id: $0["id"], parentID: $0["parentID"], title: $0["title"], isFolder: $0["isFolder"],
-                        assetIDs: members[$0["id"]] ?? [])
+                        assetIDs: members[$0["id"]] ?? [], rule: AlbumRule.decode($0["rule"] as String?))
             }
         }
     }
 
     @discardableResult
-    func createAlbum(title: String, parentID: Int64?, isFolder: Bool, sourceID: Int64?, assetIDs: [Int64] = []) throws -> Int64 {
+    func createAlbum(title: String, parentID: Int64?, isFolder: Bool, sourceID: Int64?, assetIDs: [Int64] = [],
+                     rule: AlbumRule? = nil) throws -> Int64 {
         try writer.write { db in
-            try db.execute(sql: "INSERT INTO pf_albums(sourceLibraryID, parentID, title, isFolder, createdAt) VALUES (?,?,?,?,?)",
-                           arguments: [sourceID, parentID, title, isFolder, Date().timeIntervalSince1970])
+            try db.execute(sql: "INSERT INTO pf_albums(sourceLibraryID, parentID, title, isFolder, createdAt, rule) VALUES (?,?,?,?,?,?)",
+                           arguments: [sourceID, parentID, title, isFolder, Date().timeIntervalSince1970, rule?.encoded()])
             let id = db.lastInsertedRowID
             try Self.addMembers(db, album: id, assets: assetIDs)
             return id
         }
+    }
+
+    /// Changes a smart album's rule, or (nil) turns it into an ordinary album holding `freeze` items.
+    func setAlbumRule(_ id: Int64, _ rule: AlbumRule?, freeze: [Int64] = []) throws {
+        try writer.write { db in
+            try db.execute(sql: "UPDATE pf_albums SET rule = ? WHERE id = ?", arguments: [rule?.encoded(), id])
+            if rule == nil { try Self.addMembers(db, album: id, assets: freeze) }
+        }
+    }
+
+    // MARK: Tags you add (stored in `tags` with source 'user')
+
+    /// Tag → items, for the given library.
+    func userTags(sourceID: Int64?) throws -> [String: Set<Int64>] {
+        try writer.read { db in
+            var out: [String: Set<Int64>] = [:]
+            for r in try Row.fetchAll(db, sql: """
+                SELECT t.label, t.assetID FROM tags t JOIN assets a ON a.id = t.assetID
+                WHERE t.source = 'user' AND a.isDeletedInSource = 0 AND (? IS NULL OR a.sourceLibraryID = ?)
+                """, arguments: [sourceID, sourceID]) {
+                out[r["label"] as String, default: []].insert(r["assetID"] as Int64)
+            }
+            return out
+        }
+    }
+
+    func addTag(_ label: String, to assetIDs: [Int64]) throws {
+        let l = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !l.isEmpty else { return }
+        try writer.write { db in
+            // Reuse the existing spelling if the tag exists in another case.
+            let existing = try String.fetchOne(db, sql: "SELECT label FROM tags WHERE source = 'user' AND label = ? COLLATE NOCASE LIMIT 1", arguments: [l]) ?? l
+            for a in assetIDs {
+                try db.execute(sql: "INSERT OR IGNORE INTO tags(assetID, label, confidence, source) VALUES (?,?,1,'user')", arguments: [a, existing])
+            }
+        }
+    }
+
+    func removeTag(_ label: String, from assetIDs: [Int64]) throws {
+        try writer.write { db in
+            for a in assetIDs {
+                try db.execute(sql: "DELETE FROM tags WHERE source = 'user' AND assetID = ? AND label = ?", arguments: [a, label])
+            }
+        }
+    }
+
+    func renameTag(_ old: String, to new: String) throws {
+        let n = new.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !n.isEmpty, n != old else { return }
+        try writer.write { db in
+            try db.execute(sql: "UPDATE OR IGNORE tags SET label = ? WHERE source = 'user' AND label = ?", arguments: [n, old])
+            try db.execute(sql: "DELETE FROM tags WHERE source = 'user' AND label = ?", arguments: [old])
+        }
+    }
+
+    func deleteTag(_ label: String) throws {
+        try writer.write { db in try db.execute(sql: "DELETE FROM tags WHERE source = 'user' AND label = ?", arguments: [label]) }
     }
 
     func renameAlbum(_ id: Int64, to title: String) throws {

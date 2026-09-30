@@ -29,9 +29,10 @@ Every request needs the header `Authorization: Bearer <token>`.
 | `GET /v1/library` | read | Name, kind and id of the open library, with photo, video, people and album counts |
 | `GET /v1/categories` | read | `[{id, title, count}]` |
 | `GET /v1/people` | read | Named people: `[{id, name, photos}]` |
-| `GET /v1/albums` | read | PhotoForge albums and folders: `[{id, title, parent, isFolder, count}]` |
-| `GET /v1/assets` | read | `{total, offset, limit, items:[…]}`. Filters: `type=image\|video`, `category=<id>`, `album=<id>`, `person=<id>`, `q=<text>` (names and text found in photos), `limit` (≤1000, default 100), `offset` |
-| `GET /v1/assets/{id}` | read | One item, plus `people`, `albums` and recognised `text` |
+| `GET /v1/albums` | read | PhotoForge albums and folders: `[{id, title, parent, isFolder, smart, count}]` |
+| `GET /v1/tags` | read | Your tags: `[{name, count}]` |
+| `GET /v1/assets` | read | `{total, offset, limit, items:[…]}`. Filters: `type=image\|video`, `category=<id>`, `album=<id>`, `tag=<name>`, `person=<id>`, `q=<text>` (names and text found in photos), `limit` (≤1000, default 100), `offset` |
+| `GET /v1/assets/{id}` | read | One item, plus `people`, `albums`, `tags` and recognised `text` |
 | `GET /v1/assets/{id}/thumbnail?size=512` | thumbnails | JPEG, 64–2048 px |
 | `GET /v1/assets/{id}/original` | originals | The original file bytes (photos only) |
 

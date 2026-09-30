@@ -10,6 +10,7 @@ struct PeopleView: View {
     @State private var selectedID: String?
     @State private var showHidden = false
     @State private var showReview = false
+    @State private var smartAlbum: SmartAlbumRequest?
 
     var body: some View {
         @Bindable var model = model
@@ -33,6 +34,7 @@ struct PeopleView: View {
                             ForEach(visible) { p in
                                 PersonCard(person: p, selected: selectedID == p.id)
                                     .onTapGesture { selectedID = p.id; showReview = false }
+                                    .contextMenu { PersonAlbumMenu(person: p) }
                             }
                         }.padding()
                     }
@@ -52,10 +54,16 @@ struct PeopleView: View {
                 }
             }
         }
+        .sheet(item: $smartAlbum) { r in SmartAlbumSheet(request: r).environment(model) }
         .navigationTitle("People")
         .navigationSubtitle("\(model.people.filter { $0.name != nil }.count) named · \(model.people.filter { $0.name == nil }.count) possible")
         .toolbar {
             ToolbarItemGroup {
+                Button { smartAlbum = SmartAlbumRequest() } label: {
+                    Label("Album of People…", systemImage: "rectangle.stack.badge.person.crop")
+                }
+                .help("A smart album of one or more people, e.g. everyone in the family, or two people together")
+                .disabled(model.namedPeople.isEmpty)
                 Button { showReview = true; selectedID = nil } label: {
                     Label("Review Faces (\(model.reviewFaces.count))", systemImage: "questionmark.square.dashed")
                 }
@@ -126,6 +134,8 @@ struct PersonDetailView: View {
                 if person.personID != nil {
                     Button(person.isHidden ? "Unhide" : "Hide") { Task { await model.setHidden(person, !person.isHidden) } }
                 }
+                Menu { PersonAlbumMenu(person: person) } label: { Label("Make Album", systemImage: "rectangle.stack.badge.plus") }
+                    .fixedSize()
                 Button {
                     var seen = Set<Int64>()
                     let rows = person.faces.compactMap { model.assetsByID[$0.assetID] }.filter { seen.insert($0.id).inserted }
@@ -283,5 +293,25 @@ struct FaceThumb: View {
         let img = NSImage(cgImage: crop, size: NSSize(width: crop.width, height: crop.height))
         ThumbnailCache.shared.set(img, key, 0)
         return img
+    }
+}
+
+/// "Make an album of this person" choices.
+struct PersonAlbumMenu: View {
+    @Environment(AppModel.self) private var model
+    let person: PersonVM
+
+    var body: some View {
+        Button("Smart Album of \(person.name ?? "This Person") (keeps up to date)") {
+            if let id = model.createPersonAlbum(person, smart: true) {
+                model.selection = .album(id)
+                model.banner = "Created the smart album “\(person.title)”. New photos of \(person.title) are added automatically."
+            }
+        }
+        .disabled(person.personID == nil || person.name == nil)
+        .help(person.name == nil ? "Name this person first" : "Adds new photos of this person as they're recognised")
+        Button("Album with These \(Set(person.faces.map(\.assetID)).count) Photos") {
+            if let id = model.createPersonAlbum(person, smart: false) { model.selection = .album(id) }
+        }
     }
 }

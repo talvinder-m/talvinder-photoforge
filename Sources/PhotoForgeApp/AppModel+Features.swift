@@ -318,7 +318,7 @@ extension AppModel {
         importStatus = progress
         banner = "Apple Photos copy finished: \(progress.summary)." + (progress.failed > 0 && !opts.downloadFromICloud
             ? " Items only in iCloud were skipped; turn on “Download from iCloud” to include them." : "")
-        await reloadFromDatabase()
+        await reloadFromDatabase(full: true)
         refreshLibraries()
     }
 
@@ -415,16 +415,21 @@ extension AppModel {
     /// name can also be written to the photo's Title in Photos.
     func rename(_ ids: [Int64], to names: [String], renameFiles: Bool, writeToPhotos: Bool) async {
         guard let db, ids.count == names.count else { return }
-        try? db.setTitles(Array(zip(ids, names.map { Optional($0) })).map { (assetID: $0.0, title: $0.1) })
+        let titles = Array(zip(ids, names.map { Optional($0) })).map { (assetID: $0.0, title: $0.1) }
+        await Task.detached(priority: .userInitiated) { try? db.setTitles(titles) }.value
         var fileErrors = 0
         if renameFiles, let managed = managedSource {
-            for (id, name) in zip(ids, names) {
-                guard let key = assetsByID[id]?.localIdentifier else { continue }
-                do {
-                    let rel = try managed.renameFile(key, to: name)
-                    try db.updateFileLocation(assetID: id, filePath: rel, originalFilename: (rel as NSString).lastPathComponent)
-                } catch { fileErrors += 1 }
-            }
+            let work = zip(ids, names).compactMap { id, name in assetsByID[id].map { (id, $0.localIdentifier, name) } }
+            fileErrors += await Task.detached(priority: .userInitiated) { () -> Int in
+                var errors = 0
+                for (id, key, name) in work {
+                    do {
+                        let rel = try managed.renameFile(key, to: name)
+                        try db.updateFileLocation(assetID: id, filePath: rel, originalFilename: (rel as NSString).lastPathComponent)
+                    } catch { errors += 1 }
+                }
+                return errors
+            }.value
         }
         db.log("edit", "Renamed \(ids.count) item(s)\(renameFiles ? " (files too)" : "")")
         await reloadFromDatabase()
@@ -444,25 +449,63 @@ extension AppModel {
 
 extension AppModel {
     func reloadAlbums() {
-        albums = (try? db?.albums(sourceID: activeLibraryID)) ?? []
+        let loaded = (try? db?.albums(sourceID: activeLibraryID)) ?? []
+        // Work out smart albums first, so counts and the sidebar are right.
+        var smart: [Int64: Set<Int64>] = [:]
+        if loaded.contains(where: \.isSmart) {
+            let items = assets.map { AlbumRule.Item(id: $0.id, name: $0.displayName, isVideo: $0.isVideo, favorite: $0.favorite) }
+            let ctx = ruleContext()
+            for a in loaded { if let r = a.rule { smart[a.id] = r.evaluate(items, ctx) } }
+        }
+        smartAlbumMembers = smart
+        albums = loaded
         let byParent = Dictionary(grouping: albums) { $0.parentID ?? -1 }
         func node(_ a: PFAlbum, depth: Int) -> AlbumNode {
             let kids = depth < 12 ? (byParent[a.id] ?? []).map { node($0, depth: depth + 1) } : []
-            let keys = a.assetIDs.compactMap { assetsByID[$0]?.localIdentifier }
-            return AlbumNode(id: "pfa:\(a.id)", title: a.title, kind: a.isFolder ? .folder : .album, children: kids, assetKeys: keys)
+            let keys = members(of: a).compactMap { assetsByID[$0]?.localIdentifier }
+            return AlbumNode(id: "pfa:\(a.id)", title: a.title, kind: a.isFolder ? .folder : (a.isSmart ? .smartAlbum : .album),
+                             children: kids, assetKeys: keys)
         }
         albumTree = (byParent[-1] ?? []).map { node($0, depth: 0) }
+    }
+
+    /// People, tags and categories as a smart album sees them.
+    func ruleContext() -> AlbumRule.Context {
+        var personAssets: [Int64: Set<Int64>] = [:]
+        for p in people { if let pid = p.personID { personAssets[pid, default: []].formUnion(p.faces.map(\.assetID)) } }
+        var cats: [String: Set<Int64>] = [:]
+        for (c, ids) in categoryMembers { cats[c.rawValue] = ids }
+        return AlbumRule.Context(personAssets: personAssets, tagAssets: userTags, categoryAssets: cats)
+    }
+
+    /// Items in one album (smart or not), not counting albums inside it.
+    func members(of a: PFAlbum) -> [Int64] {
+        if a.isSmart {
+            let set = smartAlbumMembers[a.id] ?? []
+            // Newest first, like the rest of the app.
+            return assets.lazy.filter { set.contains($0.id) }.map(\.id)
+        }
+        return a.assetIDs
     }
 
     func albumAssetIDs(_ id: Int64) -> Set<Int64> {
         // A folder shows everything inside it.
         var out = Set<Int64>()
         var stack = [id]
+        var seen = Set<Int64>()
         while let cur = stack.popLast() {
-            if let a = albums.first(where: { $0.id == cur }) { out.formUnion(a.assetIDs) }
+            guard seen.insert(cur).inserted else { continue }
+            if let a = albums.first(where: { $0.id == cur }) {
+                if a.isSmart { out.formUnion(smartAlbumMembers[a.id] ?? []) } else { out.formUnion(a.assetIDs) }
+            }
             stack += albums.filter { $0.parentID == cur }.map(\.id)
         }
         return out
+    }
+
+    /// Albums (smart or not) an item is in.
+    func albumsContaining(_ assetID: Int64) -> [PFAlbum] {
+        albums.filter { !$0.isFolder && ($0.isSmart ? smartAlbumMembers[$0.id]?.contains(assetID) == true : $0.assetIDs.contains(assetID)) }
     }
 
     @discardableResult

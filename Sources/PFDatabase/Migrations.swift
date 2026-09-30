@@ -365,4 +365,10 @@ INSERT INTO settings(key, value) VALUES
     );
     CREATE INDEX idx_album_members_asset ON pf_album_members(assetID);
     """
+
+    /// Smart albums (a rule instead of a member list) and a faster lookup for user tags.
+    static let v0007_smart_albums_tags = """
+    ALTER TABLE pf_albums ADD COLUMN rule TEXT;
+    CREATE INDEX idx_tags_source_label ON tags(source, label);
+    """
 }

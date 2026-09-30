@@ -51,7 +51,7 @@ struct PhotoForgeApp: App {
                     .keyboardShortcut("i", modifiers: [.command, .shift])
                     .disabled(!model.isManagedLibrary)
                 Divider()
-                Button("Rescan Library") { Task { await model.syncLibrary() } }
+                Button("Rescan Library") { Task { await model.syncLibrary(full: true) } }
                     .keyboardShortcut("r", modifiers: [.command, .shift])
                 Button("Analyze Photos") { Task { await model.startAnalysis() } }
                     .keyboardShortcut("a", modifiers: [.command, .shift])
@@ -179,6 +179,7 @@ struct MainView: View {
     @State private var nearExpanded = true
     @State private var dupExpanded = true
     @State private var newAlbum: NewAlbumRequest?
+    @State private var smartAlbum: SmartAlbumRequest?
     @State private var showApplePhotosImport = false
 
     var body: some View {
@@ -205,10 +206,11 @@ struct MainView: View {
                 }
                 Section {
                     OutlineGroup(model.albumTree, children: \.childrenOrNil) { node in
-                        AlbumSidebarRow(node: node, newAlbum: $newAlbum)
+                        AlbumSidebarRow(node: node, newAlbum: $newAlbum, smartAlbum: $smartAlbum)
                     }
                     if model.albumTree.isEmpty {
-                        Text("Select photos, then right-click › Add to Album").font(.caption).foregroundStyle(.secondary)
+                        Text("Select photos and drag them here, or right-click › Add to Album. Use + for a smart album that fills itself (by person, name or tag).")
+                            .font(.caption).foregroundStyle(.secondary)
                     }
                 } header: {
                     HStack {
@@ -216,9 +218,15 @@ struct MainView: View {
                         Spacer()
                         Menu {
                             Button("New Album…") { newAlbum = NewAlbumRequest(isFolder: false) }
+                            Button("New Smart Album…") { smartAlbum = SmartAlbumRequest() }
                             Button("New Folder…") { newAlbum = NewAlbumRequest(isFolder: true) }
                         } label: { Image(systemName: "plus") }
                         .menuStyle(.borderlessButton).fixedSize().help("New album or folder")
+                    }
+                }
+                if !model.tagNames.isEmpty {
+                    Section("Tags") {
+                        ForEach(model.tagNames, id: \.self) { t in TagSidebarRow(tag: t) }
                     }
                 }
                 if !model.folderTree.isEmpty {
@@ -279,6 +287,7 @@ struct MainView: View {
             case .category(let c): PhotoGridView(filter: .category(c))
             case .folder(let id): PhotoGridView(filter: .folder(id))
             case .album(let id): PhotoGridView(filter: .album(id))
+            case .tag(let t): PhotoGridView(filter: .tag(t))
             case .dashboard: DashboardView()
             case .allPhotos: PhotoGridView(filter: .onThisMac)
             case .videos: PhotoGridView(filter: .videos)
@@ -316,6 +325,7 @@ struct MainView: View {
             model.playRequest = nil
         }
         .sheet(item: $newAlbum) { req in NewAlbumSheet(request: req).environment(model) }
+        .sheet(item: $smartAlbum) { req in SmartAlbumSheet(request: req).environment(model) }
         .sheet(isPresented: $showApplePhotosImport) { ApplePhotosImportSheet().environment(model) }
         .onReceive(NotificationCenter.default.publisher(for: .showApplePhotosImport)) { _ in showApplePhotosImport = true }
         .toolbar {
@@ -407,7 +417,7 @@ struct DashboardView: View {
                             }
                             .buttonStyle(.borderedProminent)
                             .disabled(model.status.running)
-                            Button("Rescan Library") { Task { await model.syncLibrary() } }.disabled(model.syncing)
+                            Button("Rescan Library") { Task { await model.syncLibrary(full: true) } }.disabled(model.syncing)
                             Spacer()
                             if st.cloudOnly > 0 && !model.allowICloudDownloads {
                                 Text("\(st.cloudOnly) photos are only in iCloud. Allow downloads in Settings to include them.")

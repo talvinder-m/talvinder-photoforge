@@ -10,6 +10,7 @@ enum GridFilter: Equatable {
     case category(PhotoCategory)
     case folder(String)
     case album(Int64)
+    case tag(String)
     case videos
 }
 
@@ -71,6 +72,9 @@ struct GridActions {
     var newAlbum: ([Int64]) -> Void
     var slideshowFrom: (AssetRow) -> Void
     var queueForRemoval: ([Int64]) -> Void
+    var tag: ([Int64]) -> Void
+    var makeAlbum: (_ title: String, _ ids: [Int64]) -> Void
+    var isSmartAlbum = false
 }
 
 struct PhotoGridView: View {
@@ -87,6 +91,7 @@ struct PhotoGridView: View {
     @State private var searchHits: Set<Int64>? = nil
     @State private var renameRequest: RenameRequest?
     @State private var newAlbum: NewAlbumRequest?
+    @State private var tagRequest: TagRequest?
 
     private var title: String {
         switch filter {
@@ -99,6 +104,7 @@ struct PhotoGridView: View {
         case .category(let c): c.title
         case .folder(let id): model.folderIndex[id]?.title ?? "Folder"
         case .album(let id): model.albums.first { $0.id == id }?.title ?? "Album"
+        case .tag(let t): t
         case .videos: "Videos"
         }
     }
@@ -114,6 +120,7 @@ struct PhotoGridView: View {
         switch filter {
         case .album(let id): memberIDs = model.albumAssetIDs(id)
         case .category(let c): memberIDs = model.categoryMembers[c] ?? []
+        case .tag(let t): memberIDs = model.userTags[t] ?? []
         case .folder(let id): keys = Set(model.folderIndex[id]?.assetKeys ?? [])
         default: break
         }
@@ -134,12 +141,12 @@ struct PhotoGridView: View {
         var rows: [AssetRow]
         switch filter {
         case .videos: rows = all.filter(\.isVideo)
-        case .album, .folder: rows = all.filter { $0.mediaType == "image" || $0.isVideo }
+        case .album, .folder, .tag: rows = all.filter { $0.mediaType == "image" || $0.isVideo }
         default: rows = all.filter { $0.mediaType == "image" }
         }
         switch filter {
         case .videos: break
-        case .album, .category: if let ids = memberIDs { rows = rows.filter { ids.contains($0.id) } }
+        case .album, .category, .tag: if let ids = memberIDs { rows = rows.filter { ids.contains($0.id) } }
         case .folder: if let k = keys { rows = rows.filter { k.contains($0.localIdentifier) } }
         case .onThisMac: rows = rows.filter { !$0.isICloudOnly && !$0.isShared }
         case .favorites: rows = rows.filter(\.favorite)
@@ -210,7 +217,10 @@ struct PhotoGridView: View {
             rename: { ids in renameRequest = RenameRequest(assetIDs: ids) },
             newAlbum: { ids in newAlbum = NewAlbumRequest(isFolder: false, assetIDs: ids) },
             slideshowFrom: { row in model.startSlideshow(rows, title: title, startAt: row.id) },
-            queueForRemoval: { ids in queue(ids) })
+            queueForRemoval: { ids in queue(ids) },
+            tag: { ids in tagRequest = TagRequest(assetIDs: ids) },
+            makeAlbum: { t, ids in newAlbum = NewAlbumRequest(isFolder: false, assetIDs: ids, initialTitle: t) },
+            isSmartAlbum: { if case .album(let id) = filter { return model.albums.first { $0.id == id }?.isSmart ?? false }; return false }())
     }
 
     var body: some View {
@@ -232,6 +242,7 @@ struct PhotoGridView: View {
                             : "\(rows.count.formatted()) \(filter == .videos ? "videos" : "items")")
         .sheet(item: $renameRequest) { r in RenameSheet(request: r).environment(model) }
         .sheet(item: $newAlbum) { r in NewAlbumSheet(request: r).environment(model) }
+        .sheet(item: $tagRequest) { r in TagSheet(request: r).environment(model) }
         .inspector(isPresented: $showPreview) {
             PreviewPane(asset: sel.focused)
                 .inspectorColumnWidth(min: 260, ideal: 340, max: 620)
@@ -257,6 +268,11 @@ struct PhotoGridView: View {
                 .help(sel.ids.isEmpty ? "Rename everything shown here" : "Rename the selected items")
                 .disabled(rows.isEmpty)
                 if !sel.ids.isEmpty {
+                    let ids = rows.filter { sel.ids.contains($0.id) }.map(\.id)
+                    AddToAlbumMenu(ids: ids) { newAlbum = NewAlbumRequest(isFolder: false, assetIDs: ids) }
+                        .help("Put the selected items in an album")
+                    Button { tagRequest = TagRequest(assetIDs: ids) } label: { Label("Tag", systemImage: "tag") }
+                        .help("Tag the selected items")
                     Button { queue(Array(sel.ids)) } label: { Label("Queue for Removal", systemImage: "tray.and.arrow.down") }
                         .help("Add the selected photos to the Removal Queue (nothing is deleted yet)")
                 }
@@ -280,7 +296,7 @@ struct PhotoGridView: View {
         Task {
             try? model.db?.queueForRemoval(ids, reason: "Chosen by you", groupID: nil)
             sel.ids = []
-            await model.reloadFromDatabase()
+            await model.reloadQueue()
         }
     }
 
@@ -291,6 +307,8 @@ struct PhotoGridView: View {
         case .sharedAlbums: "No shared-album photos"
         case .category(let c): searchHits == nil ? "No \(c.title.lowercased()) yet" : "No matches"
         case .folder: searchHits == nil ? "This folder is empty" : "No matches"
+        case .album(let id): model.albums.first { $0.id == id }?.isSmart == true ? "Nothing matches this smart album yet" : "This album is empty"
+        case .tag: "Nothing has this tag"
         default: "No photos here yet"
         }
     }
@@ -329,7 +347,11 @@ struct GridContent: View, Equatable {
                             GridCell(row: row, tileSize: tileSize, showNames: showNames, sel: sel, actions: actions)
                         }
                     } header: {
-                        if !sec.title.isEmpty { SectionHeader(title: sec.title, count: sec.items.count) }
+                        if !sec.title.isEmpty {
+                            SectionHeader(title: sec.title, count: sec.items.count) {
+                                actions.makeAlbum(sec.title, sec.items.map(\.id))
+                            }
+                        }
                     }
                 }
             }
@@ -383,6 +405,14 @@ struct GridCell: View {
             .contentShape(Rectangle())
             .onTapGesture(count: 2) { if row.isVideo { model.playRequest = row } else { model.editingAsset = row } }
             .onTapGesture { sel.select(row, extend: NSEvent.modifierFlags.contains(.command)) }
+            .draggable(AssetDrag.payload(sel.ids.contains(row.id) ? Array(sel.ids) : [row.id])) {
+                let n = sel.ids.contains(row.id) ? sel.ids.count : 1
+                AssetThumbnail(localIdentifier: row.localIdentifier, side: 160)
+                    .frame(width: 80, height: 80).clipShape(RoundedRectangle(cornerRadius: 6))
+                    .overlay(alignment: .topTrailing) {
+                        if n > 1 { Text("\(n)").font(.caption.bold()).padding(4).background(.red, in: Capsule()).foregroundStyle(.white) }
+                    }
+            }
             .contextMenu { menu }
     }
 
@@ -391,7 +421,18 @@ struct GridCell: View {
         if row.isVideo { Button("Play") { model.playRequest = row } } else { Button("Edit…") { model.editingAsset = row } }
         Button(ids.count > 1 ? "Rename \(ids.count) Items…" : "Rename…") { actions.rename(ids) }
         AddToAlbumMenu(ids: ids) { actions.newAlbum(ids) }
-        if case .album(let aid) = actions.filter {
+        Menu("Tags") {
+            Button("Add or Remove Tags…") { actions.tag(ids) }
+            let names = model.tagNames
+            if !names.isEmpty { Divider() }
+            ForEach(names.prefix(15), id: \.self) { t in
+                let all = ids.allSatisfy { model.userTags[t]?.contains($0) == true }
+                Button { Task { all ? await model.removeTag(t, from: ids) : await model.addTag(t, to: ids) } } label: {
+                    if all { Label(t, systemImage: "checkmark") } else { Text(t) }
+                }
+            }
+        }
+        if case .album(let aid) = actions.filter, !actions.isSmartAlbum {
             Button("Remove from Album") { model.removeFromAlbum(aid, ids) }
         }
         Divider()
@@ -419,11 +460,17 @@ struct GridCell: View {
 struct SectionHeader: View {
     let title: String
     let count: Int
+    var makeAlbum: (() -> Void)? = nil
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             Text(title).font(.title3.bold())
             Text("\(count.formatted())").font(.callout).foregroundStyle(.secondary)
             Spacer()
+            if let makeAlbum {
+                Button(action: makeAlbum) { Label("Make Album", systemImage: "rectangle.stack.badge.plus") }
+                    .buttonStyle(.borderless).font(.callout)
+                    .help("Put these \(count) items in a new album called “\(title)”")
+            }
         }
         .padding(.vertical, 8)
         .padding(.horizontal, 4)
@@ -561,13 +608,14 @@ struct PreviewPane: View {
                     }
                     .font(.callout)
                     CategoryChips(asset: a)
+                    AssetTagsRow(asset: a)
                     let people = model.people.filter { p in p.faces.contains { $0.assetID == a.id } }
                     if !people.isEmpty {
                         Divider()
                         Text("People").font(.headline)
                         ForEach(people) { p in Label(p.title, systemImage: "person.crop.circle") }
                     }
-                    let inAlbums = model.albums.filter { $0.assetIDs.contains(a.id) }
+                    let inAlbums = model.albumsContaining(a.id)
                     if !inAlbums.isEmpty {
                         Divider()
                         Text("Albums").font(.headline)
@@ -646,5 +694,38 @@ struct CategoryChips: View {
             }
         }
         .task(id: "\(asset.id)-\(inCats.count)") { details = model.categoryDetails(asset.id) }
+    }
+}
+
+/// Tags on one item in the preview pane: remove with ×, add by typing.
+struct AssetTagsRow: View {
+    @Environment(AppModel.self) private var model
+    let asset: AssetRow
+    @State private var text = ""
+
+    var body: some View {
+        let tags = model.tags(of: asset.id)
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Tags").font(.headline)
+            if !tags.isEmpty {
+                FlowLayout(spacing: 6) {
+                    ForEach(tags, id: \.self) { t in
+                        HStack(spacing: 3) {
+                            Button(t) { model.selection = .tag(t) }.buttonStyle(.plain)
+                            Button { Task { await model.removeTag(t, from: [asset.id]) } } label: { Image(systemName: "xmark.circle.fill") }
+                                .buttonStyle(.plain).foregroundStyle(.secondary).help("Remove this tag")
+                        }
+                        .font(.callout).padding(.horizontal, 8).padding(.vertical, 3)
+                        .background(Color.accentColor.opacity(0.15), in: Capsule())
+                    }
+                }
+            }
+            TextField("Add a tag", text: $text)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit {
+                    let t = text; text = ""
+                    Task { await model.addTag(t, to: [asset.id]) }
+                }
+        }
     }
 }

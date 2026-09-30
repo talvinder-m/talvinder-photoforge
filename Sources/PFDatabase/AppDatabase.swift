@@ -90,6 +90,9 @@ public final class AppDatabase: Sendable {
         m.registerMigration("0006_names_albums_manual_faces") { db in
             try db.execute(sql: Migrations.v0006_names_albums)
         }
+        m.registerMigration("0007_smart_albums_tags") { db in
+            try db.execute(sql: Migrations.v0007_smart_albums_tags)
+        }
         return m
     }
 

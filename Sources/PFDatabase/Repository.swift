@@ -538,6 +538,10 @@ public extension AppDatabase {
                 SELECT id FROM assets WHERE (title LIKE ?1 OR originalFilename LIKE ?1 OR photoKitLocalIdentifier LIKE ?1)
                   AND (?2 IS NULL OR sourceLibraryID = ?2)
                 """, arguments: [like, sourceID]))
+            ids.formUnion(try Int64.fetchAll(db, sql: """
+                SELECT t.assetID FROM tags t JOIN assets a ON a.id = t.assetID
+                WHERE t.source = 'user' AND t.label LIKE ?1 AND (?2 IS NULL OR a.sourceLibraryID = ?2)
+                """, arguments: [like, sourceID]))
             return ids
         }
     }
