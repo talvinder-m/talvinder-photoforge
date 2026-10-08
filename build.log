@@ -1,0 +1,1186 @@
+Fetching https://github.com/groue/GRDB.swift.git
+[1/114057] Fetching grdb.swift
+Fetched https://github.com/groue/GRDB.swift.git from cache (12.50s)
+Computing version for https://github.com/groue/GRDB.swift.git
+Computed https://github.com/groue/GRDB.swift.git at 7.11.1 (13.48s)
+Creating working copy for https://github.com/groue/GRDB.swift.git
+Working copy of https://github.com/groue/GRDB.swift.git resolved at 7.11.1
+Building for debugging...
+[0/20] Write sources
+[6/20] Write PhotoForgeApp-entitlement.plist
+[6/20] Write sources
+[8/20] Copying PrivacyInfo.xcprivacy
+[13/20] Write sources
+[14/20] Copying Info.plist
+[15/20] Copying VLCKit.framework
+[16/20] Write swift-version--79AA4F9932D1E87A.txt
+[18/73] Compiling PFCore Models.swift
+[19/73] Compiling GRDB Configuration.swift
+[20/73] Compiling GRDB Cursor.swift
+[21/73] Emitting module PFCore
+[22/74] Compiling PFCore Offload.swift
+[23/81] Compiling PFSimilarity PerceptualHash.swift
+[24/81] Emitting module PFSimilarity
+[25/81] Compiling PFSimilarity DuplicateScoring.swift
+[26/82] Compiling PFSimilarity QualityMetrics.swift
+[27/84] Emitting module PFSafety
+[28/84] Compiling PFSafety GenerativeEditPolicy.swift
+[29/87] Compiling GRDB FetchRequest.swift
+[30/87] Compiling GRDB Row.swift
+[31/87] Compiling GRDB RowAdapter.swift
+[32/87] Compiling GRDB RowDecodingError.swift
+[33/87] Compiling GRDB SQL.swift
+[34/87] Compiling GRDB SQLInterpolation.swift
+[35/87] Compiling GRDB SQLRequest.swift
+[36/87] Compiling GRDB SchedulingWatchdog.swift
+[37/87] Compiling GRDB SerializedDatabase.swift
+[38/87] Compiling GRDB Statement.swift
+[39/87] Compiling GRDB StatementAuthorizer.swift
+[40/87] Compiling GRDB StatementColumnConvertible.swift
+[41/87] Compiling GRDB CGFloat.swift
+[42/87] Compiling GRDB Data.swift
+[43/87] Compiling GRDB DatabaseDateComponents.swift
+[44/87] Compiling GRDB DatabaseValueConvertible+ReferenceConvertible.swift
+[45/87] Compiling GRDB Date.swift
+[46/87] Compiling GRDB Decimal.swift
+[47/87] Compiling GRDB NSData.swift
+[48/87] Compiling GRDB NSNull.swift
+[49/87] Compiling GRDB NSNumber.swift
+[50/87] Compiling GRDB NSString.swift
+[51/87] Compiling GRDB SQLiteDateParser.swift
+[52/87] Compiling GRDB URL.swift
+[53/87] Compiling PFVision EmbeddingPipeline.swift
+[54/87] Compiling PFVision FaceDetector.swift
+[55/87] Compiling GRDB Database+SQLCipher.swift
+[56/87] Compiling GRDB Database+Schema.swift
+[57/87] Compiling GRDB Database+Statements.swift
+[58/87] Compiling GRDB Database.swift
+[59/87] Compiling GRDB DatabaseBackupProgress.swift
+[60/87] Compiling GRDB DatabaseCollation.swift
+[61/87] Compiling GRDB DatabaseError.swift
+[62/87] Compiling GRDB DatabaseFunction.swift
+[63/87] Compiling GRDB DatabasePool.swift
+[64/87] Compiling GRDB DatabasePublishers.swift
+[65/87] Compiling GRDB DatabaseQueue.swift
+[66/87] Compiling GRDB DatabaseReader.swift
+[67/87] Compiling GRDB DatabaseRegion.swift
+[68/87] Compiling GRDB DatabaseRegionObservation.swift
+[69/87] Compiling GRDB DatabaseSchemaCache.swift
+[70/87] Compiling GRDB DatabaseSchemaSource.swift
+[71/87] Compiling GRDB DatabaseSnapshot.swift
+[72/87] Compiling GRDB DatabaseSnapshotPool.swift
+[73/87] Compiling GRDB DatabaseValue.swift
+[74/87] Compiling GRDB DatabaseValueConvertible.swift
+[75/87] Compiling GRDB DatabaseWriter.swift
+[76/87] Compiling GRDB DispatchQueueActor.swift
+[77/87] Emitting module GRDB
+[78/159] Compiling PFVision SuperResolution.swift
+[79/160] Compiling GRDB FTS5CustomTokenizer.swift
+[80/160] Compiling GRDB FTS5Pattern.swift
+[81/160] Compiling GRDB FTS5Tokenizer.swift
+[82/160] Compiling GRDB FTS5TokenizerDescriptor.swift
+[83/160] Compiling GRDB FTS5WrapperTokenizer.swift
+[84/160] Compiling GRDB Fixits.swift
+[85/160] Compiling GRDB JSONColumn.swift
+[86/160] Compiling GRDB SQLJSONExpressible.swift
+[87/160] Compiling GRDB SQLJSONFunctions.swift
+[88/160] Compiling GRDB DatabaseMigrator.swift
+[89/160] Compiling GRDB Migration.swift
+[90/160] Compiling GRDB FTS3+QueryInterface.swift
+[91/160] Compiling GRDB FTS5+QueryInterface.swift
+[92/160] Compiling GRDB ForeignKey.swift
+[93/160] Compiling GRDB Association.swift
+[94/160] Compiling GRDB AssociationAggregate.swift
+[95/160] Compiling GRDB BelongsToAssociation.swift
+[96/160] Compiling GRDB HasManyAssociation.swift
+[97/160] Compiling GRDB HasManyThroughAssociation.swift
+[98/160] Compiling GRDB HasOneAssociation.swift
+[99/160] Compiling GRDB HasOneThroughAssociation.swift
+[100/160] Compiling GRDB JoinAssociation.swift
+[101/160] Compiling GRDB CommonTableExpression.swift
+[102/160] Compiling GRDB QueryInterfaceRequest.swift
+[105/184] Emitting module PFVision
+[106/184] Compiling PFPhotosBridge MediaFiles.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/MediaFiles.swift:49:40: warning: 'duration' was deprecated in macOS 13.0: Use load(.duration) instead
+ 47 |             if nativeVideoExtensions.contains(url.pathExtension.lowercased()) {
+ 48 |                 let a = AVURLAsset(url: url)
+ 49 |                 d = CMTimeGetSeconds(a.duration)
+    |                                        `- warning: 'duration' was deprecated in macOS 13.0: Use load(.duration) instead
+ 50 |                 if let t = a.tracks(withMediaType: .video).first {
+ 51 |                     let s = t.naturalSize.applying(t.preferredTransform)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/MediaFiles.swift:50:30: warning: 'tracks(withMediaType:)' was deprecated in macOS 13.0: Use loadTracks(withMediaType:) instead
+ 48 |                 let a = AVURLAsset(url: url)
+ 49 |                 d = CMTimeGetSeconds(a.duration)
+ 50 |                 if let t = a.tracks(withMediaType: .video).first {
+    |                              `- warning: 'tracks(withMediaType:)' was deprecated in macOS 13.0: Use loadTracks(withMediaType:) instead
+ 51 |                     let s = t.naturalSize.applying(t.preferredTransform)
+ 52 |                     w = Int(abs(s.width)); h = Int(abs(s.height))
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/MediaFiles.swift:51:31: warning: 'naturalSize' was deprecated in macOS 13.0: Use load(.naturalSize) instead
+ 49 |                 d = CMTimeGetSeconds(a.duration)
+ 50 |                 if let t = a.tracks(withMediaType: .video).first {
+ 51 |                     let s = t.naturalSize.applying(t.preferredTransform)
+    |                               `- warning: 'naturalSize' was deprecated in macOS 13.0: Use load(.naturalSize) instead
+ 52 |                     w = Int(abs(s.width)); h = Int(abs(s.height))
+ 53 |                 }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/MediaFiles.swift:51:54: warning: 'preferredTransform' was deprecated in macOS 13.0: Use load(.preferredTransform) instead
+ 49 |                 d = CMTimeGetSeconds(a.duration)
+ 50 |                 if let t = a.tracks(withMediaType: .video).first {
+ 51 |                     let s = t.naturalSize.applying(t.preferredTransform)
+    |                                                      `- warning: 'preferredTransform' was deprecated in macOS 13.0: Use load(.preferredTransform) instead
+ 52 |                     w = Int(abs(s.width)); h = Int(abs(s.height))
+ 53 |                 }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/MediaFiles.swift:54:26: warning: 'creationDate' was deprecated in macOS 13.0: Use load(.creationDate) instead
+ 52 |                     w = Int(abs(s.width)); h = Int(abs(s.height))
+ 53 |                 }
+ 54 |                 date = a.creationDate?.dateValue
+    |                          `- warning: 'creationDate' was deprecated in macOS 13.0: Use load(.creationDate) instead
+ 55 |             }
+ 56 |             return Probe(mediaType: "video", width: w, height: h, captureDate: date, duration: d.isFinite ? d : 0, isScreenshot: false)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/MediaFiles.swift:54:40: warning: 'dateValue' was deprecated in macOS 13.0: Use load(.dateValue) instead
+ 52 |                     w = Int(abs(s.width)); h = Int(abs(s.height))
+ 53 |                 }
+ 54 |                 date = a.creationDate?.dateValue
+    |                                        `- warning: 'dateValue' was deprecated in macOS 13.0: Use load(.dateValue) instead
+ 55 |             }
+ 56 |             return Probe(mediaType: "video", width: w, height: h, captureDate: date, duration: d.isFinite ? d : 0, isScreenshot: false)
+[107/184] Compiling PFPhotosBridge FileLibrarySource.swift
+[108/184] Emitting module PFPhotosBridge
+[109/185] Compiling PFVision VisionFeaturePrintEmbedder.swift
+[110/188] Compiling PFPeople FaceNeighborCache.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPeople/FaceNeighborCache.swift:73:21: warning: 'cblas_sgemm' was deprecated in macOS 13.3: An updated CBLAS interface supporting ILP64 is available.  Please compile with -DACCELERATE_NEW_LAPACK to access the new headers and -DACCELERATE_LAPACK_ILP64 for ILP64 support.
+ 71 |                 sims.withUnsafeMutableBufferPointer { out in
+ 72 |                     // out[rows × n] = M[start..<start+rows] · Mᵀ
+ 73 |                     cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, Int32(rows), Int32(n), Int32(dim),
+    |                     `- warning: 'cblas_sgemm' was deprecated in macOS 13.3: An updated CBLAS interface supporting ILP64 is available.  Please compile with -DACCELERATE_NEW_LAPACK to access the new headers and -DACCELERATE_LAPACK_ILP64 for ILP64 support.
+ 74 |                                 1, m.baseAddress! + start * dim, Int32(dim), m.baseAddress!, Int32(dim),
+ 75 |                                 0, out.baseAddress!, Int32(n))
+[111/188] Emitting module PFPeople
+[112/188] Compiling PFPeople ConstrainedClustering.swift
+[113/190] Compiling GRDB RequestProtocols.swift
+[114/190] Compiling GRDB Column.swift
+[115/190] Compiling GRDB DatabasePromise.swift
+[116/190] Compiling GRDB SQLAssociation.swift
+[117/190] Compiling GRDB SQLCollection.swift
+[118/190] Compiling GRDB SQLExpression.swift
+[119/190] Compiling GRDB SQLForeignKeyRequest.swift
+[120/190] Compiling GRDB SQLFunctions.swift
+[121/190] Compiling GRDB SQLOperators.swift
+[122/190] Compiling GRDB SQLOrdering.swift
+[123/190] Compiling GRDB SQLRelation.swift
+[124/190] Compiling GRDB SQLSelection.swift
+[125/190] Compiling GRDB SQLSubquery.swift
+[126/190] Compiling GRDB Table.swift
+[127/190] Compiling GRDB SQLColumnGenerator.swift
+[128/190] Compiling GRDB SQLGenerationContext.swift
+[129/190] Compiling GRDB SQLIndexGenerator.swift
+[130/190] Compiling GRDB SQLQueryGenerator.swift
+[131/190] Compiling GRDB SQLTableAlterationGenerator.swift
+[132/190] Compiling GRDB SQLTableGenerator.swift
+[133/190] Compiling GRDB TableAlias.swift
+[134/190] Compiling GRDB SQLInterpolation+QueryInterface.swift
+[135/190] Compiling GRDB ColumnDefinition.swift
+[136/190] Compiling GRDB Database+SchemaDefinition.swift
+[137/190] Compiling GRDB UUID.swift
+[138/190] Compiling GRDB DatabaseValueConvertible+Decodable.swift
+[139/190] Compiling GRDB DatabaseValueConvertible+Encodable.swift
+[140/190] Compiling GRDB DatabaseValueConvertible+RawRepresentable.swift
+[141/190] Compiling GRDB JSONRequiredEncoder.swift
+[142/190] Compiling GRDB Optional.swift
+[143/190] Compiling GRDB StandardLibrary.swift
+[144/190] Compiling GRDB TransactionClock.swift
+[145/190] Compiling GRDB TransactionObserver.swift
+[146/190] Compiling GRDB WALSnapshot.swift
+[147/190] Compiling GRDB WALSnapshotTransaction.swift
+[148/190] Compiling GRDB Database+Dump.swift
+[149/190] Compiling GRDB DatabaseReader+dump.swift
+[150/190] Compiling GRDB DumpFormat.swift
+[151/190] Compiling GRDB DebugDumpFormat.swift
+[152/190] Compiling GRDB JSONDumpFormat.swift
+[153/190] Compiling GRDB LineDumpFormat.swift
+[154/190] Compiling GRDB ListDumpFormat.swift
+[155/190] Compiling GRDB QuoteDumpFormat.swift
+[156/190] Compiling GRDB FTS3.swift
+[157/190] Compiling GRDB FTS3Pattern.swift
+[158/190] Compiling GRDB FTS3TokenizerDescriptor.swift
+[159/190] Compiling GRDB FTS4.swift
+[160/190] Compiling GRDB FTS5.swift
+[161/214] Compiling PFJobs JobManager.swift
+[162/214] Emitting module PFJobs
+[163/214] Compiling PFPhotosBridge PhotoLibraryService.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/PhotoLibraryService.swift:259:17: warning: capture of 'manager' with non-sendable type 'PHCachingImageManager' in a '@Sendable' closure
+257 |                 opts.isSynchronous = true                  // on this background queue
+258 |                 var result: Result<CGImage, Error> = .failure(PhotoForgeError.corruptImage)
+259 |                 manager.requestImage(for: asset, targetSize: CGSize(width: maxDimension, height: maxDimension),
+    |                 `- warning: capture of 'manager' with non-sendable type 'PHCachingImageManager' in a '@Sendable' closure
+260 |                                      contentMode: .aspectFit, options: opts) { image, info in
+261 |                     if let err = info?[PHImageErrorKey] as? Error { result = .failure(err); return }
+
+/Applications/Xcode_16.4.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk/System/Library/Frameworks/Photos.framework/Headers/PHImageManager.h:212:12: note: class 'PHCachingImageManager' does not conform to the 'Sendable' protocol
+210 | 
+211 | OS_EXPORT
+212 | @interface PHCachingImageManager : PHImageManager
+    |            `- note: class 'PHCachingImageManager' does not conform to the 'Sendable' protocol
+213 | 
+214 | // During fast scrolling clients should set this to improve responsiveness
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/PhotoLibraryService.swift:3:1: warning: add '@preconcurrency' to suppress 'Sendable'-related warnings from module 'Photos'
+  1 | import Foundation
+  2 | import ImageIO
+  3 | import Photos
+    | `- warning: add '@preconcurrency' to suppress 'Sendable'-related warnings from module 'Photos'
+  4 | import AppKit
+  5 | import CryptoKit
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/PhotoLibraryService.swift:287:17: warning: capture of 'manager' with non-sendable type 'PHCachingImageManager' in a '@Sendable' closure
+285 |                 opts.isSynchronous = true
+286 |                 var out: NSImage?
+287 |                 manager.requestImage(for: asset, targetSize: CGSize(width: side, height: side),
+    |                 `- warning: capture of 'manager' with non-sendable type 'PHCachingImageManager' in a '@Sendable' closure
+288 |                                      contentMode: .aspectFill, options: opts) { image, _ in
+289 |                     // Render to a bitmap here so drawing it later costs nothing.
+
+/Applications/Xcode_16.4.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk/System/Library/Frameworks/Photos.framework/Headers/PHImageManager.h:212:12: note: class 'PHCachingImageManager' does not conform to the 'Sendable' protocol
+210 | 
+211 | OS_EXPORT
+212 | @interface PHCachingImageManager : PHImageManager
+    |            `- note: class 'PHCachingImageManager' does not conform to the 'Sendable' protocol
+213 | 
+214 | // During fast scrolling clients should set this to improve responsiveness
+[164/220] Compiling PFClassify PhotoAnalyzer.swift
+[165/220] Emitting module PFClassify
+[166/220] Compiling PFClassify Categories.swift
+[167/220] Compiling PFEditing EditRenderer.swift
+[168/220] Compiling GRDB ForeignKeyDefinition.swift
+[169/220] Compiling GRDB IndexDefinition.swift
+[170/220] Compiling GRDB TableAlteration.swift
+[171/220] Compiling GRDB TableDefinition.swift
+[172/220] Compiling GRDB VirtualTableModule.swift
+[173/220] Compiling GRDB TableRecord+Association.swift
+[174/220] Compiling GRDB TableRecord+QueryInterfaceRequest.swift
+[175/220] Compiling GRDB EncodableRecord+Encodable.swift
+[176/220] Compiling GRDB EncodableRecord.swift
+[177/220] Compiling GRDB FetchableRecord+Decodable.swift
+[178/220] Compiling GRDB FetchableRecord+TableRecord.swift
+[179/220] Compiling GRDB FetchableRecord.swift
+[180/220] Compiling GRDB MutablePersistableRecord+DAO.swift
+[181/220] Compiling GRDB MutablePersistableRecord+Delete.swift
+[182/220] Compiling GRDB MutablePersistableRecord+Insert.swift
+[183/220] Compiling GRDB MutablePersistableRecord+Save.swift
+[184/220] Compiling GRDB MutablePersistableRecord+Update.swift
+[185/220] Compiling GRDB MutablePersistableRecord+Upsert.swift
+[186/220] Compiling GRDB MutablePersistableRecord.swift
+[187/220] Compiling GRDB PersistableRecord+Insert.swift
+[188/220] Compiling GRDB PersistableRecord+Save.swift
+[189/220] Compiling GRDB PersistableRecord+Upsert.swift
+[190/220] Compiling GRDB PersistableRecord.swift
+[191/220] Compiling GRDB Record.swift
+[192/220] Emitting module PFEditing
+[193/220] Compiling PFEditing EditStack.swift
+[194/220] Compiling GRDB TableRecord.swift
+[195/220] Compiling GRDB CaseInsensitiveIdentifier.swift
+[196/220] Compiling GRDB Inflections+English.swift
+[197/220] Compiling GRDB Inflections.swift
+[198/220] Compiling GRDB Mutex.swift
+[199/220] Compiling GRDB OnDemandFuture.swift
+[200/220] Compiling GRDB OrderedDictionary.swift
+[201/220] Compiling GRDB Pool.swift
+[202/220] Compiling GRDB ReadWriteLock.swift
+[203/220] Compiling GRDB ReceiveValuesOn.swift
+[204/220] Compiling GRDB Refinable.swift
+[205/220] Compiling GRDB Utils.swift
+[206/220] Compiling GRDB DatabaseCancellable.swift
+[207/220] Compiling GRDB ValueConcurrentObserver.swift
+[208/220] Compiling GRDB ValueWriteOnlyObserver.swift
+[209/220] Compiling GRDB Fetch.swift
+[210/220] Compiling GRDB Map.swift
+[211/220] Compiling GRDB RemoveDuplicates.swift
+[212/220] Compiling GRDB Trace.swift
+[213/220] Compiling GRDB ValueReducer.swift
+[214/220] Compiling GRDB SharedValueObservation.swift
+[215/220] Compiling GRDB ValueObservation.swift
+[216/220] Compiling GRDB ValueObservationScheduler.swift
+[217/220] Compiling GRDB resource_bundle_accessor.swift
+[218/225] Emitting module PFDatabase
+[219/225] Compiling PFDatabase LibraryRegistry.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFDatabase/LibraryRegistry.swift:110:9: warning: result of 'try?' is unused
+108 |         }
+109 |         let db = try AppDatabase.open(at: legacy)
+110 |         try? db.backup(reason: "before-split", keep: 5)
+    |         `- warning: result of 'try?' is unused
+111 |         let sources = try db.sourceIDs()
+112 |         let systemID: Int64
+[220/225] Compiling PFDatabase Migrations.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFDatabase/LibraryRegistry.swift:110:9: warning: result of 'try?' is unused
+108 |         }
+109 |         let db = try AppDatabase.open(at: legacy)
+110 |         try? db.backup(reason: "before-split", keep: 5)
+    |         `- warning: result of 'try?' is unused
+111 |         let sources = try db.sourceIDs()
+112 |         let systemID: Int64
+[221/225] Compiling PFDatabase AppDatabase.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFDatabase/AppDatabase.swift:30:13: warning: result of 'try?' is unused
+ 28 |         let (applied, complete) = try pool.read { d in (try migrator.appliedMigrations(d), try migrator.hasCompletedMigrations(d)) }
+ 29 |         if !applied.isEmpty && !complete {
+ 30 |             try? db.backup(reason: "before-upgrade")
+    |             `- warning: result of 'try?' is unused
+ 31 |         }
+ 32 |         try migrator.migrate(pool)
+[222/225] Compiling PFDatabase LibraryData.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFDatabase/AppDatabase.swift:30:13: warning: result of 'try?' is unused
+ 28 |         let (applied, complete) = try pool.read { d in (try migrator.appliedMigrations(d), try migrator.hasCompletedMigrations(d)) }
+ 29 |         if !applied.isEmpty && !complete {
+ 30 |             try? db.backup(reason: "before-upgrade")
+    |             `- warning: result of 'try?' is unused
+ 31 |         }
+ 32 |         try migrator.migrate(pool)
+[223/226] Compiling PFDatabase Repository.swift
+[224/243] Emitting module PhotoForgeApp
+[225/250] Compiling PhotoForgeApp AnalysisJob.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Features.swift:313:21: warning: result of 'try?' is unused
+311 |                         folders[key] = f; parent = f
+312 |                     }
+313 |                     try? db.createAlbum(title: m.path.last ?? "Album", parentID: parent, isFolder: false, sourceID: sid, assetIDs: members)
+    |                     `- warning: result of 'try?' is unused
+314 |                 }
+315 |             }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Organize.swift:87:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+85 |         guard let db else { return }
+86 |         let sid = activeLibraryID
+87 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+   |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+88 |         reloadAlbums()
+89 |     }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:133:27: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+ 131 | 
+ 132 |     func thumbnail(for key: String, side: Double) async -> NSImage? {
+ 133 |         await mediaSource.thumbnail(for: key, side: side)
+     |                           `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+ 134 |     }
+ 135 | 
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:488:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 486 |             (try db.assets(sourceID: sid), try db.stats(sourceID: sid), try db.removalQueue(sourceID: sid), try db.activity())
+ 487 |         }
+ 488 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+     |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 489 |         if let raw = try? await Offload.run { try db.categoryMembers(sourceID: sid) } {
+ 490 |             var m: [PhotoCategory: Set<Int64>] = [:]
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:489:45: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 487 |         }
+ 488 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+ 489 |         if let raw = try? await Offload.run { try db.categoryMembers(sourceID: sid) } {
+     |                                             `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 490 |             var m: [PhotoCategory: Set<Int64>] = [:]
+ 491 |             for (k, v) in raw { if let c = PhotoCategory(rawValue: k) { m[c] = v } }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:758:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 756 |         guard let db else { return }
+ 757 |         let sid = activeLibraryID
+ 758 |         if let q = try? await Offload.run { try db.removalQueue(sourceID: sid) } { removalQueue = q }
+     |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 759 |         applyQueueFilter()
+ 760 |     }
+[226/250] Compiling PhotoForgeApp AppModel+Export.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Features.swift:313:21: warning: result of 'try?' is unused
+311 |                         folders[key] = f; parent = f
+312 |                     }
+313 |                     try? db.createAlbum(title: m.path.last ?? "Album", parentID: parent, isFolder: false, sourceID: sid, assetIDs: members)
+    |                     `- warning: result of 'try?' is unused
+314 |                 }
+315 |             }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Organize.swift:87:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+85 |         guard let db else { return }
+86 |         let sid = activeLibraryID
+87 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+   |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+88 |         reloadAlbums()
+89 |     }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:133:27: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+ 131 | 
+ 132 |     func thumbnail(for key: String, side: Double) async -> NSImage? {
+ 133 |         await mediaSource.thumbnail(for: key, side: side)
+     |                           `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+ 134 |     }
+ 135 | 
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:488:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 486 |             (try db.assets(sourceID: sid), try db.stats(sourceID: sid), try db.removalQueue(sourceID: sid), try db.activity())
+ 487 |         }
+ 488 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+     |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 489 |         if let raw = try? await Offload.run { try db.categoryMembers(sourceID: sid) } {
+ 490 |             var m: [PhotoCategory: Set<Int64>] = [:]
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:489:45: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 487 |         }
+ 488 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+ 489 |         if let raw = try? await Offload.run { try db.categoryMembers(sourceID: sid) } {
+     |                                             `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 490 |             var m: [PhotoCategory: Set<Int64>] = [:]
+ 491 |             for (k, v) in raw { if let c = PhotoCategory(rawValue: k) { m[c] = v } }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:758:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 756 |         guard let db else { return }
+ 757 |         let sid = activeLibraryID
+ 758 |         if let q = try? await Offload.run { try db.removalQueue(sourceID: sid) } { removalQueue = q }
+     |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 759 |         applyQueueFilter()
+ 760 |     }
+[227/250] Compiling PhotoForgeApp AppModel+Features.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Features.swift:313:21: warning: result of 'try?' is unused
+311 |                         folders[key] = f; parent = f
+312 |                     }
+313 |                     try? db.createAlbum(title: m.path.last ?? "Album", parentID: parent, isFolder: false, sourceID: sid, assetIDs: members)
+    |                     `- warning: result of 'try?' is unused
+314 |                 }
+315 |             }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Organize.swift:87:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+85 |         guard let db else { return }
+86 |         let sid = activeLibraryID
+87 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+   |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+88 |         reloadAlbums()
+89 |     }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:133:27: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+ 131 | 
+ 132 |     func thumbnail(for key: String, side: Double) async -> NSImage? {
+ 133 |         await mediaSource.thumbnail(for: key, side: side)
+     |                           `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+ 134 |     }
+ 135 | 
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:488:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 486 |             (try db.assets(sourceID: sid), try db.stats(sourceID: sid), try db.removalQueue(sourceID: sid), try db.activity())
+ 487 |         }
+ 488 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+     |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 489 |         if let raw = try? await Offload.run { try db.categoryMembers(sourceID: sid) } {
+ 490 |             var m: [PhotoCategory: Set<Int64>] = [:]
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:489:45: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 487 |         }
+ 488 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+ 489 |         if let raw = try? await Offload.run { try db.categoryMembers(sourceID: sid) } {
+     |                                             `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 490 |             var m: [PhotoCategory: Set<Int64>] = [:]
+ 491 |             for (k, v) in raw { if let c = PhotoCategory(rawValue: k) { m[c] = v } }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:758:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 756 |         guard let db else { return }
+ 757 |         let sid = activeLibraryID
+ 758 |         if let q = try? await Offload.run { try db.removalQueue(sourceID: sid) } { removalQueue = q }
+     |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 759 |         applyQueueFilter()
+ 760 |     }
+[228/250] Compiling PhotoForgeApp AppModel+Organize.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Features.swift:313:21: warning: result of 'try?' is unused
+311 |                         folders[key] = f; parent = f
+312 |                     }
+313 |                     try? db.createAlbum(title: m.path.last ?? "Album", parentID: parent, isFolder: false, sourceID: sid, assetIDs: members)
+    |                     `- warning: result of 'try?' is unused
+314 |                 }
+315 |             }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Organize.swift:87:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+85 |         guard let db else { return }
+86 |         let sid = activeLibraryID
+87 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+   |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+88 |         reloadAlbums()
+89 |     }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:133:27: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+ 131 | 
+ 132 |     func thumbnail(for key: String, side: Double) async -> NSImage? {
+ 133 |         await mediaSource.thumbnail(for: key, side: side)
+     |                           `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+ 134 |     }
+ 135 | 
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:488:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 486 |             (try db.assets(sourceID: sid), try db.stats(sourceID: sid), try db.removalQueue(sourceID: sid), try db.activity())
+ 487 |         }
+ 488 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+     |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 489 |         if let raw = try? await Offload.run { try db.categoryMembers(sourceID: sid) } {
+ 490 |             var m: [PhotoCategory: Set<Int64>] = [:]
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:489:45: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 487 |         }
+ 488 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+ 489 |         if let raw = try? await Offload.run { try db.categoryMembers(sourceID: sid) } {
+     |                                             `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 490 |             var m: [PhotoCategory: Set<Int64>] = [:]
+ 491 |             for (k, v) in raw { if let c = PhotoCategory(rawValue: k) { m[c] = v } }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:758:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 756 |         guard let db else { return }
+ 757 |         let sid = activeLibraryID
+ 758 |         if let q = try? await Offload.run { try db.removalQueue(sourceID: sid) } { removalQueue = q }
+     |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 759 |         applyQueueFilter()
+ 760 |     }
+[229/250] Compiling PhotoForgeApp AppModel.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Features.swift:313:21: warning: result of 'try?' is unused
+311 |                         folders[key] = f; parent = f
+312 |                     }
+313 |                     try? db.createAlbum(title: m.path.last ?? "Album", parentID: parent, isFolder: false, sourceID: sid, assetIDs: members)
+    |                     `- warning: result of 'try?' is unused
+314 |                 }
+315 |             }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Organize.swift:87:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+85 |         guard let db else { return }
+86 |         let sid = activeLibraryID
+87 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+   |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+88 |         reloadAlbums()
+89 |     }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:133:27: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+ 131 | 
+ 132 |     func thumbnail(for key: String, side: Double) async -> NSImage? {
+ 133 |         await mediaSource.thumbnail(for: key, side: side)
+     |                           `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+ 134 |     }
+ 135 | 
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:488:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 486 |             (try db.assets(sourceID: sid), try db.stats(sourceID: sid), try db.removalQueue(sourceID: sid), try db.activity())
+ 487 |         }
+ 488 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+     |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 489 |         if let raw = try? await Offload.run { try db.categoryMembers(sourceID: sid) } {
+ 490 |             var m: [PhotoCategory: Set<Int64>] = [:]
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:489:45: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 487 |         }
+ 488 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+ 489 |         if let raw = try? await Offload.run { try db.categoryMembers(sourceID: sid) } {
+     |                                             `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 490 |             var m: [PhotoCategory: Set<Int64>] = [:]
+ 491 |             for (k, v) in raw { if let c = PhotoCategory(rawValue: k) { m[c] = v } }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:758:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 756 |         guard let db else { return }
+ 757 |         let sid = activeLibraryID
+ 758 |         if let q = try? await Offload.run { try db.removalQueue(sourceID: sid) } { removalQueue = q }
+     |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 759 |         applyQueueFilter()
+ 760 |     }
+[230/250] Compiling PhotoForgeApp DuplicatesViews.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Features.swift:313:21: warning: result of 'try?' is unused
+311 |                         folders[key] = f; parent = f
+312 |                     }
+313 |                     try? db.createAlbum(title: m.path.last ?? "Album", parentID: parent, isFolder: false, sourceID: sid, assetIDs: members)
+    |                     `- warning: result of 'try?' is unused
+314 |                 }
+315 |             }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Organize.swift:87:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+85 |         guard let db else { return }
+86 |         let sid = activeLibraryID
+87 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+   |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+88 |         reloadAlbums()
+89 |     }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:133:27: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+ 131 | 
+ 132 |     func thumbnail(for key: String, side: Double) async -> NSImage? {
+ 133 |         await mediaSource.thumbnail(for: key, side: side)
+     |                           `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+ 134 |     }
+ 135 | 
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:488:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 486 |             (try db.assets(sourceID: sid), try db.stats(sourceID: sid), try db.removalQueue(sourceID: sid), try db.activity())
+ 487 |         }
+ 488 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+     |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 489 |         if let raw = try? await Offload.run { try db.categoryMembers(sourceID: sid) } {
+ 490 |             var m: [PhotoCategory: Set<Int64>] = [:]
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:489:45: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 487 |         }
+ 488 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+ 489 |         if let raw = try? await Offload.run { try db.categoryMembers(sourceID: sid) } {
+     |                                             `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 490 |             var m: [PhotoCategory: Set<Int64>] = [:]
+ 491 |             for (k, v) in raw { if let c = PhotoCategory(rawValue: k) { m[c] = v } }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:758:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 756 |         guard let db else { return }
+ 757 |         let sid = activeLibraryID
+ 758 |         if let q = try? await Offload.run { try db.removalQueue(sourceID: sid) } { removalQueue = q }
+     |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 759 |         applyQueueFilter()
+ 760 |     }
+[231/250] Compiling PhotoForgeApp EditorView.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Features.swift:313:21: warning: result of 'try?' is unused
+311 |                         folders[key] = f; parent = f
+312 |                     }
+313 |                     try? db.createAlbum(title: m.path.last ?? "Album", parentID: parent, isFolder: false, sourceID: sid, assetIDs: members)
+    |                     `- warning: result of 'try?' is unused
+314 |                 }
+315 |             }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Organize.swift:87:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+85 |         guard let db else { return }
+86 |         let sid = activeLibraryID
+87 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+   |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+88 |         reloadAlbums()
+89 |     }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:133:27: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+ 131 | 
+ 132 |     func thumbnail(for key: String, side: Double) async -> NSImage? {
+ 133 |         await mediaSource.thumbnail(for: key, side: side)
+     |                           `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+ 134 |     }
+ 135 | 
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:488:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 486 |             (try db.assets(sourceID: sid), try db.stats(sourceID: sid), try db.removalQueue(sourceID: sid), try db.activity())
+ 487 |         }
+ 488 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+     |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 489 |         if let raw = try? await Offload.run { try db.categoryMembers(sourceID: sid) } {
+ 490 |             var m: [PhotoCategory: Set<Int64>] = [:]
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:489:45: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 487 |         }
+ 488 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+ 489 |         if let raw = try? await Offload.run { try db.categoryMembers(sourceID: sid) } {
+     |                                             `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 490 |             var m: [PhotoCategory: Set<Int64>] = [:]
+ 491 |             for (k, v) in raw { if let c = PhotoCategory(rawValue: k) { m[c] = v } }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:758:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 756 |         guard let db else { return }
+ 757 |         let sid = activeLibraryID
+ 758 |         if let q = try? await Offload.run { try db.removalQueue(sourceID: sid) } { removalQueue = q }
+     |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 759 |         applyQueueFilter()
+ 760 |     }
+[232/250] Compiling PhotoForgeApp FaceCalibrationRun.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Features.swift:313:21: warning: result of 'try?' is unused
+311 |                         folders[key] = f; parent = f
+312 |                     }
+313 |                     try? db.createAlbum(title: m.path.last ?? "Album", parentID: parent, isFolder: false, sourceID: sid, assetIDs: members)
+    |                     `- warning: result of 'try?' is unused
+314 |                 }
+315 |             }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel+Organize.swift:87:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+85 |         guard let db else { return }
+86 |         let sid = activeLibraryID
+87 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+   |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+88 |         reloadAlbums()
+89 |     }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:133:27: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+ 131 | 
+ 132 |     func thumbnail(for key: String, side: Double) async -> NSImage? {
+ 133 |         await mediaSource.thumbnail(for: key, side: side)
+     |                           `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+ 134 |     }
+ 135 | 
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:488:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 486 |             (try db.assets(sourceID: sid), try db.stats(sourceID: sid), try db.removalQueue(sourceID: sid), try db.activity())
+ 487 |         }
+ 488 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+     |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 489 |         if let raw = try? await Offload.run { try db.categoryMembers(sourceID: sid) } {
+ 490 |             var m: [PhotoCategory: Set<Int64>] = [:]
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:489:45: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 487 |         }
+ 488 |         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+ 489 |         if let raw = try? await Offload.run { try db.categoryMembers(sourceID: sid) } {
+     |                                             `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 490 |             var m: [PhotoCategory: Set<Int64>] = [:]
+ 491 |             for (k, v) in raw { if let c = PhotoCategory(rawValue: k) { m[c] = v } }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/AppModel.swift:758:43: warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 756 |         guard let db else { return }
+ 757 |         let sid = activeLibraryID
+ 758 |         if let q = try? await Offload.run { try db.removalQueue(sourceID: sid) } { removalQueue = q }
+     |                                           `- warning: trailing closure in this context is confusable with the body of the statement; pass as a parenthesized argument to silence this warning
+ 759 |         applyQueueFilter()
+ 760 |     }
+[233/250] Compiling PhotoForgeApp PhotoForgeApp.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/VideoPlayerView.swift:166:48: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+164 |         Task { @MainActor in
+165 |             position = Double(player.position)
+166 |             timeText = player.time.stringValue ?? ""
+    |                                                `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+167 |             if let len = player.media?.length.stringValue, !len.isEmpty { lengthText = len }
+168 |         }
+[234/250] Compiling PhotoForgeApp SelfTest.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/VideoPlayerView.swift:166:48: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+164 |         Task { @MainActor in
+165 |             position = Double(player.position)
+166 |             timeText = player.time.stringValue ?? ""
+    |                                                `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+167 |             if let len = player.media?.length.stringValue, !len.isEmpty { lengthText = len }
+168 |         }
+[235/250] Compiling PhotoForgeApp SettingsViews.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/VideoPlayerView.swift:166:48: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+164 |         Task { @MainActor in
+165 |             position = Double(player.position)
+166 |             timeText = player.time.stringValue ?? ""
+    |                                                `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+167 |             if let len = player.media?.length.stringValue, !len.isEmpty { lengthText = len }
+168 |         }
+[236/250] Compiling PhotoForgeApp SlideshowView.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/VideoPlayerView.swift:166:48: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+164 |         Task { @MainActor in
+165 |             position = Double(player.position)
+166 |             timeText = player.time.stringValue ?? ""
+    |                                                `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+167 |             if let len = player.media?.length.stringValue, !len.isEmpty { lengthText = len }
+168 |         }
+[237/250] Compiling PhotoForgeApp UpscaleView.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/VideoPlayerView.swift:166:48: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+164 |         Task { @MainActor in
+165 |             position = Double(player.position)
+166 |             timeText = player.time.stringValue ?? ""
+    |                                                `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+167 |             if let len = player.media?.length.stringValue, !len.isEmpty { lengthText = len }
+168 |         }
+[238/250] Compiling PhotoForgeApp VideoPlayerView.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/VideoPlayerView.swift:166:48: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+164 |         Task { @MainActor in
+165 |             position = Double(player.position)
+166 |             timeText = player.time.stringValue ?? ""
+    |                                                `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+167 |             if let len = player.media?.length.stringValue, !len.isEmpty { lengthText = len }
+168 |         }
+[239/250] Compiling PhotoForgeApp WindowSupport.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/VideoPlayerView.swift:166:48: warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+164 |         Task { @MainActor in
+165 |             position = Double(player.position)
+166 |             timeText = player.time.stringValue ?? ""
+    |                                                `- warning: left side of nil coalescing operator '??' has non-optional type 'String', so the right side is never used
+167 |             if let len = player.media?.length.stringValue, !len.isEmpty { lengthText = len }
+168 |         }
+[240/250] Compiling PhotoForgeApp FaceModels.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LibraryViews.swift:114:56: warning: reference to captured var 'memberIDs' in concurrently-executing code; this is an error in the Swift 6 language mode
+112 |         let f = filter, so = sort, gr = grouping, hits = searchHits, version = data.version &+ 1
+113 |         let result = await Offload.run {
+114 |             Self.compute(assets, filter: f, memberIDs: memberIDs, keys: keys, hits: hits, sort: so, grouping: gr, version: version)
+    |                                                        `- warning: reference to captured var 'memberIDs' in concurrently-executing code; this is an error in the Swift 6 language mode
+115 |         }
+116 |         guard !Task.isCancelled else { return }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LibraryViews.swift:114:73: warning: reference to captured var 'keys' in concurrently-executing code; this is an error in the Swift 6 language mode
+112 |         let f = filter, so = sort, gr = grouping, hits = searchHits, version = data.version &+ 1
+113 |         let result = await Offload.run {
+114 |             Self.compute(assets, filter: f, memberIDs: memberIDs, keys: keys, hits: hits, sort: so, grouping: gr, version: version)
+    |                                                                         `- warning: reference to captured var 'keys' in concurrently-executing code; this is an error in the Swift 6 language mode
+115 |         }
+116 |         guard !Task.isCancelled else { return }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LocalAPIServer.swift:269:61: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+267 |                     if let e = need(.thumbnails) { return e }
+268 |                     let size = min(2048, max(64, Double(req.query["size"] ?? "") ?? 512))
+269 |                     guard let img = await model.mediaSource.thumbnail(for: asset.localIdentifier, side: size),
+    |                                                             `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+270 |                           let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil),
+271 |                           let jpeg = Self.jpeg(cg) else { return .error(404, "No thumbnail available") }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:283:37: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to static method 'run'; this is an error in the Swift 6 language mode
+281 |         if let p = face.cropPath {
+282 |             let url = model.faceCropDir.appendingPathComponent(p)
+283 |             let img = await Offload.run { () -> NSImage? in
+    |                                     `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to static method 'run'; this is an error in the Swift 6 language mode
+284 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+285 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+[241/250] Compiling PhotoForgeApp FaceTaggingView.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LibraryViews.swift:114:56: warning: reference to captured var 'memberIDs' in concurrently-executing code; this is an error in the Swift 6 language mode
+112 |         let f = filter, so = sort, gr = grouping, hits = searchHits, version = data.version &+ 1
+113 |         let result = await Offload.run {
+114 |             Self.compute(assets, filter: f, memberIDs: memberIDs, keys: keys, hits: hits, sort: so, grouping: gr, version: version)
+    |                                                        `- warning: reference to captured var 'memberIDs' in concurrently-executing code; this is an error in the Swift 6 language mode
+115 |         }
+116 |         guard !Task.isCancelled else { return }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LibraryViews.swift:114:73: warning: reference to captured var 'keys' in concurrently-executing code; this is an error in the Swift 6 language mode
+112 |         let f = filter, so = sort, gr = grouping, hits = searchHits, version = data.version &+ 1
+113 |         let result = await Offload.run {
+114 |             Self.compute(assets, filter: f, memberIDs: memberIDs, keys: keys, hits: hits, sort: so, grouping: gr, version: version)
+    |                                                                         `- warning: reference to captured var 'keys' in concurrently-executing code; this is an error in the Swift 6 language mode
+115 |         }
+116 |         guard !Task.isCancelled else { return }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LocalAPIServer.swift:269:61: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+267 |                     if let e = need(.thumbnails) { return e }
+268 |                     let size = min(2048, max(64, Double(req.query["size"] ?? "") ?? 512))
+269 |                     guard let img = await model.mediaSource.thumbnail(for: asset.localIdentifier, side: size),
+    |                                                             `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+270 |                           let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil),
+271 |                           let jpeg = Self.jpeg(cg) else { return .error(404, "No thumbnail available") }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:283:37: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to static method 'run'; this is an error in the Swift 6 language mode
+281 |         if let p = face.cropPath {
+282 |             let url = model.faceCropDir.appendingPathComponent(p)
+283 |             let img = await Offload.run { () -> NSImage? in
+    |                                     `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to static method 'run'; this is an error in the Swift 6 language mode
+284 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+285 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+[242/250] Compiling PhotoForgeApp GridInteraction.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LibraryViews.swift:114:56: warning: reference to captured var 'memberIDs' in concurrently-executing code; this is an error in the Swift 6 language mode
+112 |         let f = filter, so = sort, gr = grouping, hits = searchHits, version = data.version &+ 1
+113 |         let result = await Offload.run {
+114 |             Self.compute(assets, filter: f, memberIDs: memberIDs, keys: keys, hits: hits, sort: so, grouping: gr, version: version)
+    |                                                        `- warning: reference to captured var 'memberIDs' in concurrently-executing code; this is an error in the Swift 6 language mode
+115 |         }
+116 |         guard !Task.isCancelled else { return }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LibraryViews.swift:114:73: warning: reference to captured var 'keys' in concurrently-executing code; this is an error in the Swift 6 language mode
+112 |         let f = filter, so = sort, gr = grouping, hits = searchHits, version = data.version &+ 1
+113 |         let result = await Offload.run {
+114 |             Self.compute(assets, filter: f, memberIDs: memberIDs, keys: keys, hits: hits, sort: so, grouping: gr, version: version)
+    |                                                                         `- warning: reference to captured var 'keys' in concurrently-executing code; this is an error in the Swift 6 language mode
+115 |         }
+116 |         guard !Task.isCancelled else { return }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LocalAPIServer.swift:269:61: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+267 |                     if let e = need(.thumbnails) { return e }
+268 |                     let size = min(2048, max(64, Double(req.query["size"] ?? "") ?? 512))
+269 |                     guard let img = await model.mediaSource.thumbnail(for: asset.localIdentifier, side: size),
+    |                                                             `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+270 |                           let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil),
+271 |                           let jpeg = Self.jpeg(cg) else { return .error(404, "No thumbnail available") }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:283:37: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to static method 'run'; this is an error in the Swift 6 language mode
+281 |         if let p = face.cropPath {
+282 |             let url = model.faceCropDir.appendingPathComponent(p)
+283 |             let img = await Offload.run { () -> NSImage? in
+    |                                     `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to static method 'run'; this is an error in the Swift 6 language mode
+284 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+285 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+[243/250] Compiling PhotoForgeApp LibraryViews.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LibraryViews.swift:114:56: warning: reference to captured var 'memberIDs' in concurrently-executing code; this is an error in the Swift 6 language mode
+112 |         let f = filter, so = sort, gr = grouping, hits = searchHits, version = data.version &+ 1
+113 |         let result = await Offload.run {
+114 |             Self.compute(assets, filter: f, memberIDs: memberIDs, keys: keys, hits: hits, sort: so, grouping: gr, version: version)
+    |                                                        `- warning: reference to captured var 'memberIDs' in concurrently-executing code; this is an error in the Swift 6 language mode
+115 |         }
+116 |         guard !Task.isCancelled else { return }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LibraryViews.swift:114:73: warning: reference to captured var 'keys' in concurrently-executing code; this is an error in the Swift 6 language mode
+112 |         let f = filter, so = sort, gr = grouping, hits = searchHits, version = data.version &+ 1
+113 |         let result = await Offload.run {
+114 |             Self.compute(assets, filter: f, memberIDs: memberIDs, keys: keys, hits: hits, sort: so, grouping: gr, version: version)
+    |                                                                         `- warning: reference to captured var 'keys' in concurrently-executing code; this is an error in the Swift 6 language mode
+115 |         }
+116 |         guard !Task.isCancelled else { return }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LocalAPIServer.swift:269:61: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+267 |                     if let e = need(.thumbnails) { return e }
+268 |                     let size = min(2048, max(64, Double(req.query["size"] ?? "") ?? 512))
+269 |                     guard let img = await model.mediaSource.thumbnail(for: asset.localIdentifier, side: size),
+    |                                                             `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+270 |                           let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil),
+271 |                           let jpeg = Self.jpeg(cg) else { return .error(404, "No thumbnail available") }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:283:37: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to static method 'run'; this is an error in the Swift 6 language mode
+281 |         if let p = face.cropPath {
+282 |             let url = model.faceCropDir.appendingPathComponent(p)
+283 |             let img = await Offload.run { () -> NSImage? in
+    |                                     `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to static method 'run'; this is an error in the Swift 6 language mode
+284 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+285 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+[244/250] Compiling PhotoForgeApp LocalAPIServer.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LibraryViews.swift:114:56: warning: reference to captured var 'memberIDs' in concurrently-executing code; this is an error in the Swift 6 language mode
+112 |         let f = filter, so = sort, gr = grouping, hits = searchHits, version = data.version &+ 1
+113 |         let result = await Offload.run {
+114 |             Self.compute(assets, filter: f, memberIDs: memberIDs, keys: keys, hits: hits, sort: so, grouping: gr, version: version)
+    |                                                        `- warning: reference to captured var 'memberIDs' in concurrently-executing code; this is an error in the Swift 6 language mode
+115 |         }
+116 |         guard !Task.isCancelled else { return }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LibraryViews.swift:114:73: warning: reference to captured var 'keys' in concurrently-executing code; this is an error in the Swift 6 language mode
+112 |         let f = filter, so = sort, gr = grouping, hits = searchHits, version = data.version &+ 1
+113 |         let result = await Offload.run {
+114 |             Self.compute(assets, filter: f, memberIDs: memberIDs, keys: keys, hits: hits, sort: so, grouping: gr, version: version)
+    |                                                                         `- warning: reference to captured var 'keys' in concurrently-executing code; this is an error in the Swift 6 language mode
+115 |         }
+116 |         guard !Task.isCancelled else { return }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LocalAPIServer.swift:269:61: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+267 |                     if let e = need(.thumbnails) { return e }
+268 |                     let size = min(2048, max(64, Double(req.query["size"] ?? "") ?? 512))
+269 |                     guard let img = await model.mediaSource.thumbnail(for: asset.localIdentifier, side: size),
+    |                                                             `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+270 |                           let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil),
+271 |                           let jpeg = Self.jpeg(cg) else { return .error(404, "No thumbnail available") }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:283:37: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to static method 'run'; this is an error in the Swift 6 language mode
+281 |         if let p = face.cropPath {
+282 |             let url = model.faceCropDir.appendingPathComponent(p)
+283 |             let img = await Offload.run { () -> NSImage? in
+    |                                     `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to static method 'run'; this is an error in the Swift 6 language mode
+284 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+285 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+[245/250] Compiling PhotoForgeApp MachineProfile.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LibraryViews.swift:114:56: warning: reference to captured var 'memberIDs' in concurrently-executing code; this is an error in the Swift 6 language mode
+112 |         let f = filter, so = sort, gr = grouping, hits = searchHits, version = data.version &+ 1
+113 |         let result = await Offload.run {
+114 |             Self.compute(assets, filter: f, memberIDs: memberIDs, keys: keys, hits: hits, sort: so, grouping: gr, version: version)
+    |                                                        `- warning: reference to captured var 'memberIDs' in concurrently-executing code; this is an error in the Swift 6 language mode
+115 |         }
+116 |         guard !Task.isCancelled else { return }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LibraryViews.swift:114:73: warning: reference to captured var 'keys' in concurrently-executing code; this is an error in the Swift 6 language mode
+112 |         let f = filter, so = sort, gr = grouping, hits = searchHits, version = data.version &+ 1
+113 |         let result = await Offload.run {
+114 |             Self.compute(assets, filter: f, memberIDs: memberIDs, keys: keys, hits: hits, sort: so, grouping: gr, version: version)
+    |                                                                         `- warning: reference to captured var 'keys' in concurrently-executing code; this is an error in the Swift 6 language mode
+115 |         }
+116 |         guard !Task.isCancelled else { return }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LocalAPIServer.swift:269:61: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+267 |                     if let e = need(.thumbnails) { return e }
+268 |                     let size = min(2048, max(64, Double(req.query["size"] ?? "") ?? 512))
+269 |                     guard let img = await model.mediaSource.thumbnail(for: asset.localIdentifier, side: size),
+    |                                                             `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+270 |                           let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil),
+271 |                           let jpeg = Self.jpeg(cg) else { return .error(404, "No thumbnail available") }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:283:37: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to static method 'run'; this is an error in the Swift 6 language mode
+281 |         if let p = face.cropPath {
+282 |             let url = model.faceCropDir.appendingPathComponent(p)
+283 |             let img = await Offload.run { () -> NSImage? in
+    |                                     `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to static method 'run'; this is an error in the Swift 6 language mode
+284 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+285 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+[246/250] Compiling PhotoForgeApp OrganizeViews.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LibraryViews.swift:114:56: warning: reference to captured var 'memberIDs' in concurrently-executing code; this is an error in the Swift 6 language mode
+112 |         let f = filter, so = sort, gr = grouping, hits = searchHits, version = data.version &+ 1
+113 |         let result = await Offload.run {
+114 |             Self.compute(assets, filter: f, memberIDs: memberIDs, keys: keys, hits: hits, sort: so, grouping: gr, version: version)
+    |                                                        `- warning: reference to captured var 'memberIDs' in concurrently-executing code; this is an error in the Swift 6 language mode
+115 |         }
+116 |         guard !Task.isCancelled else { return }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LibraryViews.swift:114:73: warning: reference to captured var 'keys' in concurrently-executing code; this is an error in the Swift 6 language mode
+112 |         let f = filter, so = sort, gr = grouping, hits = searchHits, version = data.version &+ 1
+113 |         let result = await Offload.run {
+114 |             Self.compute(assets, filter: f, memberIDs: memberIDs, keys: keys, hits: hits, sort: so, grouping: gr, version: version)
+    |                                                                         `- warning: reference to captured var 'keys' in concurrently-executing code; this is an error in the Swift 6 language mode
+115 |         }
+116 |         guard !Task.isCancelled else { return }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LocalAPIServer.swift:269:61: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+267 |                     if let e = need(.thumbnails) { return e }
+268 |                     let size = min(2048, max(64, Double(req.query["size"] ?? "") ?? 512))
+269 |                     guard let img = await model.mediaSource.thumbnail(for: asset.localIdentifier, side: size),
+    |                                                             `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+270 |                           let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil),
+271 |                           let jpeg = Self.jpeg(cg) else { return .error(404, "No thumbnail available") }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:283:37: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to static method 'run'; this is an error in the Swift 6 language mode
+281 |         if let p = face.cropPath {
+282 |             let url = model.faceCropDir.appendingPathComponent(p)
+283 |             let img = await Offload.run { () -> NSImage? in
+    |                                     `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to static method 'run'; this is an error in the Swift 6 language mode
+284 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+285 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+[247/250] Compiling PhotoForgeApp PeopleViews.swift
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LibraryViews.swift:114:56: warning: reference to captured var 'memberIDs' in concurrently-executing code; this is an error in the Swift 6 language mode
+112 |         let f = filter, so = sort, gr = grouping, hits = searchHits, version = data.version &+ 1
+113 |         let result = await Offload.run {
+114 |             Self.compute(assets, filter: f, memberIDs: memberIDs, keys: keys, hits: hits, sort: so, grouping: gr, version: version)
+    |                                                        `- warning: reference to captured var 'memberIDs' in concurrently-executing code; this is an error in the Swift 6 language mode
+115 |         }
+116 |         guard !Task.isCancelled else { return }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LibraryViews.swift:114:73: warning: reference to captured var 'keys' in concurrently-executing code; this is an error in the Swift 6 language mode
+112 |         let f = filter, so = sort, gr = grouping, hits = searchHits, version = data.version &+ 1
+113 |         let result = await Offload.run {
+114 |             Self.compute(assets, filter: f, memberIDs: memberIDs, keys: keys, hits: hits, sort: so, grouping: gr, version: version)
+    |                                                                         `- warning: reference to captured var 'keys' in concurrently-executing code; this is an error in the Swift 6 language mode
+115 |         }
+116 |         guard !Task.isCancelled else { return }
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/LocalAPIServer.swift:269:61: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+267 |                     if let e = need(.thumbnails) { return e }
+268 |                     let size = min(2048, max(64, Double(req.query["size"] ?? "") ?? 512))
+269 |                     guard let img = await model.mediaSource.thumbnail(for: asset.localIdentifier, side: size),
+    |                                                             `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to instance method 'thumbnail(for:side:)'; this is an error in the Swift 6 language mode
+270 |                           let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil),
+271 |                           let jpeg = Self.jpeg(cg) else { return .error(404, "No thumbnail available") }
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PhotoForgeApp/PeopleViews.swift:283:37: warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to static method 'run'; this is an error in the Swift 6 language mode
+281 |         if let p = face.cropPath {
+282 |             let url = model.faceCropDir.appendingPathComponent(p)
+283 |             let img = await Offload.run { () -> NSImage? in
+    |                                     `- warning: non-sendable result type 'NSImage?' cannot be sent from nonisolated context in call to static method 'run'; this is an error in the Swift 6 language mode
+284 |                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+285 |                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+
+Swift.Optional:1:21: note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+1 | @frozen public enum Optional<Wrapped> : ~Copyable where Wrapped : ~Copyable {
+  |                     `- note: generic enum 'Optional' does not conform to the 'Sendable' protocol
+2 |     case none
+3 |     case some(Wrapped)
+[247/250] Write Objects.LinkFileList
+[248/250] Linking PhotoForgeApp
+[249/250] Applying PhotoForgeApp
+Build complete! (62.29s)

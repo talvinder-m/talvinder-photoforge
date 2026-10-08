@@ -1,0 +1,11 @@
+VLCKit archive: VLCKit-3.7.3-319ed2c0-79128878.tar.xz
+./VLCKit - binary package/VLCKit.xcframework
+./VLCKit - binary package/VLCKit.xcframework/macos-arm64_x86_64/VLCKit.framework
+Vendor/VLCKit.xcframework
+Vendor/VLCKit.xcframework/macos-arm64_x86_64
+Vendor/VLCKit.xcframework/macos-arm64_x86_64/VLCKit.framework
+Vendor/VLCKit.xcframework/macos-arm64_x86_64/dSYMs
+Vendor/VLCKit.xcframework/Info.plist
+Architectures in the fat file: Vendor/VLCKit.xcframework/macos-arm64_x86_64/VLCKit.framework/Versions/A/VLCKit are: x86_64 arm64 
+module.modulemap
+403M	Vendor/VLCKit.xcframework

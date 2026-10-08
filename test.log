@@ -1,0 +1,165 @@
+[0/1] Planning build
+Building for debugging...
+[0/10] Write sources
+[0/10] /Users/runner/work/talvinder-photoforge/talvinder-photoforge/.build/arm64-apple-macosx/debug/PhotoForgePackageTests.derived/runner.swift
+[0/10] Write sources
+[8/13] Write swift-version--79AA4F9932D1E87A.txt
+[10/17] Emitting module PFEditingTests
+[11/17] Compiling PFEditingTests EditingAndPolicyTests.swift
+[12/19] Emitting module PFPeopleTests
+[13/19] Compiling PFPeopleTests ClusteringTests.swift
+[14/22] Compiling PFDatabaseTests DatabaseTests.swift
+[15/22] Emitting module PFDatabaseTests
+[16/24] Compiling PFCoreTests AlbumRuleTests.swift
+[17/24] Emitting module PFCoreTests
+[18/24] Compiling PFCoreTests BatchRenameTests.swift
+[19/24] Emitting module PFClassifyTests
+[20/24] Compiling PFClassifyTests ClassificationRuleTests.swift
+[21/24] Emitting module PFSimilarityTests
+[22/24] Compiling PFSimilarityTests SimilarityTests.swift
+[23/26] Compiling PhotoForgePackageTests runner.swift
+[24/26] Emitting module PhotoForgePackageTests
+[24/26] Write Objects.LinkFileList
+[25/26] Linking PhotoForgePackageTests
+Build complete! (6.84s)
+Test Suite 'All tests' started at 2026-10-08 07:32:58.904.
+Test Suite 'All tests' passed at 2026-10-08 07:32:58.908.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.004) seconds
+◇ Test run started.
+↳ Testing Library Version: 124.4
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Perceptual hashing" started.
+◇ Suite "Quality metrics" started.
+◇ Suite AlbumRuleTests started.
+◇ Suite "Duplicate grouping and best-shot scoring" started.
+◇ Suite "Batch rename" started.
+◇ Suite "Photo classification rules" started.
+◇ Suite "Generative edit policy" started.
+◇ Suite FaceNeighborCacheTests started.
+◇ Suite "Edit stack" started.
+◇ Suite "Constrained face clustering" started.
+◇ Suite "App database" started.
+◇ Test storageRoundTripPreservesBits() started.
+◇ Test exposureChangeDoesNotMoveHash() started.
+◇ Test bkTreeMatchesBruteForce() started.
+◇ Test differentScenesAreFarApart() started.
+◇ Test dHashDetectsGradientDirection() started.
+◇ Test allVersusAny() started.
+◇ Test nameContainsIgnoresCase() started.
+◇ Test personAny() started.
+◇ Test filtersAlwaysApply() started.
+◇ Test peopleTogether() started.
+◇ Test tagIgnoresCase() started.
+◇ Test noiseEstimateIsCalibrated() started.
+◇ Test missingFactorsAreNotPenalised() started.
+◇ Test exactAndNearDuplicatesAreSeparateGroups() started.
+◇ Test roundTrips() started.
+◇ Test sharpBeatsBlurred() started.
+◇ Test bestShotIsExplained() started.
+◇ Test stems() started.
+◇ Test excludedAssetsNeverAppear() started.
+◇ Test patternWithCounterAndDate() started.
+◇ Test nameTokenDropsExtension() started.
+◇ Test notSimilarFeedbackIsRespected() started.
+◇ Test unsafeCharactersAndEmptyResults() started.
+◇ Test uniquing() started.
+◇ Test findReplaceAndPrefix() started.
+◇ Test noDuplicateTableEntries() started.
+◇ Test screenshotFullOfTextIsNotADocument() started.
+◇ Test socialMedia() started.
+◇ Test cameraPhoto() started.
+◇ Test plainPhotoWithASignIsNotADocument() started.
+◇ Test documentAndReceipt() started.
+◇ Test screenshotBySubtypeAndName() started.
+◇ Test qrCode() started.
+◇ Test whatsappByNameAndByShape() started.
+◇ Test ordinaryEditsAreUnaffected() started.
+◇ Test minorsAreAHardBlockInEveryPath() started.
+◇ Test neverSexualisesARealPersonEvenWithAdultModeOn() started.
+◇ Test lawfulOwnAdultMediaCanBeEditedLocallyWhenEnabled() started.
+◇ Test removedFacesDisappear() started.
+◇ Test adultModeOffIsASoftBlock() started.
+◇ Test generativeLayersCarryDisclosure() started.
+◇ Test incrementalEqualsFullBuild() started.
+◇ Test roundTripsThroughJSON() started.
+◇ Test matchesBruteForce() started.
+◇ Test cannotLinkSeparatesFaces() started.
+◇ Test undoRedoAndRevert() started.
+◇ Test recoversDistinctPeople() started.
+◇ Test confirmedPersonsAreStableAndNeverMerged() started.
+◇ Test rejectsRecipesFromTheFuture() started.
+◇ Test lowQualityFacesGoToReviewNotToAPerson() started.
+◇ Test adaptiveThresholdRisesForPoorPairs() started.
+◇ Test mustLinkKeepsFacesTogether() started.
+◇ Test clusteringIsDeterministic() started.
+◇ Test deleteAllFaceDataRemovesEverythingFaceRelated() started.
+◇ Test migrationCreatesSchema() started.
+◇ Test constraintsRejectBadData() started.
+✔ Test storageRoundTripPreservesBits() passed after 0.631 seconds.
+✔ Test bkTreeMatchesBruteForce() passed after 0.631 seconds.
+✔ Test dHashDetectsGradientDirection() passed after 0.663 seconds.
+✔ Test allVersusAny() passed after 0.688 seconds.
+✔ Test nameContainsIgnoresCase() passed after 0.688 seconds.
+✔ Test personAny() passed after 0.688 seconds.
+✔ Test filtersAlwaysApply() passed after 0.688 seconds.
+✔ Test peopleTogether() passed after 0.688 seconds.
+✔ Test tagIgnoresCase() passed after 0.688 seconds.
+✔ Test exposureChangeDoesNotMoveHash() passed after 0.689 seconds.
+✔ Test missingFactorsAreNotPenalised() passed after 0.688 seconds.
+✔ Test exactAndNearDuplicatesAreSeparateGroups() passed after 0.688 seconds.
+✔ Test roundTrips() passed after 0.688 seconds.
+✔ Test noiseEstimateIsCalibrated() passed after 0.688 seconds.
+✔ Test bestShotIsExplained() passed after 0.688 seconds.
+✔ Test stems() passed after 0.688 seconds.
+✔ Test patternWithCounterAndDate() passed after 0.688 seconds.
+✔ Test excludedAssetsNeverAppear() passed after 0.688 seconds.
+✔ Test nameTokenDropsExtension() passed after 0.688 seconds.
+✔ Test notSimilarFeedbackIsRespected() passed after 0.688 seconds.
+✔ Test unsafeCharactersAndEmptyResults() passed after 0.688 seconds.
+✔ Test uniquing() passed after 0.688 seconds.
+✔ Test findReplaceAndPrefix() passed after 0.688 seconds.
+✔ Test noDuplicateTableEntries() passed after 0.688 seconds.
+✔ Test screenshotFullOfTextIsNotADocument() passed after 0.688 seconds.
+✔ Test socialMedia() passed after 0.688 seconds.
+✔ Test plainPhotoWithASignIsNotADocument() passed after 0.688 seconds.
+✔ Test cameraPhoto() passed after 0.688 seconds.
+✔ Test documentAndReceipt() passed after 0.688 seconds.
+✔ Test screenshotBySubtypeAndName() passed after 0.688 seconds.
+✔ Test qrCode() passed after 0.688 seconds.
+✔ Test whatsappByNameAndByShape() passed after 0.688 seconds.
+✔ Test ordinaryEditsAreUnaffected() passed after 0.688 seconds.
+✔ Test minorsAreAHardBlockInEveryPath() passed after 0.688 seconds.
+✔ Test neverSexualisesARealPersonEvenWithAdultModeOn() passed after 0.688 seconds.
+✔ Test lawfulOwnAdultMediaCanBeEditedLocallyWhenEnabled() passed after 0.688 seconds.
+✔ Test sharpBeatsBlurred() passed after 0.689 seconds.
+✔ Test adultModeOffIsASoftBlock() passed after 0.688 seconds.
+✔ Test generativeLayersCarryDisclosure() passed after 0.688 seconds.
+✔ Test removedFacesDisappear() passed after 0.688 seconds.
+✔ Test roundTripsThroughJSON() passed after 0.688 seconds.
+✔ Test differentScenesAreFarApart() passed after 0.689 seconds.
+✔ Test cannotLinkSeparatesFaces() passed after 0.688 seconds.
+✔ Test undoRedoAndRevert() passed after 0.688 seconds.
+✔ Test recoversDistinctPeople() passed after 0.688 seconds.
+✔ Test confirmedPersonsAreStableAndNeverMerged() passed after 0.688 seconds.
+✔ Test rejectsRecipesFromTheFuture() passed after 0.688 seconds.
+✔ Test matchesBruteForce() passed after 0.688 seconds.
+✔ Test adaptiveThresholdRisesForPoorPairs() passed after 0.688 seconds.
+✔ Test lowQualityFacesGoToReviewNotToAPerson() passed after 0.688 seconds.
+✔ Test mustLinkKeepsFacesTogether() passed after 0.688 seconds.
+✔ Test incrementalEqualsFullBuild() passed after 0.688 seconds.
+✔ Test migrationCreatesSchema() passed after 0.678 seconds.
+✔ Suite "Perceptual hashing" passed after 0.690 seconds.
+✔ Suite AlbumRuleTests passed after 0.690 seconds.
+✔ Suite "Duplicate grouping and best-shot scoring" passed after 0.690 seconds.
+✔ Suite "Quality metrics" passed after 0.690 seconds.
+✔ Suite "Batch rename" passed after 0.690 seconds.
+✔ Suite "Photo classification rules" passed after 0.690 seconds.
+✔ Suite "Generative edit policy" passed after 0.690 seconds.
+✔ Suite "Edit stack" passed after 0.690 seconds.
+✔ Suite FaceNeighborCacheTests passed after 0.690 seconds.
+✔ Test clusteringIsDeterministic() passed after 0.694 seconds.
+✔ Suite "Constrained face clustering" passed after 0.696 seconds.
+✔ Test constraintsRejectBadData() passed after 0.685 seconds.
+✔ Test deleteAllFaceDataRemovesEverythingFaceRelated() passed after 0.689 seconds.
+✔ Suite "App database" passed after 0.701 seconds.
+✔ Test run with 56 tests passed after 0.702 seconds.
