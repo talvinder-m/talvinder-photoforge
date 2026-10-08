@@ -31,24 +31,6 @@ struct GridSection: Identifiable {
     let items: [AssetRow]
 }
 
-/// Selection lives in its own object so that clicking a photo only redraws the visible
-/// cells, not the whole grid.
-@MainActor
-@Observable
-final class GridSelection {
-    var ids: Set<Int64> = []
-    var focused: AssetRow?
-
-    func select(_ row: AssetRow, extend: Bool) {
-        if extend {
-            if ids.contains(row.id) { ids.remove(row.id) } else { ids.insert(row.id) }
-        } else {
-            ids = [row.id]
-        }
-        focused = row
-    }
-}
-
 /// What the grid shows, computed off the main thread.
 struct GridData: Sendable {
     var rows: [AssetRow] = []
@@ -73,6 +55,8 @@ struct GridActions {
     var slideshowFrom: (AssetRow) -> Void
     var queueForRemoval: ([Int64]) -> Void
     var tag: ([Int64]) -> Void
+    var copy: ([Int64]) -> Void
+    var export: ([Int64]) -> Void
     var makeAlbum: (_ title: String, _ ids: [Int64]) -> Void
     var isSmartAlbum = false
 }
@@ -92,6 +76,7 @@ struct PhotoGridView: View {
     @State private var renameRequest: RenameRequest?
     @State private var newAlbum: NewAlbumRequest?
     @State private var tagRequest: TagRequest?
+    @FocusState private var gridFocused: Bool
 
     private var title: String {
         switch filter {
@@ -131,9 +116,14 @@ struct PhotoGridView: View {
         guard !Task.isCancelled else { return }
         data = result
         loaded = true
+        sel.setItems(result.rows)
+        sel.frames.removeAll()
         // Keep the preview pointing at the current copy of the focused item (e.g. after a rename).
-        if let f = sel.focused { sel.focused = model.assetsByID[f.id] }
+        if let f = sel.focused { sel.focused = model.assetsByID[f.id] ?? sel.focused }
     }
+
+    /// Selected items in grid order.
+    private var selectedIDs: [Int64] { sel.order.filter { sel.ids.contains($0) } }
 
     nonisolated static func compute(_ all: [AssetRow], filter: GridFilter, memberIDs: Set<Int64>?, keys: Set<String>?,
                                     hits: Set<Int64>?, sort: GridSort, grouping: GridGrouping, version: Int) -> GridData {
@@ -219,6 +209,8 @@ struct PhotoGridView: View {
             slideshowFrom: { row in model.startSlideshow(rows, title: title, startAt: row.id) },
             queueForRemoval: { ids in queue(ids) },
             tag: { ids in tagRequest = TagRequest(assetIDs: ids) },
+            copy: { ids in Task { await model.copyToPasteboard(ids) } },
+            export: { ids in Task { await model.exportWithPanel(ids) } },
             makeAlbum: { t, ids in newAlbum = NewAlbumRequest(isFolder: false, assetIDs: ids, initialTitle: t) },
             isSmartAlbum: { if case .album(let id) = filter { return model.albums.first { $0.id == id }?.isSmart ?? false }; return false }())
     }
@@ -235,10 +227,43 @@ struct PhotoGridView: View {
                 GridContent(data: data, tileSize: tileSize, showNames: grouping == .name || sort == .name,
                             sel: sel, actions: actions)
                     .equatable()
+                    .focusable()
+                    .focused($gridFocused)
+                    .focusEffectDisabled()
+                    .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow], phases: [.down, .repeat]) { press in
+                        let dir: GridSelection.Direction = switch press.key {
+                        case .leftArrow: .left
+                        case .rightArrow: .right
+                        case .upArrow: .up
+                        default: .down
+                        }
+                        sel.move(dir, extend: press.modifiers.contains(.shift))
+                        return .handled
+                    }
+                    .onKeyPress(.escape) { sel.clear(); return .handled }
+                    .onKeyPress(.return) {
+                        guard let f = sel.focused else { return .ignored }
+                        if f.isVideo { model.playRequest = f } else { model.editingAsset = f }
+                        return .handled
+                    }
+                    .onKeyPress(keys: [.delete, .deleteForward]) { _ in
+                        let ids = selectedIDs
+                        guard !ids.isEmpty else { return .ignored }
+                        queue(ids)
+                        model.banner = "\(ids.count) item\(ids.count == 1 ? "" : "s") moved to the Removal Queue (nothing is deleted yet)."
+                        return .handled
+                    }
+                    .onCommand(#selector(NSText.selectAll(_:))) { sel.selectAll() }
+                    .onCommand(#selector(NSText.copy(_:))) {
+                        let ids = selectedIDs
+                        if !ids.isEmpty { Task { await model.copyToPasteboard(ids) } }
+                    }
+                    .onChange(of: sel.focusRequest) { gridFocused = true }
+                    .onAppear { gridFocused = true }
             }
         }
         .navigationTitle(title)
-        .navigationSubtitle(sel.ids.count > 1 ? "\(sel.ids.count) selected of \(rows.count.formatted())"
+        .navigationSubtitle(sel.ids.count > 1 ? "\(sel.ids.count.formatted()) selected of \(rows.count.formatted())"
                             : "\(rows.count.formatted()) \(filter == .videos ? "videos" : "items")")
         .sheet(item: $renameRequest) { r in RenameSheet(request: r).environment(model) }
         .sheet(item: $newAlbum) { r in NewAlbumSheet(request: r).environment(model) }
@@ -273,6 +298,9 @@ struct PhotoGridView: View {
                         .help("Put the selected items in an album")
                     Button { tagRequest = TagRequest(assetIDs: ids) } label: { Label("Tag", systemImage: "tag") }
                         .help("Tag the selected items")
+                    Button { Task { await model.exportWithPanel(ids) } } label: { Label("Export", systemImage: "square.and.arrow.up") }
+                        .keyboardShortcut("e", modifiers: [.command, .shift])
+                        .help("Copy the original files to a folder (⇧⌘E). You can also drag them to Finder, or ⌘C then ⌘V in Finder.")
                     Button { queue(Array(sel.ids)) } label: { Label("Queue for Removal", systemImage: "tray.and.arrow.down") }
                         .help("Add the selected photos to the Removal Queue (nothing is deleted yet)")
                 }
@@ -338,32 +366,41 @@ struct GridContent: View, Equatable {
     }
 
     var body: some View {
-        ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: tileSize, maximum: tileSize * 1.5), spacing: 6)],
-                      spacing: 6, pinnedViews: [.sectionHeaders]) {
-                ForEach(data.sections) { sec in
-                    Section {
-                        ForEach(sec.items) { row in
-                            GridCell(row: row, tileSize: tileSize, showNames: showNames, sel: sel, actions: actions)
-                        }
-                    } header: {
-                        if !sec.title.isEmpty {
-                            SectionHeader(title: sec.title, count: sec.items.count) {
-                                actions.makeAlbum(sec.title, sec.items.map(\.id))
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: tileSize, maximum: tileSize * 1.5), spacing: 8)],
+                          spacing: 8, pinnedViews: [.sectionHeaders]) {
+                    ForEach(data.sections) { sec in
+                        Section {
+                            ForEach(sec.items) { row in
+                                GridCell(row: row, tileSize: tileSize, showNames: showNames, sel: sel, actions: actions)
+                                    .id(row.id)
+                            }
+                        } header: {
+                            if !sec.title.isEmpty {
+                                SectionHeader(title: sec.title, count: sec.items.count) {
+                                    actions.makeAlbum(sec.title, sec.items.map(\.id))
+                                }
                             }
                         }
                     }
                 }
+                .padding(.horizontal, 14)
+                .padding(.bottom, 24)
+                .background(GridBackground(sel: sel))
+                .overlay(RubberBandOverlay(sel: sel))
+                .coordinateSpace(name: GridSpace.name)
             }
-            .padding(.horizontal, 12)
-            .padding(.bottom, 12)
+            .background(Color(nsColor: .controlBackgroundColor))
+            .background(ScrollDriver(sel: sel, proxy: proxy))
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { _ in sel.frames.removeAll() }
         }
-        .background(Color(nsColor: .controlBackgroundColor))
     }
 }
 
 struct GridCell: View {
     @Environment(AppModel.self) private var model
+    @State private var dragStart: CGPoint?
     let row: AssetRow
     let tileSize: Double
     let showNames: Bool
@@ -403,22 +440,38 @@ struct GridCell: View {
                 }
             }
             .contentShape(Rectangle())
-            .onTapGesture(count: 2) { if row.isVideo { model.playRequest = row } else { model.editingAsset = row } }
-            .onTapGesture { sel.select(row, extend: NSEvent.modifierFlags.contains(.command)) }
-            .draggable(AssetDrag.payload(sel.ids.contains(row.id) ? Array(sel.ids) : [row.id])) {
-                let n = sel.ids.contains(row.id) ? sel.ids.count : 1
-                AssetThumbnail(localIdentifier: row.localIdentifier, side: 160)
-                    .frame(width: 80, height: 80).clipShape(RoundedRectangle(cornerRadius: 6))
-                    .overlay(alignment: .topTrailing) {
-                        if n > 1 { Text("\(n)").font(.caption.bold()).padding(4).background(.red, in: Capsule()).foregroundStyle(.white) }
-                    }
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(GridSpace.name)) } action: { sel.frames[row.id] = $0 }
+            // One click handler (no waiting to see if a double-click follows), so ⌘ and ⇧ are read
+            // the moment you click.
+            .onTapGesture {
+                let event = NSApp.currentEvent
+                if (event?.clickCount ?? 1) >= 2 {
+                    if row.isVideo { model.playRequest = row } else { model.editingAsset = row }
+                } else {
+                    sel.click(row, modifiers: event?.modifierFlags ?? NSEvent.modifierFlags)
+                }
             }
+            .gesture(
+                DragGesture(minimumDistance: 4)
+                    .onChanged { v in
+                        guard dragStart != v.startLocation else { return }
+                        dragStart = v.startLocation
+                        // Drag the selection if this photo is in it, otherwise just this photo.
+                        if !sel.ids.contains(row.id) { sel.click(row, modifiers: []) }
+                        let rows = sel.order.filter { sel.ids.contains($0) }.compactMap { sel.rowsByID[$0] }
+                        GridDragController.shared.begin(rows.isEmpty ? [row] : rows, model: model)
+                    }
+                    .onEnded { _ in dragStart = nil }
+            )
             .contextMenu { menu }
     }
 
     @ViewBuilder private var menu: some View {
         let ids = sel.ids.contains(row.id) ? Array(sel.ids) : [row.id]
         if row.isVideo { Button("Play") { model.playRequest = row } } else { Button("Edit…") { model.editingAsset = row } }
+        Button(ids.count > 1 ? "Copy \(ids.count) Items" : "Copy") { actions.copy(ids) }
+        Button(ids.count > 1 ? "Export \(ids.count) Items…" : "Export…") { actions.export(ids) }
+        Divider()
         Button(ids.count > 1 ? "Rename \(ids.count) Items…" : "Rename…") { actions.rename(ids) }
         AddToAlbumMenu(ids: ids) { actions.newAlbum(ids) }
         Menu("Tags") {
@@ -538,9 +591,17 @@ final class ThumbnailCache: @unchecked Sendable {
     private let cache = NSCache<NSString, NSImage>()
     init() { cache.countLimit = 2500; cache.totalCostLimit = 300_000_000 }
     func get(_ id: String, _ side: Double) -> NSImage? { cache.object(forKey: "\(id)@\(Int(side))" as NSString) }
+    private var lastSide: [String: Int] = [:]
+    private let lock = NSLock()
+    /// Any cached thumbnail of an item (for drag images).
+    func anyImage(_ id: String) -> NSImage? {
+        lock.lock(); let side = lastSide[id]; lock.unlock()
+        return side.flatMap { cache.object(forKey: "\(id)@\($0)" as NSString) }
+    }
     func set(_ img: NSImage, _ id: String, _ side: Double) {
         let cost = Int(img.size.width * img.size.height * 4)
         cache.setObject(img, forKey: "\(id)@\(Int(side))" as NSString, cost: cost)
+        lock.lock(); lastSide[id] = Int(side); lock.unlock()
     }
     func removeAll() { cache.removeAllObjects() }
     func configure(megabytes: Int) { cache.totalCostLimit = megabytes * 1_000_000 }

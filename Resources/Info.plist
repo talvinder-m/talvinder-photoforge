@@ -36,6 +36,12 @@
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>
+			<key>UTTypeIdentifier</key><string>com.talvinder.photoforge.items</string>
+			<key>UTTypeDescription</key><string>PhotoForge items</string>
+			<key>UTTypeConformsTo</key>
+			<array><string>public.data</string></array>
+		</dict>
+		<dict>
 			<key>UTTypeIdentifier</key><string>com.talvinder.photoforge.library</string>
 			<key>UTTypeDescription</key><string>PhotoForge Library</string>
 			<key>UTTypeConformsTo</key>

@@ -76,13 +76,14 @@ struct AlbumSidebarRow: View {
             .tag(SidebarItem.album(albumID))
             .help(album?.rule.map { "Smart album: " + $0.summary(personName: model.personName) } ?? "")
             .listRowBackground(dropTargeted ? Color.accentColor.opacity(0.25) : nil)
-            .dropDestination(for: String.self) { items, _ in
-                let ids = AssetDrag.ids(items)
-                guard !ids.isEmpty, node.kind == .album else { return false }
-                model.addToAlbum(albumID, ids)
-                model.banner = "Added \(ids.count) item\(ids.count == 1 ? "" : "s") to “\(node.title)”."
-                return true
-            } isTargeted: { dropTargeted = $0 && node.kind == .album }
+            .onDrop(of: [.photoforgeItems], isTargeted: Binding(get: { dropTargeted }, set: { dropTargeted = $0 && node.kind == .album })) { providers in
+                guard node.kind == .album else { return false }
+                return ItemDrop.load(providers) { ids in
+                    guard !ids.isEmpty else { return }
+                    model.addToAlbum(albumID, ids)
+                    model.banner = "Added \(ids.count) item\(ids.count == 1 ? "" : "s") to “\(node.title)”."
+                }
+            }
             .contextMenu {
                 if let a = album, let rule = a.rule {
                     Button("Edit Smart Album…") { smartAlbum = SmartAlbumRequest(editing: a.id, title: a.title, rule: rule) }
@@ -486,17 +487,6 @@ struct TagSheet: View {
     }
 }
 
-/// Payload for dragging photos from the grid onto an album or tag in the sidebar.
-enum AssetDrag {
-    static let prefix = "photoforge-items:"
-    static func payload(_ ids: [Int64]) -> String { prefix + ids.map(String.init).joined(separator: ",") }
-    static func ids(_ strings: [String]) -> [Int64] {
-        strings.flatMap { s -> [Int64] in
-            guard s.hasPrefix(prefix) else { return [] }
-            return s.dropFirst(prefix.count).split(separator: ",").compactMap { Int64($0) }
-        }
-    }
-}
 
 struct TagSidebarRow: View {
     @Environment(AppModel.self) private var model
@@ -511,12 +501,12 @@ struct TagSidebarRow: View {
             .badge(model.userTags[tag]?.count ?? 0)
             .tag(SidebarItem.tag(tag))
             .listRowBackground(dropTargeted ? Color.accentColor.opacity(0.25) : nil)
-            .dropDestination(for: String.self) { items, _ in
-                let ids = AssetDrag.ids(items)
-                guard !ids.isEmpty else { return false }
-                Task { await model.addTag(tag, to: ids) }
-                return true
-            } isTargeted: { dropTargeted = $0 }
+            .onDrop(of: [.photoforgeItems], isTargeted: $dropTargeted) { providers in
+                ItemDrop.load(providers) { ids in
+                    guard !ids.isEmpty else { return }
+                    Task { await model.addTag(tag, to: ids) }
+                }
+            }
             .contextMenu {
                 Button("Rename Tag…") { newName = tag; renaming = true }
                 Button("Make Smart Album") {

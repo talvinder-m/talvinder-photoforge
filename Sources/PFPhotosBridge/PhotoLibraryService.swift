@@ -347,6 +347,32 @@ public final class PhotoLibraryService: NSObject, PHPhotoLibraryChangeObserver, 
     }
 
     /// Writes the photo or video as currently shown in Photos (with edits) to `directory`.
+    /// The resource to export (edited version if there is one) and the file name to give it.
+    public func exportResource(_ localIdentifier: String) -> (resource: PHAssetResource, fileName: String)? {
+        guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil).firstObject else { return nil }
+        let resources = PHAssetResource.assetResources(for: asset)
+        let preferred: [PHAssetResourceType] = asset.mediaType == .video ? [.fullSizeVideo, .video] : [.fullSizePhoto, .photo]
+        guard let res = preferred.lazy.compactMap({ t in resources.first { $0.type == t } }).first ?? resources.first else { return nil }
+        let original = resources.first { $0.type == .photo || $0.type == .video }?.originalFilename ?? res.originalFilename
+        var name = res.originalFilename
+        if name.lowercased().hasPrefix("fullsizerender") {
+            name = (original as NSString).deletingPathExtension + "." + (name as NSString).pathExtension
+        }
+        return (res, name)
+    }
+
+    /// Writes an item's original (as currently edited) to exactly `url`.
+    public func writeOriginal(_ localIdentifier: String, toFile url: URL, allowNetwork: Bool) async throws {
+        guard let (res, _) = exportResource(localIdentifier) else { throw PhotoForgeError.assetUnavailable(localIdentifier: localIdentifier) }
+        let opts = PHAssetResourceRequestOptions()
+        opts.isNetworkAccessAllowed = allowNetwork
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+            PHAssetResourceManager.default().writeData(for: res, toFile: url, options: opts) { error in
+                if let error { cont.resume(throwing: error) } else { cont.resume() }
+            }
+        }
+    }
+
     public func exportOriginal(_ localIdentifier: String, to directory: URL, allowNetwork: Bool) async throws -> ExportedOriginal {
         guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil).firstObject else {
             throw PhotoForgeError.assetUnavailable(localIdentifier: localIdentifier)

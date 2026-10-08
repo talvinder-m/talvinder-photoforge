@@ -17,9 +17,10 @@ struct ImportProgress: Equatable {
     var skipped = 0
     var failed = 0
     var running = true
+    var addedLabel = "added"
     var fraction: Double { total > 0 ? Double(done) / Double(total) : 0 }
     var summary: String {
-        var parts = ["\(added.formatted()) added"]
+        var parts = ["\(added.formatted()) \(addedLabel)"]
         if skipped > 0 { parts.append("\(skipped.formatted()) already in the library") }
         if failed > 0 { parts.append("\(failed.formatted()) couldn't be copied") }
         return parts.joined(separator: " · ")

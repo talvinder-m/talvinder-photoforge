@@ -165,6 +165,9 @@ public final class FileLibrarySource: MediaSource, @unchecked Sendable {
         return paths[key]
     }
 
+    /// The file behind an item (for copying it out, e.g. dragging to Finder).
+    public func fileURL(for key: String) -> URL? { url(for: key) }
+
     // MARK: Discovery
 
     public static func inspect(_ url: URL) throws -> LibraryInspection {

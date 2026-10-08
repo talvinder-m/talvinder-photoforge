@@ -590,6 +590,73 @@ enum SelfTest {
                 && back?.rule == rule && matched.count == 4 && frozen?.isSmart == false && frozen?.assetIDs.count == 4
         }
 
+        // 22. Selecting like Photos/Finder, and copying files out
+        attempt("selection: click, ⌘, ⇧ range, box, ⌘A, arrows") {
+            let db = try AppDatabase.open(at: dir.appendingPathComponent("sel.sqlite"))
+            let sid = try db.systemSourceID()
+            let now = Date()
+            try db.upsert((0..<10).map { i in
+                AssetUpsert(localIdentifier: "R\(i)", mediaType: "image", subtypeMask: 0, creationDate: now.addingTimeInterval(Double(-i)),
+                            modificationDate: now, pixelWidth: 10, pixelHeight: 10, duration: 0, favorite: false, hidden: false, burstIdentifier: nil)
+            }, sourceID: sid, scanStamp: now)
+            let rows = try db.assets()            // newest first: R0, R1, …
+            return MainActor.assumeIsolated { () -> Bool in
+                let sel = GridSelection()
+                sel.setItems(rows)
+                // 5 per row, 100 pt apart.
+                for (i, r) in rows.enumerated() { sel.frames[r.id] = CGRect(x: Double(i % 5) * 100, y: Double(i / 5) * 100, width: 90, height: 90) }
+                sel.click(rows[1], modifiers: [])
+                sel.click(rows[4], modifiers: .shift)
+                let range = sel.ids == Set(rows[1...4].map(\.id))
+                sel.click(rows[2], modifiers: .command)
+                let toggled = sel.ids == Set([rows[1], rows[3], rows[4]].map(\.id))
+                sel.selectAll()
+                let all = sel.ids.count == 10
+                sel.clear()
+                sel.click(rows[2], modifiers: [])
+                sel.move(.down, extend: false)
+                let down = sel.ids == [rows[7].id]
+                sel.move(.right, extend: true)
+                let extended = sel.ids == Set([rows[7].id, rows[8].id])
+                sel.beginBand(additive: false)
+                sel.updateBand(CGRect(x: 150, y: 50, width: 120, height: 100))      // touches columns 1–2 of both rows
+                sel.endBand()
+                let band = sel.ids == Set([rows[1], rows[2], rows[6], rows[7]].map(\.id))
+                print("     selection: range \(range), ⌘ \(toggled), all \(all), down \(down), ⇧→ \(extended), box \(band)")
+                return range && toggled && all && down && extended && band
+            }
+        }
+        attempt("copy out: file names and original files") {
+            let db = try AppDatabase.open(at: dir.appendingPathComponent("exp.sqlite"))
+            let sid = try db.systemSourceID()
+            try db.upsert([AssetUpsert(localIdentifier: "file:IMG_7.jpg", mediaType: "image", subtypeMask: 0, creationDate: .now,
+                                       modificationDate: .now, pixelWidth: 640, pixelHeight: 640, duration: 0, favorite: false,
+                                       hidden: false, burstIdentifier: nil, originalFilename: "IMG_7.jpg")], sourceID: sid, scanStamp: .now)
+            let row = try db.assets()[0]
+            try db.setTitles([(assetID: row.id, title: "Goat Shed: north side")])
+            let named = try db.assets()[0]
+            let srcDir = dir.appendingPathComponent("ExportSrc"), outDir = dir.appendingPathComponent("ExportOut")
+            try FileManager.default.createDirectory(at: srcDir, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
+            let src = srcDir.appendingPathComponent("IMG_7.jpg")
+            try writeJPEG(scene, to: src)
+            let photos = PhotoLibraryService()
+            let item = AppModel.ExportItem(named, fileURL: src, isPhotos: false)
+            let name = AppModel.exportFileName(item, photos: photos)
+            let plain = AppModel.exportFileName(AppModel.ExportItem(row, fileURL: src, isPhotos: false), photos: photos)
+            let dest = outDir.appendingPathComponent(name)
+            let sem = DispatchSemaphore(value: 0)
+            var ok = false
+            Task.detached {
+                ok = (try? await AppModel.writeOriginal(key: item.key, fileURL: item.fileURL, photos: photos, to: dest)) != nil
+                sem.signal()
+            }
+            sem.wait()
+            let same = (try? Data(contentsOf: dest)) == (try? Data(contentsOf: src))
+            print("     copy out: “\(name)” (unnamed: “\(plain)”), written \(ok), identical \(same)")
+            return name == "Goat Shed- north side.jpg" && plain == "IMG_7.jpg" && ok && same
+        }
+
         // 20. Renaming rules
         do {
             var r = BatchRename(); r.mode = .pattern; r.pattern = "Farm {n}"; r.start = 1; r.padding = 3
