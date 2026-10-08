@@ -82,3 +82,49 @@ struct ClusteringTests {
         #expect(k.threshold(good, poor) > k.threshold(good, good))
     }
 }
+
+@Suite struct FaceNeighborCacheTests {
+    static func randomFaces(_ n: Int, dim: Int = 16, seed: UInt64 = 7, startID: Int64 = 1) -> [FaceSample] {
+        var rng = SplitMix64(seed: seed)
+        return (0..<n).map { i in
+            var v = (0..<dim).map { _ in Float(rng.next() % 2000) / 1000 - 1 }
+            let norm = v.reduce(0) { $0 + $1 * $1 }.squareRoot()
+            v = v.map { $0 / norm }
+            return FaceSample(id: FaceID(startID + Int64(i)), embedding: v, quality: 0.9, pixelSize: 120)
+        }
+    }
+
+    @Test func matchesBruteForce() {
+        let faces = Self.randomFaces(300)
+        let cache = FaceNeighborCache(k: 10, minSimilarity: -2)
+        cache.update(faces)
+        let brute = BruteForceIndex(faces)
+        for f in faces.prefix(40) {
+            let a = cache.neighbors(of: f.id, k: 10).map(\.0)
+            let b = brute.neighbors(of: f.id, k: 10).map(\.0)
+            #expect(a == b)
+        }
+    }
+
+    @Test func incrementalEqualsFullBuild() {
+        let faces = Self.randomFaces(240)
+        let full = FaceNeighborCache(k: 8, minSimilarity: -2)
+        full.update(faces)
+        let inc = FaceNeighborCache(k: 8, minSimilarity: -2)
+        inc.update(Array(faces.prefix(150)))
+        let r = inc.update(faces)
+        #expect(r.added == 90 && r.removed == 0)
+        for f in faces { #expect(inc.neighbors(of: f.id, k: 8).map(\.0) == full.neighbors(of: f.id, k: 8).map(\.0)) }
+    }
+
+    @Test func removedFacesDisappear() {
+        let faces = Self.randomFaces(100)
+        let cache = FaceNeighborCache(k: 8, minSimilarity: -2)
+        cache.update(faces)
+        let kept = Array(faces.dropFirst(10))
+        let r = cache.update(kept)
+        #expect(r.removed == 10 && cache.count == 90)
+        let gone = Set(faces.prefix(10).map(\.id))
+        for f in kept { #expect(cache.neighbors(of: f.id, k: 8).allSatisfy { !gone.contains($0.0) }) }
+    }
+}

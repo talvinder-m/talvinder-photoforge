@@ -58,15 +58,19 @@ struct AnalysisJob: BackgroundJob {
             do {
                 let img = try await source.analysisImage(for: item.localIdentifier, maxDimension: 512,
                                                          allowNetwork: options.allowICloudDownloads)
-                guard let (p, d) = PerceptualHash.hashes(for: img) else { return }
-                let (w, h) = Self.fit(img, maxSide: 512)
-                guard let luma = LumaImage.from(img, width: w, height: h) else { return }
-                let q = QualityMetrics.measure(luma)
-                let scene: [Float]? = options.sceneSimilarity ? (try? VisionFeaturePrintEmbedder.featurePrint(img)) : nil
-                try db.saveAnalysis(assetID: item.id, pHash: p, dHash: d, laplacianVariance: q.laplacianVariance,
-                                    noiseSigma: q.noiseSigma, meanLuma: q.meanLuma, clipped: q.clippedFraction,
-                                    sharpness: q.sharpnessScore, noise: q.noiseScore, exposure: q.exposureScore,
-                                    sceneEmbedding: scene, cipher: cipher)
+                // The calculations block, so they run off the shared Swift thread pool.
+                let (db, cipher, sceneOn) = (db, cipher, options.sceneSimilarity)
+                try await Offload.run(.utility) {
+                    guard let (p, d) = PerceptualHash.hashes(for: img) else { return }
+                    let (w, h) = Self.fit(img, maxSide: 512)
+                    guard let luma = LumaImage.from(img, width: w, height: h) else { return }
+                    let q = QualityMetrics.measure(luma)
+                    let scene: [Float]? = sceneOn ? (try? VisionFeaturePrintEmbedder.featurePrint(img)) : nil
+                    try db.saveAnalysis(assetID: item.id, pHash: p, dHash: d, laplacianVariance: q.laplacianVariance,
+                                        noiseSigma: q.noiseSigma, meanLuma: q.meanLuma, clipped: q.clippedFraction,
+                                        sharpness: q.sharpnessScore, noise: q.noiseScore, exposure: q.exposureScore,
+                                        sceneEmbedding: scene, cipher: cipher)
+                }
             } catch PhotoForgeError.iCloudDownloadRequired {
                 try? db.setAvailability(assetID: item.id, .cloudOnly)
             }
@@ -104,8 +108,11 @@ struct AnalysisJob: BackgroundJob {
                 let md = await source.metadata(for: item.localIdentifier)
                 let img = try await source.analysisImage(for: item.localIdentifier, maxDimension: CGFloat(options.classifyImageSize),
                                                          allowNetwork: options.allowICloudDownloads)
-                let out = try analyzer.analyze(img, width: row.pixelWidth, height: row.pixelHeight, metadata: md,
-                                               isScreenshotSubtype: row.subtypeMask & 4 != 0)
+                let db = db
+                let out = try await Offload.run(.utility) {
+                    try analyzer.analyze(img, width: row.pixelWidth, height: row.pixelHeight, metadata: md,
+                                         isScreenshotSubtype: row.subtypeMask & 4 != 0)
+                }
                 try db.saveClassification(
                     assetID: item.id,
                     categories: out.decisions.map { .init(category: $0.category.rawValue, confidence: $0.confidence, reason: $0.reason) },
@@ -132,7 +139,7 @@ struct AnalysisJob: BackgroundJob {
             do {
                 let img = try await source.analysisImage(for: item.localIdentifier, maxDimension: CGFloat(options.faceImageSize),
                                                          allowNetwork: options.allowICloudDownloads)
-                let found = (try? detector.detect(in: img)) ?? []
+                let found = await Offload.run(.utility) { (try? detector.detect(in: img)) ?? [] }
                 var faces: [NewFace] = []
                 for (i, f) in found.enumerated() {
                     var embedding: [Float]? = nil

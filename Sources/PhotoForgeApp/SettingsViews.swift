@@ -29,7 +29,7 @@ struct SettingsView: View {
                     HStack {
                         Text("Loose").font(.caption)
                         Slider(value: $model.faceStrictness, in: 0...1, onEditingChanged: { editing in
-                            if !editing { Task { await model.rebuildPeople() } }
+                            if !editing { Task { await model.rebuildPeople(reloadFaces: false) } }
                         })
                         Text("Strict").font(.caption)
                     }

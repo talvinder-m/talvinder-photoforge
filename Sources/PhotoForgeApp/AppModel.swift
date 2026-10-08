@@ -157,6 +157,13 @@ final class AppModel {
 
     /// Face id → id of the PersonVM it's shown under.
     var faceOwnerIndex: [Int64: String] = [:]
+    /// Nearest-neighbour lists for faces, kept between regroupings (per library).
+    var faceGraph = FaceNeighborCache(k: 30, minSimilarity: 0.2)
+    var regroupTask: Task<Void, Never>?
+    /// True while faces are being regrouped in the background.
+    var peopleBusy = false
+    /// The person just named, so the People screen keeps it selected when its id changes.
+    var lastNamedPersonKey: String?
     var playRequest: AssetRow?
     var importTask: Task<Void, Never>?
 
@@ -271,6 +278,7 @@ final class AppModel {
             ThumbnailCache.shared.removeAll()
             assets = []; assetsByID = [:]; duplicateGroups = []; allDuplicateGroups = []; people = []; reviewFaces = []; storedFaces = []
             userTags = [:]; smartAlbumMembers = [:]
+            faceGraph = FaceNeighborCache(k: 30, minSimilarity: 0.2)
             categoryMembers = [:]; folderTree = []; folderIndex = [:]; albums = []
             if selection == .iCloudOnly || selection == .sharedAlbums { selection = .allPhotos }
             if case .folder = selection { selection = .allPhotos }
@@ -294,7 +302,7 @@ final class AppModel {
     /// Libraries found in the usual places that aren't already listed.
     func discoverLibraries() async -> [URL] {
         let known = Set(libraries.compactMap(\.sourcePath))
-        return await Task.detached { FileLibrarySource.discoverLibraries() }.value.filter { !known.contains($0.path) }
+        return await Offload.run { FileLibrarySource.discoverLibraries() }.filter { !known.contains($0.path) }
     }
 
     func chooseLibraryWithPanel() async {
@@ -387,7 +395,7 @@ final class AppModel {
         let svc = photos
         let tokenKey = "photosChangeToken"
         let saved = db.setting(tokenKey).flatMap { Data(base64Encoded: $0) }
-        let delta = await Task.detached(priority: .userInitiated) { svc.fetchDelta(sinceArchivedToken: full ? nil : saved) }.value
+        let delta = await Offload.run { svc.fetchDelta(sinceArchivedToken: full ? nil : saved) }
         do {
             let source = try db.systemSourceID()
             if !full, saved != nil, !delta.requiresFullReconcile {
@@ -397,11 +405,11 @@ final class AppModel {
                     return
                 }
                 let stamp = Date()
-                try await Task.detached(priority: .userInitiated) {
+                try await Offload.run {
                     let snaps = svc.snapshots(for: changed, includeLocation: false)
                     try db.upsert(snaps.map(Self.upsert), sourceID: source, scanStamp: stamp)
                     try db.markDeleted(localIdentifiers: deleted)
-                }.value
+                }
                 if let t = delta.newTokenArchive { db.setSetting(tokenKey, t.base64EncodedString()) }
                 db.log("scan", "Library updated: \(changed.count) new or changed, \(deleted.count) removed")
                 refreshLibraries()
@@ -412,11 +420,11 @@ final class AppModel {
             var count = 0
             for try await batch in photos.allAssets(batchSize: 500, includeLocation: false) {
                 let rows = batch.map(Self.upsert)
-                try await Task.detached { try db.upsert(rows, sourceID: source, scanStamp: stamp) }.value
+                try await Offload.run { try db.upsert(rows, sourceID: source, scanStamp: stamp) }
                 count += rows.count
                 status.message = "Reading library… \(count.formatted()) items"
             }
-            let removed = try await Task.detached { try db.markUnseenDeleted(sourceID: source, scanStamp: stamp) }.value
+            let removed = try await Offload.run { try db.markUnseenDeleted(sourceID: source, scanStamp: stamp) }
             if let t = delta.newTokenArchive { db.setSetting(tokenKey, t.base64EncodedString()) }
             db.log("scan", "Library synced: \(count) items\(removed > 0 ? ", \(removed) removed from Photos" : "")", assetCount: count)
             if !status.running { status.message = "" }
@@ -443,7 +451,7 @@ final class AppModel {
         status.message = "Reading “\(source.inspection.name)”…"
         let stamp = Date()
         do {
-            let found = try await Task.detached(priority: .userInitiated) { try source.scan() }.value
+            let found = try await Offload.run { try source.scan() }
             let rows = found.map { a in
                 AssetUpsert(localIdentifier: a.key, mediaType: a.mediaType, subtypeMask: a.subtypeMask,
                             creationDate: a.creationDate, modificationDate: a.modificationDate,
@@ -454,10 +462,10 @@ final class AppModel {
             }
             for chunk in stride(from: 0, to: rows.count, by: 1000) {
                 let part = Array(rows[chunk..<min(chunk + 1000, rows.count)])
-                try await Task.detached { try db.upsert(part, sourceID: id, scanStamp: stamp) }.value
+                try await Offload.run { try db.upsert(part, sourceID: id, scanStamp: stamp) }
                 status.message = "Reading “\(source.inspection.name)”… \(min(chunk + 1000, rows.count).formatted()) items"
             }
-            _ = try await Task.detached { try db.markUnseenDeleted(sourceID: id, scanStamp: stamp) }.value
+            _ = try await Offload.run { try db.markUnseenDeleted(sourceID: id, scanStamp: stamp) }
             db.log("scan", "Read \(rows.count) items from “\(source.inspection.name)” (read-only)", assetCount: rows.count)
             status.message = ""
             refreshLibraries()
@@ -474,11 +482,11 @@ final class AppModel {
     func reloadFromDatabase(full: Bool = false) async {
         guard let db else { return }
         let sid = activeLibraryID
-        let loaded = try? await Task.detached { () -> ([AssetRow], LibraryStats, [(assetID: Int64, reason: String)], [ActivityEntry]) in
+        let loaded = try? await Offload.run { () -> ([AssetRow], LibraryStats, [(assetID: Int64, reason: String)], [ActivityEntry]) in
             (try db.assets(sourceID: sid), try db.stats(sourceID: sid), try db.removalQueue(sourceID: sid), try db.activity())
-        }.value
-        if let t = try? await Task.detached(operation: { try db.userTags(sourceID: sid) }).value { userTags = t }
-        if let raw = try? await Task.detached(operation: { try db.categoryMembers(sourceID: sid) }).value {
+        }
+        if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+        if let raw = try? await Offload.run { try db.categoryMembers(sourceID: sid) } {
             var m: [PhotoCategory: Set<Int64>] = [:]
             for (k, v) in raw { if let c = PhotoCategory(rawValue: k) { m[c] = v } }
             categoryMembers = m
@@ -541,14 +549,14 @@ final class AppModel {
             tree = []
         } else if access == .authorized || access == .limited {
             let svc = photos
-            tree = await Task.detached(priority: .utility) { svc.albumTree() }.value
+            tree = await Offload.run(.utility) { svc.albumTree() }
         } else {
             tree = []
         }
         // Libraries without albums/folders get a Year › Month tree from capture dates.
         if tree.isEmpty {
             let rows = assets
-            tree = await Task.detached(priority: .userInitiated) { Self.dateTree(rows) }.value
+            tree = await Offload.run { Self.dateTree(rows) }
         }
         folderTree = tree
         var index: [String: AlbumNode] = [:]
@@ -590,7 +598,7 @@ final class AppModel {
     func searchText(_ q: String) async -> Set<Int64> {
         guard let db else { return [] }
         let sid = activeLibraryID
-        return (try? await Task.detached { try db.searchText(q, sourceID: sid) }.value) ?? []
+        return (try? await Offload.run { try db.searchText(q, sourceID: sid) }) ?? []
     }
 
     // MARK: Slideshow
@@ -663,7 +671,7 @@ final class AppModel {
         guard let db, let cipher else { return }
         let rows = assets.filter { $0.mediaType == "image" && $0.pHash != nil }
         let strict = duplicateStrictness
-        let groups: [DuplicateGroupVM] = await Task.detached(priority: .userInitiated) {
+        let groups: [DuplicateGroupVM] = await Offload.run {
             let embeddings = (try? db.sceneEmbeddings(cipher: cipher)) ?? [:]
             let (excluded, pairs) = (try? db.exclusions()) ?? ([], [])
             var ex = SimilarityExclusions()
@@ -703,7 +711,7 @@ final class AppModel {
                                         similarity: g.similarity)
             }
             .sorted { ($0.type.order, -$0.members.count) < ($1.type.order, -$1.members.count) }
-        }.value
+        }
         allDuplicateGroups = groups
         applyQueueFilter()
     }
@@ -721,14 +729,14 @@ final class AppModel {
     func markNotSimilar(_ group: DuplicateGroupVM) async {
         let ids = group.members.map(\.id)
         let db = db
-        await Task.detached { try? db?.addNotSimilar(ids) }.value
+        await Offload.run { try? db?.addNotSimilar(ids) }
         allDuplicateGroups.removeAll { $0.id == group.id }
         applyQueueFilter()
     }
 
     func excludeFromScans(_ ids: [Int64]) async {
         let db = db
-        await Task.detached { try? db?.excludeFromScans(ids) }.value
+        await Offload.run { try? db?.excludeFromScans(ids) }
         let gone = Set(ids)
         allDuplicateGroups = allDuplicateGroups.compactMap { g in
             let m = g.members.filter { !gone.contains($0.id) }
@@ -747,7 +755,7 @@ final class AppModel {
     func reloadQueue() async {
         guard let db else { return }
         let sid = activeLibraryID
-        if let q = try? await Task.detached(operation: { try db.removalQueue(sourceID: sid) }).value { removalQueue = q }
+        if let q = try? await Offload.run { try db.removalQueue(sourceID: sid) } { removalQueue = q }
         applyQueueFilter()
     }
 
@@ -763,23 +771,23 @@ final class AppModel {
         guard !ids.isEmpty else { return false }
         if let managed = managedSource {
             let pairs = assetIDs.compactMap { id in assetsByID[id].map { (id, $0.localIdentifier) } }
-            let moved: [Int64] = await Task.detached(priority: .userInitiated) {
+            let moved: [Int64] = await Offload.run {
                 var moved: [Int64] = []
                 for (id, key) in pairs where (try? managed.moveToTrash(key)) != nil { moved.append(id) }
                 try? db.markDeleted(assetIDs: moved)
                 try? db.unqueue(moved)
                 return moved
-            }.value
+            }
             db.log("delete", "Moved \(moved.count) item(s) to the library's Trash", assetCount: moved.count)
             await reloadFromDatabase()
             return !moved.isEmpty
         }
         do {
             try await photos.delete(DeletionConfirmation(localIdentifiers: ids, userAcceptedCount: ids.count))
-            try await Task.detached {
+            try await Offload.run {
                 try db.markDeleted(localIdentifiers: ids)
                 try db.unqueue(assetIDs)
-            }.value
+            }
             db.log("delete", "Moved \(ids.count) photo(s) to Recently Deleted in Photos", assetCount: ids.count)
             await reloadFromDatabase()
             return true
@@ -792,12 +800,21 @@ final class AppModel {
 
     // MARK: People
 
-    func rebuildPeople() async {
+    /// Regroups faces into people. `reloadFaces` re-reads (and decrypts) every face from the
+    /// database — needed only when faces were added or removed. Naming, merging and "not this
+    /// person" reuse the faces already in memory and the cached nearest-neighbour lists, so a
+    /// regroup after naming takes moments instead of minutes.
+    func rebuildPeople(reloadFaces: Bool = true) async {
         guard let db, let cipher else { return }
+        regroupTask?.cancel()
         let base = Float(faceModel.threshold(strictness: faceStrictness))
         let sid = activeLibraryID
-        let result = await Task.detached(priority: .userInitiated) { () -> ([StoredFace], [PersonRow], ClusteringResult)? in
-            guard let faces = try? db.storedFaces(cipher: cipher, sourceID: sid), let persons = try? db.persons(sourceID: sid),
+        let cached: [StoredFace]? = reloadFaces || storedFaces.isEmpty ? nil : storedFaces
+        let graph = faceGraph
+        peopleBusy = true
+        defer { peopleBusy = false }
+        let result = await Offload.run { () -> ([StoredFace], [PersonRow], ClusteringResult)? in
+            guard let faces = cached ?? (try? db.storedFaces(cipher: cipher, sourceID: sid)), let persons = try? db.persons(sourceID: sid),
                   let (must, cannot) = try? db.faceConstraints() else { return nil }
             var constraints = ClusteringConstraints()
             constraints.mustLink = must.map { (FaceID($0.0), FaceID($0.1)) }
@@ -811,9 +828,10 @@ final class AppModel {
             // Strictness maps onto the calibrated cosine threshold range of the active face model.
             clusterer.config.baseThreshold = base
             clusterer.config.minClusterSize = 2
-            let r = clusterer.cluster(samples, index: BruteForceIndex(samples), constraints: constraints)
+            graph.update(samples)
+            let r = clusterer.cluster(samples, index: graph, constraints: constraints)
             return (faces, persons, r)
-        }.value
+        }
         guard let (faces, persons, r) = result else { return }
         storedFaces = faces
         let byFace = Dictionary(uniqueKeysWithValues: faces.map { ($0.id, $0) })
@@ -853,14 +871,18 @@ final class AppModel {
         guard let db else { return }
         let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        if let pid = person.personID {
-            try? db.renamePerson(pid, to: trimmed)
-            try? db.addFaces(person.faces.map(\.id), toPerson: pid)
+        let faceIDs = person.faces.map(\.id)
+        let pid: Int64?
+        if let existing = person.personID {
+            try? db.renamePerson(existing, to: trimmed)
+            try? db.addFaces(faceIDs, toPerson: existing)
+            pid = existing
         } else {
-            try? db.createPerson(named: trimmed, faceIDs: person.faces.map(\.id), sourceID: activeLibraryID)
+            pid = try? db.createPerson(named: trimmed, faceIDs: faceIDs, sourceID: activeLibraryID)
         }
         db.log("edit", "Named a person (\(person.faces.count) faces confirmed)")
-        await rebuildPeople()
+        if let pid { assignLocally(faceIDs, to: pid, name: trimmed, replacing: person.id) }
+        scheduleRegroup()
     }
 
     func merge(_ source: PersonVM, into target: PersonVM) async {
@@ -872,31 +894,88 @@ final class AppModel {
         } else { return }
         if let s = source.personID { try? db.mergePerson(s, into: targetID) }
         else { try? db.addFaces(source.faces.map(\.id), toPerson: targetID) }
-        await rebuildPeople()
+        assignLocally(target.faces.map(\.id), to: targetID, name: target.name ?? source.name ?? "Unnamed", replacing: target.id)
+        assignLocally(source.faces.map(\.id), to: targetID, name: target.name ?? source.name ?? "Unnamed")
+        people.removeAll { $0.id == source.id }
+        scheduleRegroup()
     }
 
     /// "This is not [Person]" — becomes cannot-link constraints for future grouping.
     func notThisPerson(_ face: StoredFace, in person: PersonVM) async {
         let others = person.faces.map(\.id).filter { $0 != face.id }
         try? db?.rejectFace(face.id, fromPerson: person.personID, againstFaces: others)
-        await rebuildPeople()
+        removeLocally([face.id])
+        scheduleRegroup()
     }
 
     func assign(_ face: StoredFace, to person: PersonVM) async {
-        if let pid = person.personID { try? db?.addFaces([face.id], toPerson: pid) }
-        else if let name = person.name { try? db?.createPerson(named: name, faceIDs: person.faces.map(\.id) + [face.id], sourceID: activeLibraryID) }
-        await rebuildPeople()
+        if let pid = person.personID {
+            try? db?.addFaces([face.id], toPerson: pid)
+            assignLocally([face.id], to: pid, name: person.name ?? "")
+        } else if let name = person.name,
+                  let pid = try? db?.createPerson(named: name, faceIDs: person.faces.map(\.id) + [face.id], sourceID: activeLibraryID) {
+            assignLocally(person.faces.map(\.id) + [face.id], to: pid, name: name, replacing: person.id)
+        }
+        scheduleRegroup()
     }
 
     func ignore(_ face: StoredFace) async {
         try? db?.ignoreFace(face.id)
-        await rebuildPeople()
+        removeLocally([face.id])
+        storedFaces.removeAll { $0.id == face.id }
+        scheduleRegroup()
     }
 
     func setHidden(_ person: PersonVM, _ hidden: Bool) async {
         guard let pid = person.personID else { return }
         try? db?.setPersonHidden(pid, hidden)
-        await rebuildPeople()
+        if let i = people.firstIndex(where: { $0.id == person.id }) { people[i].isHidden = hidden }
+    }
+
+    // MARK: Instant feedback, then a quiet regroup
+
+    /// Shows a naming decision straight away, before the background regroup finishes.
+    func assignLocally(_ faceIDs: [Int64], to pid: Int64, name: String, replacing oldKey: String? = nil) {
+        let key = "p\(pid)"
+        let byID = Dictionary(storedFaces.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        let moving = Set(faceIDs)
+        for i in people.indices where people[i].id != key && people[i].id != oldKey {
+            if people[i].faces.contains(where: { moving.contains($0.id) }) { people[i].faces.removeAll { moving.contains($0.id) } }
+        }
+        let faces = faceIDs.compactMap { byID[$0] }
+        if let i = people.firstIndex(where: { $0.id == key }) {
+            let have = Set(people[i].faces.map(\.id))
+            people[i].faces += faces.filter { !have.contains($0.id) }
+            if !name.isEmpty { people[i].name = name }
+            if let old = oldKey, old != key { people.removeAll { $0.id == old } }
+        } else if let old = oldKey, let i = people.firstIndex(where: { $0.id == old }) {
+            people[i] = PersonVM(id: key, personID: pid, name: name, confidence: .confirmed,
+                                 faces: people[i].faces, isHidden: false)
+            let have = Set(people[i].faces.map(\.id))
+            people[i].faces += faces.filter { !have.contains($0.id) }
+        } else {
+            people.insert(PersonVM(id: key, personID: pid, name: name, confidence: .confirmed, faces: faces, isHidden: false), at: 0)
+        }
+        people.removeAll { $0.personID == nil && $0.faces.isEmpty }
+        for f in faceIDs { faceOwnerIndex[f] = key }
+        lastNamedPersonKey = key
+    }
+
+    func removeLocally(_ faceIDs: [Int64]) {
+        let gone = Set(faceIDs)
+        for i in people.indices { people[i].faces.removeAll { gone.contains($0.id) } }
+        people.removeAll { $0.personID == nil && $0.faces.isEmpty }
+        for f in faceIDs { faceOwnerIndex[f] = nil }
+    }
+
+    /// Regroups shortly after the last naming decision (several quick decisions → one regroup).
+    func scheduleRegroup() {
+        regroupTask?.cancel()
+        regroupTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1.5))
+            guard !Task.isCancelled else { return }
+            await self?.rebuildPeople(reloadFaces: false)
+        }
     }
 
     // MARK: Privacy controls

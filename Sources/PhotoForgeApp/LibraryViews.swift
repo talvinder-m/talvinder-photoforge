@@ -125,9 +125,9 @@ struct PhotoGridView: View {
         default: break
         }
         let f = filter, so = sort, gr = grouping, hits = searchHits, version = data.version &+ 1
-        let result = await Task.detached(priority: .userInitiated) {
+        let result = await Offload.run {
             Self.compute(assets, filter: f, memberIDs: memberIDs, keys: keys, hits: hits, sort: so, grouping: gr, version: version)
-        }.value
+        }
         guard !Task.isCancelled else { return }
         data = result
         loaded = true

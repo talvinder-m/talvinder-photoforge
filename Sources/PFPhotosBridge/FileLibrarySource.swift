@@ -463,7 +463,7 @@ public final class FileLibrarySource: MediaSource, @unchecked Sendable {
         if MediaFiles.isVideo(u) {
             cg = await MediaFiles.videoThumbnail(u, maxPixel: side)
         } else {
-            cg = await Task.detached(priority: .userInitiated) { Self.downsample(u, maxPixel: side) }.value
+            cg = await Offload.run { Self.downsample(u, maxPixel: side) }
         }
         return cg.map { NSImage(cgImage: $0, size: NSSize(width: $0.width, height: $0.height)) }
     }

@@ -55,10 +55,18 @@ struct PeopleView: View {
             }
         }
         .sheet(item: $smartAlbum) { r in SmartAlbumSheet(request: r).environment(model) }
+        .onChange(of: model.lastNamedPersonKey) { _, key in
+            // Naming a "Possible Person" gives it a new id; keep it selected.
+            if let key, selectedID != nil, !visible.contains(where: { $0.id == selectedID }) { selectedID = key }
+        }
         .navigationTitle("People")
         .navigationSubtitle("\(model.people.filter { $0.name != nil }.count) named · \(model.people.filter { $0.name == nil }.count) possible")
         .toolbar {
             ToolbarItemGroup {
+                if model.peopleBusy {
+                    HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Regrouping…").font(.caption).foregroundStyle(.secondary) }
+                        .help("Updating groups in the background. You can keep naming people.")
+                }
                 Button { smartAlbum = SmartAlbumRequest() } label: {
                     Label("Album of People…", systemImage: "rectangle.stack.badge.person.crop")
                 }
@@ -71,7 +79,7 @@ struct PeopleView: View {
                 HStack(spacing: 4) {
                     Text("Loose").font(.caption)
                     Slider(value: $model.faceStrictness, in: 0...1, onEditingChanged: { editing in
-                        if !editing { Task { await model.rebuildPeople() } }
+                        if !editing { Task { await model.rebuildPeople(reloadFaces: false) } }
                     }).frame(width: 110)
                     Text("Strict").font(.caption)
                 }
@@ -272,12 +280,12 @@ struct FaceThumb: View {
         // Read and decode off the main thread.
         if let p = face.cropPath {
             let url = model.faceCropDir.appendingPathComponent(p)
-            let img = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+            let img = await Offload.run { () -> NSImage? in
                 guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
                       let cg = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
                 else { return nil }
                 return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
-            }.value
+            }
             if let img { ThumbnailCache.shared.set(img, key, 0); return img }
         }
         await ThumbnailGate.shared.acquire()

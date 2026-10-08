@@ -58,14 +58,14 @@ extension AppModel {
     func addTag(_ label: String, to ids: [Int64]) async {
         let l = label.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !l.isEmpty, !ids.isEmpty, let db else { return }
-        await Task.detached { try? db.addTag(l, to: ids) }.value
+        await Offload.run { try? db.addTag(l, to: ids) }
         db.log("edit", "Tagged \(ids.count) item(s) “\(l)”")
         await reloadTags()
     }
 
     func removeTag(_ label: String, from ids: [Int64]) async {
         guard let db else { return }
-        await Task.detached { try? db.removeTag(label, from: ids) }.value
+        await Offload.run { try? db.removeTag(label, from: ids) }
         await reloadTags()
     }
 
@@ -84,7 +84,7 @@ extension AppModel {
     func reloadTags() async {
         guard let db else { return }
         let sid = activeLibraryID
-        if let t = try? await Task.detached(operation: { try db.userTags(sourceID: sid) }).value { userTags = t }
+        if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
         reloadAlbums()
     }
 }

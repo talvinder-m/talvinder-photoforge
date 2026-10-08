@@ -81,6 +81,8 @@ public struct FaceClusterConfig: Sendable {
     public var minClusterSize = 3              // smaller groups go to review, not to a "person"
     public var maxIterations = 40
     public var ambiguityMargin: Float = 0.05   // best vs second-best cluster
+    /// Extra similarity (to the user-confirmed faces) a face needs to join a named person.
+    public var namedPersonMargin: Float = 0.05
     public var seed: UInt64 = 0x5EED
     public init() {}
 }
@@ -97,88 +99,118 @@ public struct FaceClusterer: Sendable {
     public func cluster(_ all: [FaceSample], index: any NeighborIndex,
                         constraints: ClusteringConstraints = .init()) -> ClusteringResult {
         var review: [ReviewItem] = []
-        let usable = all.filter { f in
+        var usable: [FaceSample] = []
+        usable.reserveCapacity(all.count)
+        for f in all {
             if f.quality < config.minQualityToCluster {
                 review.append(.init(face: f.id, suggestedClusterIndex: nil, similarity: nil, reason: .lowQuality))
-                return false
-            }
-            return true
+            } else { usable.append(f) }
         }
-        let byID = Dictionary(uniqueKeysWithValues: usable.map { ($0.id, $0) })
+        // Work with array positions instead of dictionaries: tens of thousands of faces.
+        let n = usable.count
+        var pos: [FaceID: Int] = [:]
+        pos.reserveCapacity(n)
+        for (i, f) in usable.enumerated() { pos[f.id] = i }
 
         // 1. Must-link → super-nodes (confirmed faces of the same person are must-linked too).
-        var uf = UnionFindFaces()
-        for f in usable { _ = uf.find(f.id) }
-        for (a, b) in constraints.mustLink where byID[a] != nil && byID[b] != nil { uf.union(a, b) }
-        let confirmedByPerson = Dictionary(grouping: constraints.confirmed.filter { byID[$0.key] != nil }, by: { $0.value })
-        for (_, faces) in confirmedByPerson { for pair in zip(faces, faces.dropFirst()) { uf.union(pair.0.key, pair.1.key) } }
+        var parent = Array(0..<n)
+        func find(_ x: Int) -> Int {
+            var r = x
+            while parent[r] != r { r = parent[r] }
+            var c = x
+            while parent[c] != r { let next = parent[c]; parent[c] = r; c = next }
+            return r
+        }
+        func union(_ a: Int, _ b: Int) {
+            let ra = find(a), rb = find(b)
+            guard ra != rb else { return }
+            // Smaller face id becomes root → deterministic super-node ids.
+            if usable[ra].id < usable[rb].id { parent[rb] = ra } else { parent[ra] = rb }
+        }
+        for (a, b) in constraints.mustLink { if let ia = pos[a], let ib = pos[b] { union(ia, ib) } }
+        var confirmedByPerson: [PersonID: [Int]] = [:]
+        for (f, p) in constraints.confirmed { if let i = pos[f] { confirmedByPerson[p, default: []].append(i) } }
+        for (_, idx) in confirmedByPerson { for pair in zip(idx, idx.dropFirst()) { union(pair.0, pair.1) } }
 
         // Cannot-link between super-nodes.
-        var cannot: [FaceID: Set<FaceID>] = [:]           // keyed by super-node root
-        for (a, b) in constraints.cannotLink where byID[a] != nil && byID[b] != nil {
-            let ra = uf.find(a), rb = uf.find(b)
+        var cannot: [Int: Set<Int>] = [:]
+        for (a, b) in constraints.cannotLink {
+            guard let ia = pos[a], let ib = pos[b] else { continue }
+            let ra = find(ia), rb = find(ib)
             guard ra != rb else { continue }              // contradictory feedback: handled in verification
             cannot[ra, default: []].insert(rb); cannot[rb, default: []].insert(ra)
         }
         // Different confirmed persons can never merge.
-        let personRoots = confirmedByPerson.mapValues { uf.find($0[0].key) }
-        for (p1, r1) in personRoots { for (p2, r2) in personRoots where p1 != p2 {
-            cannot[r1, default: []].insert(r2)
-        } }
+        let personRoots = confirmedByPerson.compactMapValues { $0.first.map(find) }
+        for (p1, r1) in personRoots { for (p2, r2) in personRoots where p1 != p2 { cannot[r1, default: []].insert(r2) } }
 
-        // 2. Weighted graph over super-nodes.
-        var graph: [FaceID: [FaceID: Float]] = [:]
-        for f in usable {
-            let rf = uf.find(f.id)
-            for (n, sim) in index.neighbors(of: f.id, k: config.k) {
-                guard let g = byID[n] else { continue }
-                let rn = uf.find(n)
-                guard rn != rf, !(cannot[rf]?.contains(rn) ?? false) else { continue }
-                if sim >= threshold(f, g) {
-                    graph[rf, default: [:]][rn, default: 0] += sim
-                    graph[rn, default: [:]][rf, default: 0] += sim
+        // 2. Weighted graph over super-nodes (adjacency lists).
+        var root = [Int](repeating: 0, count: n)
+        for i in 0..<n { root[i] = find(i) }
+        var adj = [[Int: Float]](repeating: [:], count: n)
+        for i in 0..<n {
+            let ri = root[i]
+            for (nid, sim) in index.neighbors(of: usable[i].id, k: config.k) {
+                guard let j = pos[nid] else { continue }
+                let rj = root[j]
+                guard rj != ri, !(cannot[ri]?.contains(rj) ?? false) else { continue }
+                if sim >= threshold(usable[i], usable[j]) {
+                    adj[ri][rj, default: 0] += sim
+                    adj[rj][ri, default: 0] += sim
                 }
             }
         }
+        let edges: [[(Int, Float)]] = adj.map { $0.sorted { $0.key < $1.key }.map { ($0.key, $0.value) } }
+        adj = []
 
         // 3. Chinese Whispers with cannot-link-aware label adoption.
-        let nodes = Set(usable.map { uf.find($0.id) }).sorted()
-        var label = Dictionary(uniqueKeysWithValues: nodes.map { ($0, $0) })
+        let nodes = Array(Set(root)).sorted { usable[$0].id < usable[$1].id }
+        var label = Array(0..<n)
         var rng = SplitMix64(seed: config.seed)
+        var scoreLabels: [Int] = [], scoreValues: [Float] = []
         for _ in 0..<config.maxIterations {
             var changed = false
             for node in nodes.shuffled(using: &rng) {
-                guard let edges = graph[node], !edges.isEmpty else { continue }
-                var score: [FaceID: Float] = [:]
-                for (n, w) in edges { score[label[n]!, default: 0] += w }
-                let blocked = cannot[node] ?? []
-                // A label is forbidden if any node cannot-linked to us currently carries it.
-                // (Checks the small blocked set, not every node, so this stays O(edges).)
-                let best = score.filter { cand, _ in
-                    !blocked.contains { label[$0] == cand }
-                }.max { $0.value != $1.value ? $0.value < $1.value : $0.key > $1.key }
-                if let best, best.key != label[node] { label[node] = best.key; changed = true }
+                let es = edges[node]
+                guard !es.isEmpty else { continue }
+                scoreLabels.removeAll(keepingCapacity: true); scoreValues.removeAll(keepingCapacity: true)
+                for (m, w) in es {
+                    let l = label[m]
+                    if let k = scoreLabels.firstIndex(of: l) { scoreValues[k] += w } else { scoreLabels.append(l); scoreValues.append(w) }
+                }
+                let blocked = cannot[node]
+                var best = -1; var bestScore: Float = -.infinity
+                for (k, l) in scoreLabels.enumerated() {
+                    // A label is forbidden if any node cannot-linked to us currently carries it.
+                    if let blocked, blocked.contains(where: { label[$0] == l }) { continue }
+                    let sc = scoreValues[k]
+                    if sc > bestScore || (sc == bestScore && usable[l].id < usable[best].id) { best = l; bestScore = sc }
+                }
+                if best >= 0, best != label[node] { label[node] = best; changed = true }
             }
             if !changed { break }
         }
 
         // 4. Expand super-nodes back to faces and build clusters.
-        var membersByLabel: [FaceID: [FaceID]] = [:]
-        for f in usable { membersByLabel[label[uf.find(f.id)]!, default: []].append(f.id) }
+        var membersByLabel: [Int: [Int]] = [:]
+        for i in 0..<n { membersByLabel[label[root[i]], default: []].append(i) }
 
         var clusters: [FaceCluster] = []
-        for (_, faceIDs) in membersByLabel.sorted(by: { $0.key < $1.key }) {
-            let samples = faceIDs.compactMap { byID[$0] }
-            let person = Set(faceIDs.compactMap { constraints.confirmed[$0] })
+        for (_, idx) in membersByLabel.sorted(by: { usable[$0.key].id < usable[$1.key].id }) {
+            let samples = idx.map { usable[$0] }
+            let person = Set(samples.compactMap { constraints.confirmed[$0.id] })
             if samples.count < config.minClusterSize && person.isEmpty {
-                review.append(contentsOf: faceIDs.map { .init(face: $0, suggestedClusterIndex: nil, similarity: nil, reason: .belowClusterThreshold) })
+                review.append(contentsOf: samples.map { .init(face: $0.id, suggestedClusterIndex: nil, similarity: nil, reason: .belowClusterThreshold) })
                 continue
             }
             clusters.append(makeCluster(samples, existingPerson: person.count == 1 ? person.first : nil))
         }
+        let byID = Dictionary(uniqueKeysWithValues: usable.map { ($0.id, $0) })
 
         // 5. Verification: evict faces that violate cannot-link or sit below the
         //    cluster's own adaptive threshold (μ − 3σ, floored at the base threshold).
+        //    For a named person, a face must also look like the faces the user confirmed:
+        //    this stops a loose group of strangers being attached to a name.
         //    User-confirmed and must-linked faces are protected: feedback always wins.
         let protected = Set(constraints.confirmed.keys).union(constraints.mustLink.flatMap { [$0.0, $0.1] })
         var cannotFaces: [FaceID: Set<FaceID>] = [:]
@@ -190,6 +222,12 @@ public struct FaceClusterer: Sendable {
             let mu = sims.reduce(0, +) / Double(sims.count)
             let sd = (sims.map { ($0 - mu) * ($0 - mu) }.reduce(0, +) / Double(sims.count)).squareRoot()
             let floor = max(Double(config.baseThreshold), mu - 3 * sd)
+            // Centroid of the faces the user confirmed for this person.
+            var confirmedCentroid: [Float]? = nil
+            if c.existingPerson != nil {
+                let conf = c.faces.filter { constraints.confirmed[$0] != nil }.compactMap { byID[$0] }
+                if !conf.isEmpty { confirmedCentroid = makeCluster(conf, existingPerson: nil).centroid }
+            }
             var keep: [FaceID] = []
             // Confirmed faces first, then most central: on a conflict the weaker face is evicted.
             let ordered = scored.sorted {
@@ -203,6 +241,9 @@ public struct FaceClusterer: Sendable {
                     review.append(.init(face: f, suggestedClusterIndex: ci, similarity: s, reason: .constraintConflict))
                 } else if s < floor && !isConfirmed {
                     review.append(.init(face: f, suggestedClusterIndex: ci, similarity: s, reason: .belowClusterThreshold))
+                } else if !isConfirmed, let cc = confirmedCentroid,
+                          Self.dot(byID[f]!.embedding, cc) < config.baseThreshold + config.namedPersonMargin {
+                    review.append(.init(face: f, suggestedClusterIndex: ci, similarity: s, reason: .belowClusterThreshold))
                 } else { keep.append(f) }
             }
             if keep.count != c.faces.count {
@@ -212,12 +253,18 @@ public struct FaceClusterer: Sendable {
         }
 
         // 6. Faces close to two clusters are ambiguous → review, never auto-assigned.
+        //    Only clusters the face's nearest neighbours belong to are compared (fast and enough:
+        //    a face near another cluster's centre has neighbours in it).
         if clusters.count > 1 {
+            var clusterOf: [FaceID: Int] = [:]
+            for (ci, c) in clusters.enumerated() { for f in c.faces { clusterOf[f] = ci } }
             for ci in clusters.indices {
                 let keep = clusters[ci].faces.filter { f in
                     guard !protected.contains(f), let e = byID[f]?.embedding else { return true }
                     let own = Self.dot(e, clusters[ci].centroid)
-                    let other = clusters.indices.filter { $0 != ci }.map { Self.dot(e, clusters[$0].centroid) }.max() ?? -1
+                    var others = Set<Int>()
+                    for (nid, _) in index.neighbors(of: f, k: config.k) { if let o = clusterOf[nid], o != ci { others.insert(o) } }
+                    let other = others.map { Self.dot(e, clusters[$0].centroid) }.max() ?? -1
                     if other > own - config.ambiguityMargin {
                         review.append(.init(face: f, suggestedClusterIndex: ci, similarity: Double(own), reason: .ambiguousBetweenClusters))
                         return false

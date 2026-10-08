@@ -89,7 +89,7 @@ extension AppModel {
             try? db.markDeleted(localIdentifiers: missing)
             for k in missing { source.remove(k) }
         }
-        let untracked = await Task.detached { source.untrackedFiles() }.value
+        let untracked = await Offload.run { source.untrackedFiles() }
         if !untracked.isEmpty {
             _ = await addFiles(untracked, copy: false, title: "Adding files found in the library")
         }
@@ -116,7 +116,7 @@ extension AppModel {
     /// Imports files and folders (recursively) by copying them into the open PhotoForge Library.
     func importFiles(_ urls: [URL]) async {
         guard isManagedLibrary else { return }
-        let files = await Task.detached { Self.expandMedia(urls) }.value
+        let files = await Offload.run { Self.expandMedia(urls) }
         guard !files.isEmpty else { banner = "No photos or videos were found there."; return }
         let r = await addFiles(files, copy: true, title: "Adding \(files.count.formatted()) items")
         banner = "Import finished: \(r.summary)."
@@ -156,7 +156,7 @@ extension AppModel {
         for f in files {
             if Task.isCancelled { break }
             let knownNow = known
-            let result: (upsert: AssetUpsert, key: String, rel: String)? = await Task.detached(priority: .utility) {
+            let result: (upsert: AssetUpsert, key: String, rel: String)? = await Offload.run(.utility) {
                 guard let hash = try? Self.sha256(f) else { return nil }
                 if knownNow.contains(hash) { return (AssetUpsert(localIdentifier: "", mediaType: "", subtypeMask: 0, creationDate: nil, modificationDate: nil,
                                                               pixelWidth: 0, pixelHeight: 0, duration: 0, favorite: false, hidden: false,
@@ -173,7 +173,7 @@ extension AppModel {
                                      filePath: rel, availability: "local", originalFilename: f.lastPathComponent,
                                      fileSize: values?.fileSize, fileHash: hash)
                 return (up, key, rel)
-            }.value
+            }
             progress.done += 1
             if let r = result {
                 if r.key.isEmpty { progress.skipped += 1 }
@@ -248,7 +248,7 @@ extension AppModel {
             let dir = managed.root.appendingPathComponent(String(format: "Originals/%04d/%02d", cal.component(.year, from: d), cal.component(.month, from: d)))
             do {
                 let out = try await photos.exportOriginal(snap.localIdentifier, to: dir, allowNetwork: opts.downloadFromICloud)
-                let hash = try await Task.detached { try Self.sha256(out.url) }.value
+                let hash = try await Offload.run { try Self.sha256(out.url) }
                 progress.done += 1
                 if known.contains(hash) {
                     try? FileManager.default.removeItem(at: out.url)
@@ -295,7 +295,7 @@ extension AppModel {
             db.log("scan", "Carried over analysis for \(mapping.count) items and \(faces) faces from Apple Photos")
         }
         if opts.recreateAlbums, !newByIdentifier.isEmpty {
-            let memberships = await Task.detached { [photos] in photos.albumMemberships() }.value
+            let memberships = await Offload.run { [photos] in photos.albumMemberships() }
             if !memberships.isEmpty {
                 let root = try? db.createAlbum(title: "From Apple Photos", parentID: nil, isFolder: true, sourceID: sid)
                 var folders: [String: Int64] = [:]
@@ -416,11 +416,11 @@ extension AppModel {
     func rename(_ ids: [Int64], to names: [String], renameFiles: Bool, writeToPhotos: Bool) async {
         guard let db, ids.count == names.count else { return }
         let titles = Array(zip(ids, names.map { Optional($0) })).map { (assetID: $0.0, title: $0.1) }
-        await Task.detached(priority: .userInitiated) { try? db.setTitles(titles) }.value
+        await Offload.run { try? db.setTitles(titles) }
         var fileErrors = 0
         if renameFiles, let managed = managedSource {
             let work = zip(ids, names).compactMap { id, name in assetsByID[id].map { (id, $0.localIdentifier, name) } }
-            fileErrors += await Task.detached(priority: .userInitiated) { () -> Int in
+            fileErrors += await Offload.run { () -> Int in
                 var errors = 0
                 for (id, key, name) in work {
                     do {
@@ -429,7 +429,7 @@ extension AppModel {
                     } catch { errors += 1 }
                 }
                 return errors
-            }.value
+            }
         }
         db.log("edit", "Renamed \(ids.count) item(s)\(renameFiles ? " (files too)" : "")")
         await reloadFromDatabase()
@@ -573,11 +573,13 @@ extension AppModel {
         guard !n.isEmpty else { return }
         if let existing = namedPeople.first(where: { $0.name?.caseInsensitiveCompare(n) == .orderedSame }), let pid = existing.personID {
             try? db.addFaces([faceID], toPerson: pid)
-        } else {
-            try? db.createPerson(named: n, faceIDs: [faceID], sourceID: activeLibraryID)
+            assignLocally([faceID], to: pid, name: existing.name ?? n)
+        } else if let pid = try? db.createPerson(named: n, faceIDs: [faceID], sourceID: activeLibraryID) {
+            assignLocally([faceID], to: pid, name: n)
         }
         db.log("edit", "Identified a face as \(n)")
-        await rebuildPeople()
+        // Shown straight away; the regroup that finds this person's other photos runs quietly after.
+        scheduleRegroup()
         if faceAnalysisEnabled, currentJob == nil, stats.facesScanned < stats.photos {
             await startAnalysis()
             banner = "Looking for \(n) in the photos that haven't been checked yet…"
@@ -587,7 +589,8 @@ extension AppModel {
     func unassignFace(_ faceID: Int64) async {
         guard let p = person(forFace: faceID) else { return }
         try? db?.rejectFace(faceID, fromPerson: p.personID, againstFaces: p.faces.map(\.id).filter { $0 != faceID })
-        await rebuildPeople()
+        removeLocally([faceID])
+        scheduleRegroup()
     }
 
     /// Adds a face the user drew (normalized box, top-left origin) and returns its id.
@@ -674,12 +677,13 @@ extension AppModel {
         guard let pid = person.personID else { return }
         try? db?.addFaces(faces.map(\.id), toPerson: pid)
         db?.log("edit", "Confirmed \(faces.count) suggested face(s) as \(person.title)")
-        await rebuildPeople()
+        assignLocally(faces.map(\.id), to: pid, name: person.name ?? "")
+        scheduleRegroup()
     }
 
     func rejectSuggestion(_ face: StoredFace, for person: PersonVM) async {
         try? db?.rejectFace(face.id, fromPerson: nil, againstFaces: person.faces.map(\.id))
-        await rebuildPeople()
+        scheduleRegroup()
     }
 
     // Settings › Face Data
@@ -689,18 +693,19 @@ extension AppModel {
         let n = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !n.isEmpty else { return }
         try? db?.renamePerson(id, to: n)
-        await rebuildPeople()
+        if let i = people.firstIndex(where: { $0.personID == id }) { people[i].name = n }
+        reloadAlbums()
     }
 
     func deletePerson(_ id: Int64, deleteFaces: Bool) async {
         try? db?.deletePerson(id, deleteFaces: deleteFaces)
         db?.log("privacy", deleteFaces ? "Deleted a person and their face data" : "Removed a person's name (faces kept)")
-        await rebuildPeople()
+        await rebuildPeople(reloadFaces: deleteFaces)
     }
 
     func mergePeople(_ source: Int64, into target: Int64) async {
         try? db?.mergePerson(source, into: target)
-        await rebuildPeople()
+        await rebuildPeople(reloadFaces: false)
     }
 
     func redetectFaces() async {

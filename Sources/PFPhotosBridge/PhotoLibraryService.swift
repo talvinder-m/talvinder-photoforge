@@ -142,7 +142,10 @@ public final class PhotoLibraryService: NSObject, PHPhotoLibraryChangeObserver, 
     /// is lazy, so memory stays flat even for 100k+ assets.
     public func allAssets(batchSize: Int = 500, includeLocation: Bool) -> AsyncThrowingStream<[AssetSnapshot], Error> {
         AsyncThrowingStream { continuation in
-            let task = Task.detached(priority: .utility) {
+            // A plain background queue, not the shared Swift thread pool: enumerating a big
+            // library is long, blocking work.
+            let cancelled = CancelFlag()
+            DispatchQueue.global(qos: .utility).async {
                 guard self.accessState == .authorized || self.accessState == .limited else {
                     continuation.finish(throwing: PhotoForgeError.photosAccessDenied); return
                 }
@@ -154,7 +157,7 @@ public final class PhotoLibraryService: NSObject, PHPhotoLibraryChangeObserver, 
 
                 var start = 0
                 while start < result.count {
-                    if Task.isCancelled { continuation.finish(throwing: PhotoForgeError.cancelled); return }
+                    if cancelled.isSet { continuation.finish(throwing: PhotoForgeError.cancelled); return }
                     let end = min(start + batchSize, result.count)
                     let batch: [AssetSnapshot] = autoreleasepool {
                         result.objects(at: IndexSet(integersIn: start..<end))
@@ -165,7 +168,7 @@ public final class PhotoLibraryService: NSObject, PHPhotoLibraryChangeObserver, 
                 }
                 continuation.finish()
             }
-            continuation.onTermination = { _ in task.cancel() }
+            continuation.onTermination = { _ in cancelled.set() }
         }
     }
 
@@ -602,4 +605,12 @@ public final class PhotoLibraryService: NSObject, PHPhotoLibraryChangeObserver, 
             PHAssetChangeRequest.deleteAssets(PHAsset.fetchAssets(withLocalIdentifiers: ids, options: nil))
         }
     }
+}
+
+/// Thread-safe one-way flag.
+final class CancelFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = false
+    var isSet: Bool { lock.lock(); defer { lock.unlock() }; return value }
+    func set() { lock.lock(); value = true; lock.unlock() }
 }

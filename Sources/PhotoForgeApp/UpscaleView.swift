@@ -244,7 +244,7 @@ struct UpscaleView: View {
                     }
                 }.value
                 let (w, h) = SuperResolution.outputSize(width: src.width, height: src.height, targetLongEdge: t)
-                let base = await Task.detached { sr.lanczos(src, width: w, height: h) }.value
+                let base = await Offload.run { sr.lanczos(src, width: w, height: h) }
                 result = r
                 baseline = base
                 model.db?.log("model", "Upscaled a photo to \(r.image.width)×\(r.image.height) with \(r.modelName) in \(String(format: "%.1f", r.seconds)) s",

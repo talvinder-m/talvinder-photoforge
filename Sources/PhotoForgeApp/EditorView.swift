@@ -276,7 +276,7 @@ struct EditorView: View {
         guard let src = state.previewSource else { return }
         let stack = state.stack(for: asset)
         let renderer = model.renderer
-        let cg = await Task.detached(priority: .userInitiated) { renderer.cgImage(renderer.render(src, stack: stack)) }.value
+        let cg = await Offload.run { renderer.cgImage(renderer.render(src, stack: stack)) }
         if let cg { state.preview = NSImage(cgImage: cg, size: .zero) }
     }
 
@@ -287,9 +287,9 @@ struct EditorView: View {
         let meta = EditRenderer.exportMetadata(from: data, stripAll: !keepMetadata, removeGPS: removeGPS)
         let ext = type.preferredFilenameExtension ?? "jpg"
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("PhotoForge-\(UUID().uuidString).\(ext)")
-        try await Task.detached(priority: .userInitiated) {
+        try await Offload.run {
             try renderer.write(renderer.render(src, stack: stack), to: url, type: type, metadata: meta)
-        }.value
+        }
         return url
     }
 
