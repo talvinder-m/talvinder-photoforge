@@ -97,7 +97,7 @@ jobs:
           path: Resources/Models
           key: coreml-models-v4-${{ hashFiles('tools/convert_*.py') }}
 
-      - name: Prepare models (SFace, FSRCNN, Real-ESRGAN → Core ML)
+      - name: Prepare models (SFace, FSRCNN, Real-ESRGAN, OpenNSFW → Core ML)
         id: models
         if: steps.modelcache.outputs.cache-hit != 'true'
         continue-on-error: true
@@ -114,8 +114,11 @@ jobs:
             && for s in 2 3 4; do xcrun coremlcompiler compile build/sr/SR_x$s.mlpackage Resources/Models >> srmodel.log 2>&1; done || ok=1
           python tools/convert_realesrgan.py build/models > esrgan.log 2>&1 \
             && xcrun coremlcompiler compile build/models/RealESRGANx4v3.mlpackage Resources/Models >> esrgan.log 2>&1 || ok=1
+          /tmp/tfenv/bin/pip install h5py 2>&1 | tail -1
+          /tmp/tfenv/bin/python tools/convert_nsfw.py build/nsfw build/lfw > nsfw.log 2>&1 \
+            && xcrun coremlcompiler compile build/nsfw/OpenNSFW.mlpackage Resources/Models >> nsfw.log 2>&1 || ok=1
           ls -la Resources/Models | tee models.log
-          tail -5 sface.log srmodel.log esrgan.log
+          tail -5 sface.log srmodel.log esrgan.log nsfw.log
           exit $ok
 
       - name: Save converted models (only when every conversion succeeded)

@@ -23,6 +23,8 @@ struct AnalysisOptions: Sendable {
     var ocrAccurate: Bool = false
     var classifyImageSize: Int = 1280
     var faceImageSize: Int = 1600
+    /// Private review detector (nil = off or model not bundled).
+    var sensitive: SensitiveDetector? = nil
 }
 
 /// The whole local analysis pipeline as one resumable background job.
@@ -44,6 +46,7 @@ struct AnalysisJob: BackgroundJob {
         try await exactDuplicateStage(ctx)
         if options.classify { try await classificationStage(ctx) }
         if options.faceAnalysis { try await faceStage(ctx) }
+        if options.sensitive != nil { try await sensitiveStage(ctx) }
         await ctx.report(message: "Finishing up")
     }
 
@@ -157,6 +160,28 @@ struct AnalysisJob: BackgroundJob {
                 }
                 try db.replaceFaces(assetID: item.id, faces: faces, modelName: options.face.name,
                                     modelVersion: options.face.version, cipher: cipher)
+            } catch PhotoForgeError.iCloudDownloadRequired {
+                try? db.setAvailability(assetID: item.id, .cloudOnly)
+            }
+        }
+    }
+
+    // MARK: Private review — photos with nudity or a lot of bare skin
+
+    private func sensitiveStage(_ ctx: JobContext) async throws {
+        guard let detector = options.sensitive else { return }
+        let todo = try db.pending(stage: .sensitive, sourceID: sourceID, includeCloudOnly: options.allowICloudDownloads)
+        guard !todo.isEmpty else { return }
+        db.log("model", "Checking \(todo.count) photos for the private review", assetCount: todo.count, model: "OpenNSFW (on-device)")
+        try await forEach(todo, ctx: ctx, verb: "Checking") { item in
+            do {
+                let img = try await source.analysisImage(for: item.localIdentifier, maxDimension: 320,
+                                                         allowNetwork: options.allowICloudDownloads)
+                let db = db
+                try await Offload.run(.utility) {
+                    let score = try? detector.score(img)
+                    try db.saveSensitive(assetID: item.id, score: score)
+                }
             } catch PhotoForgeError.iCloudDownloadRequired {
                 try? db.setAvailability(assetID: item.id, .cloudOnly)
             }

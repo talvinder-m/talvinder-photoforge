@@ -657,6 +657,49 @@ enum SelfTest {
             return name == "Goat Shed- north side.jpg" && plain == "IMG_7.jpg" && ok && same
         }
 
+        // 23. Private review: detector bundled and sensible on ordinary images; corrections stick
+        do {
+            let det = SensitiveDetector(modelsDirectory: Bundle.main.resourceURL?.appendingPathComponent("Models"))
+            check(det != nil, "private-review detector (OpenNSFW) bundled and loads")
+            if let det {
+                var scores: [String: Double] = [:]
+                if let v = try? det.score(scene) { scores["landscape"] = v }
+                if let doc = makeDocument(lines: ["Invoice", "Total 1062"]), let v = try? det.score(doc) { scores["document"] = v }
+                if let qr = makeQR("https://hillsprouts.in"), let v = try? det.score(qr) { scores["qr"] = v }
+                let t0 = Date()
+                for _ in 0..<5 { _ = try? det.score(scene) }
+                let ms = Date().timeIntervalSince(t0) / 5 * 1000
+                print("     detector scores: \(scores.mapValues { String(format: "%.3f", $0) }), \(String(format: "%.0f", ms)) ms per photo")
+                check(scores.count == 3 && scores.values.allSatisfy { $0 >= 0 && $0 < 0.5 }, "ordinary images are not flagged")
+            }
+        }
+        attempt("private review: scores, corrections, clearing") {
+            let db = try AppDatabase.open(at: dir.appendingPathComponent("review.sqlite"))
+            let sid = try db.systemSourceID()
+            try db.upsert((0..<4).map { i in
+                AssetUpsert(localIdentifier: "V\(i)", mediaType: "image", subtypeMask: 0, creationDate: .now, modificationDate: .now,
+                            pixelWidth: 10, pixelHeight: 10, duration: 0, favorite: false, hidden: false, burstIdentifier: nil)
+            }, sourceID: sid, scanStamp: .now)
+            let ids = try db.assets().map(\.id).sorted()
+            try db.saveSensitive(assetID: ids[0], score: 0.9)
+            try db.saveSensitive(assetID: ids[1], score: 0.2)
+            try db.saveSensitive(assetID: ids[2], score: 0.7)
+            let pendingAfter = try db.pending(stage: .sensitive, sourceID: sid, includeCloudOnly: false).map(\.id)
+            try db.setSensitiveOverride([ids[2]], false)       // flagged by mistake
+            try db.setSensitiveOverride([ids[3]], true)        // added by hand
+            func inReview(_ m: [Int64: (score: Double?, override: Bool?)], _ level: Double) -> Set<Int64> {
+                Set(m.compactMap { id, v in (v.override ?? ((v.score ?? 0) >= level)) ? id : nil })
+            }
+            let m = try db.sensitiveScores(sourceID: sid)
+            let review = inReview(m, 0.6)
+            try db.clearSensitiveScores(sourceID: sid)
+            let cleared = try db.sensitiveScores(sourceID: sid)
+            let pendingCleared = try db.pending(stage: .sensitive, sourceID: sid, includeCloudOnly: false).count
+            print("     review: \(review.count) items, pending after scoring \(pendingAfter.count), after clearing \(cleared.count) decisions kept, \(pendingCleared) to recheck")
+            return pendingAfter == [ids[3]] && review == [ids[0], ids[3]] && cleared.count == 2
+                && cleared[ids[2]]?.override == false && cleared[ids[3]]?.override == true && pendingCleared == 4
+        }
+
         // 20. Renaming rules
         do {
             var r = BatchRename(); r.mode = .pattern; r.pattern = "Farm {n}"; r.start = 1; r.padding = 3

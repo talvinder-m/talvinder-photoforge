@@ -11,6 +11,7 @@ enum GridFilter: Equatable {
     case folder(String)
     case album(Int64)
     case tag(String)
+    case sensitive
     case videos
 }
 
@@ -58,6 +59,7 @@ struct GridActions {
     var copy: ([Int64]) -> Void
     var quickLook: (AssetRow) -> Void = { _ in }
     var export: ([Int64]) -> Void
+    var move: ([Int64]) -> Void = { _ in }
     var makeAlbum: (_ title: String, _ ids: [Int64]) -> Void
     var isSmartAlbum = false
 }
@@ -92,6 +94,7 @@ struct PhotoGridView: View {
         case .folder(let id): model.folderIndex[id]?.title ?? "Folder"
         case .album(let id): model.albums.first { $0.id == id }?.title ?? "Album"
         case .tag(let t): t
+        case .sensitive: model.reviewName
         case .videos: "Videos"
         }
     }
@@ -108,6 +111,7 @@ struct PhotoGridView: View {
         case .album(let id): memberIDs = model.albumAssetIDs(id)
         case .category(let c): memberIDs = model.categoryMembers[c] ?? []
         case .tag(let t): memberIDs = model.userTags[t] ?? []
+        case .sensitive: memberIDs = model.sensitiveIDs
         case .folder(let id): keys = Set(model.folderIndex[id]?.assetKeys ?? [])
         default: break
         }
@@ -138,7 +142,7 @@ struct PhotoGridView: View {
         }
         switch filter {
         case .videos: break
-        case .album, .category, .tag: if let ids = memberIDs { rows = rows.filter { ids.contains($0.id) } }
+        case .album, .category, .tag, .sensitive: if let ids = memberIDs { rows = rows.filter { ids.contains($0.id) } }
         case .folder: if let k = keys { rows = rows.filter { k.contains($0.localIdentifier) } }
         case .onThisMac: rows = rows.filter { !$0.isICloudOnly && !$0.isShared }
         case .favorites: rows = rows.filter(\.favorite)
@@ -208,12 +212,13 @@ struct PhotoGridView: View {
             filter: filter, title: title,
             rename: { ids in renameRequest = RenameRequest(assetIDs: ids) },
             newAlbum: { ids in newAlbum = NewAlbumRequest(isFolder: false, assetIDs: ids) },
-            slideshowFrom: { row in model.startSlideshow(rows, title: title, startAt: row.id) },
+            slideshowFrom: { row in model.startSlideshow(rows, title: title, startAt: row.id, includeSensitive: filter == .sensitive) },
             queueForRemoval: { ids in queue(ids) },
             tag: { ids in tagRequest = TagRequest(assetIDs: ids) },
             copy: { ids in Task { await model.copyToPasteboard(ids) } },
             quickLook: { row in withAnimation(.easeOut(duration: 0.12)) { quickLook = row } },
             export: { ids in Task { await model.exportWithPanel(ids) } },
+            move: { ids in Task { await model.moveToFolderWithPanel(ids) } },
             makeAlbum: { t, ids in newAlbum = NewAlbumRequest(isFolder: false, assetIDs: ids, initialTitle: t) },
             isSmartAlbum: { if case .album(let id) = filter { return model.albums.first { $0.id == id }?.isSmart ?? false }; return false }())
     }
@@ -293,7 +298,7 @@ struct PhotoGridView: View {
                 Button {
                     let chosen = sel.ids.count > 1 ? rows.filter { sel.ids.contains($0.id) } : rows
                     model.startSlideshow(chosen, title: sel.ids.count > 1 ? "\(sel.ids.count) selected photos" : title,
-                                         startAt: sel.ids.count == 1 ? sel.ids.first : nil)
+                                         startAt: sel.ids.count == 1 ? sel.ids.first : nil, includeSensitive: filter == .sensitive)
                 } label: { Label("Slideshow", systemImage: "play.rectangle") }
                 .help(sel.ids.count > 1 ? "Play the selected photos as a slideshow" : "Play these photos as a slideshow")
                 .disabled(rows.isEmpty)
@@ -308,7 +313,13 @@ struct PhotoGridView: View {
                         .help("Put the selected items in an album")
                     Button { tagRequest = TagRequest(assetIDs: ids) } label: { Label("Tag", systemImage: "tag") }
                         .help("Tag the selected items")
-                    Button { Task { await model.exportWithPanel(ids) } } label: { Label("Export", systemImage: "square.and.arrow.up") }
+                    if filter == .sensitive {
+                        Button { Task { await model.markSensitive(ids, false) } } label: { Label("Not \(model.reviewName)", systemImage: "checkmark.circle") }
+                            .help("These were flagged by mistake. Take them out (PhotoForge remembers).")
+                        Button { Task { await model.moveToFolderWithPanel(ids) } } label: { Label("Move to Folder", systemImage: "folder.badge.minus") }
+                            .help("Copy the originals to a folder, then remove them from the library")
+                    }
+                    Button { Task { await model.exportWithPanel(ids) } } label: { Label(filter == .sensitive ? "Copy to Folder" : "Export", systemImage: "square.and.arrow.up") }
                         .keyboardShortcut("e", modifiers: [.command, .shift])
                         .help("Copy the original files to a folder (⇧⌘E). You can also drag them to Finder, or ⌘C then ⌘V in Finder.")
                     Button { queue(Array(sel.ids)) } label: { Label("Queue for Removal", systemImage: "tray.and.arrow.down") }
@@ -347,6 +358,7 @@ struct PhotoGridView: View {
         case .folder: searchHits == nil ? "This folder is empty" : "No matches"
         case .album(let id): model.albums.first { $0.id == id }?.isSmart == true ? "Nothing matches this smart album yet" : "This album is empty"
         case .tag: "Nothing has this tag"
+        case .sensitive: model.reviewAvailable ? "Nothing here" : "The detector isn't included in this build"
         default: "No photos here yet"
         }
     }
@@ -357,6 +369,7 @@ struct PhotoGridView: View {
         case .iCloudOnly: "Photos that are stored in iCloud but not downloaded to this Mac appear here."
         case .sharedAlbums: "Photos from iCloud Shared Albums appear here."
         case .category: searchHits == nil ? "Run Analyze Photos from the Dashboard to sort photos into categories." : "Try other words."
+        case .sensitive: "Photos are checked during Analyze Photos. Anything found appears here for you to review, copy, move or delete."
         default: "Photos appear as PhotoForge reads your library."
         }
     }
@@ -481,7 +494,16 @@ struct GridCell: View {
         Button("Quick Look (Space)") { sel.click(row, modifiers: []); actions.quickLook(row) }
         if row.isVideo { Button("Play") { model.playRequest = row } } else { Button("Edit…") { model.editingAsset = row } }
         Button(ids.count > 1 ? "Copy \(ids.count) Items" : "Copy") { actions.copy(ids) }
-        Button(ids.count > 1 ? "Export \(ids.count) Items…" : "Export…") { actions.export(ids) }
+        Button(ids.count > 1 ? "Copy \(ids.count) Items to Folder…" : "Copy to Folder…") { actions.export(ids) }
+        Button(ids.count > 1 ? "Move \(ids.count) Items to Folder…" : "Move to Folder…") { actions.move(ids) }
+            .disabled(!model.canDelete)
+        if model.sensitiveEnabled {
+            if actions.filter == .sensitive {
+                Button("Not \(model.reviewName)") { Task { await model.markSensitive(ids, false) } }
+            } else if ids.allSatisfy({ !model.sensitiveIDs.contains($0) }) {
+                Button("Add to \(model.reviewName)") { Task { await model.markSensitive(ids, true) } }
+            }
+        }
         Divider()
         Button(ids.count > 1 ? "Rename \(ids.count) Items…" : "Rename…") { actions.rename(ids) }
         AddToAlbumMenu(ids: ids) { actions.newAlbum(ids) }

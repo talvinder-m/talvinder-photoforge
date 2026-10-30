@@ -371,4 +371,10 @@ INSERT INTO settings(key, value) VALUES
     ALTER TABLE pf_albums ADD COLUMN rule TEXT;
     CREATE INDEX idx_tags_source_label ON tags(source, label);
     """
+
+    /// Private review: the detector's score (0…1) and your own decision (1 = yes, 0 = no).
+    static let v0008_sensitive = """
+    ALTER TABLE assets ADD COLUMN sensitiveScore REAL;
+    ALTER TABLE assets ADD COLUMN sensitiveOverride INTEGER;
+    """
 }

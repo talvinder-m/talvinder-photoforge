@@ -65,11 +65,16 @@ extension AppModel {
     /// sidebar footer. Returns the files written.
     @discardableResult
     func exportOriginals(_ rows: [AssetRow], to folder: URL, title: String) async -> [URL] {
+        await exportOriginalsByID(rows, to: folder, title: title).map(\.url)
+    }
+
+    /// Like `exportOriginals`, but says which item each written file came from.
+    func exportOriginalsByID(_ rows: [AssetRow], to folder: URL, title: String) async -> [(id: Int64, url: URL)] {
         var progress = ImportProgress(title: title, total: rows.count)
         progress.addedLabel = "copied"
         importStatus = progress
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        var written: [URL] = []
+        var written: [(id: Int64, url: URL)] = []
         var used = Set<String>()
         let photos = self.photos
         for row in rows {
@@ -84,7 +89,7 @@ extension AppModel {
             let dest = folder.appendingPathComponent(name)
             do {
                 try await Self.writeOriginal(key: row.localIdentifier, fileURL: sourceFileURL(row), photos: photos, to: dest)
-                written.append(dest); progress.added += 1
+                written.append((row.id, dest)); progress.added += 1
             } catch { progress.failed += 1 }
             progress.done += 1
             if progress.done % 5 == 0 || progress.done == rows.count { importStatus = progress }

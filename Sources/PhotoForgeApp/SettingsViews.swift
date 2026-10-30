@@ -40,6 +40,8 @@ struct SettingsView: View {
             FaceDataSettingsSection()
             SharingSettingsSection()
 
+            ReviewSettingsSection()
+
             Section("Categories") {
                 Toggle("Sort photos into categories (documents, receipts, screenshots, WhatsApp, …)", isOn: $model.classifyEnabled)
                 Text("Uses Apple's on-device image classification, text recognition and barcode detection, plus file names and camera data. Text found in photos becomes searchable. Nothing leaves this Mac. You can correct any photo's categories and PhotoForge remembers.")
@@ -368,5 +370,37 @@ struct SharingSettingsSection: View {
             Link("How other apps connect (API guide)", destination: URL(string: "https://github.com/talvinder-m/talvinder-photoforge/blob/main/docs/API.md")!)
         }
         .onAppear { portText = String(api.port) }
+    }
+}
+
+// MARK: - Private review
+
+struct ReviewSettingsSection: View {
+    @Environment(AppModel.self) private var model
+    @State private var name = ""
+
+    var body: some View {
+        @Bindable var model = model
+        Section("Private review") {
+            Toggle("Find photos with nudity or a lot of bare skin", isOn: Binding(
+                get: { model.sensitiveEnabled }, set: { on in Task { await model.setReviewEnabled(on) } }))
+                .disabled(!model.reviewAvailable)
+            if !model.reviewAvailable {
+                Text("The detector model isn't included in this build.").font(.caption).foregroundStyle(.orange)
+            }
+            LabeledContent("Name in the sidebar") {
+                TextField("Skin", text: $name)
+                    .frame(width: 160)
+                    .onSubmit { let n = name.trimmingCharacters(in: .whitespaces); if !n.isEmpty { model.reviewName = n } }
+            }
+            Picker("How much to include", selection: $model.sensitiveLevel) {
+                ForEach(AppModel.reviewLevels, id: \.value) { Text($0.label).tag($0.value) }
+            }
+            Button("Clear Scores…") { Task { await model.clearReviewScores() } }
+                .help("Forget the detector's scores (your own corrections are kept). Photos are checked again next analysis.")
+            Text("Runs only on this Mac (OpenNSFW model). Found photos are listed in one place for you to review, copy or move to a folder, or delete. They're left out of slideshows started elsewhere and are never shared with other apps. The detector makes mistakes both ways, so review before deleting; anything wrongly included can be marked “Not \(model.reviewName)”.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .onAppear { name = model.reviewName }
     }
 }

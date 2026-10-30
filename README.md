@@ -41,6 +41,7 @@ Each new build is a new unsigned version, so after an update macOS may ask again
 | **Safe removal** | Nothing is deleted from the duplicates screen. Photos you don't keep go to a **Removal Queue**. Deleting from there needs your confirmation *and* Photos' own prompt, and moves photos to Recently Deleted (recoverable for 30 days). |
 | **People** | Faces are detected and grouped on your Mac, and groups stay "Possible Person" until you name them. **Tag faces yourself**: in the preview pane turn on *Show & tag faces*, click a face and type a name, or drag a box around a face that was missed. PhotoForge immediately gathers that person's other photos and offers "Is this …?" suggestions to accept or reject. Settings › Face data lets you rename, merge or delete people and re-detect faces. You can merge people, mark "Not this person" (remembered for future grouping), hide people, work through a review queue for uncertain faces, and adjust grouping strictness. |
 | **Editor** | Non-destructive exposure, contrast, highlights, shadows, whites, blacks, temperature, tint, vibrance, saturation, clarity, dehaze, sharpening, noise reduction, vignette and grain, plus straighten, aspect crop and flip. Includes before/after and side-by-side views, undo/redo, and revert. **Save as New Photo** adds the edit to a "PhotoForge Edits" album and keeps the original. **Export** writes JPEG, HEIC, PNG or TIFF, with options to keep or strip metadata and remove location. |
+| **Private review** | Optionally finds photos with nudity or a lot of bare skin, on this Mac only, and lists them in one sidebar section under a name you choose (default “Skin”). Review them full size (Space), take out anything flagged by mistake (“Not Skin”, remembered), then copy or move them to a folder, or delete them. Choose how broad the detection is in Settings. These photos are left out of slideshows started elsewhere and are never shared with other apps. The detector makes mistakes both ways, so review before deleting. |
 | **Privacy** | Everything runs locally, with no network use and no analytics. Face data is encrypted at rest. One click deletes all face data, or all PhotoForge data. An optional activity log shows what the app did. |
 
 ## How accurate is it?
@@ -90,6 +91,7 @@ FSRCNN is the most faithful and restores sharpness. Real-ESRGAN adds strong synt
 
 - **VLCKit** (VideoLAN), LGPL-2.1, is bundled unmodified as a dynamic framework in `PhotoForge.app/Contents/Frameworks`. Its source code is at https://code.videolan.org/videolan/VLCKit.
 - **SFace** (OpenCV Zoo), **FSRCNN** and **Real-ESRGAN compact** models are converted to Core ML at build time.
+- **OpenNSFW** (Yahoo, BSD-2-Clause; weights via opennsfw2, MIT) is converted to Core ML at build time for the private review.
 - **GRDB** (MIT) is used for the database.
 
 ## For developers

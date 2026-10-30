@@ -22,7 +22,7 @@ enum SidebarItem: Hashable {
     case tag(String)
     case duplicates(DupSection)
     case dashboard, allPhotos, videos, favorites, screenshots, blurry, iCloudOnly, sharedAlbums
-    case removalQueue, people
+    case removalQueue, people, sensitive
     case activity, settings
 }
 
@@ -77,6 +77,14 @@ final class AppModel {
     let renderer = EditRenderer()
     let policy = GenerativeEditPolicy()
     let faceModel = FaceEmbedding.load()
+    /// On-device detector for the private review (nil if the model isn't bundled).
+    let sensitiveDetector: SensitiveDetector? = {
+        #if arch(x86_64)
+        SensitiveDetector(modelsDirectory: Bundle.main.resourceURL?.appendingPathComponent("Models"), computeUnits: .cpuOnly)
+        #else
+        SensitiveDetector(modelsDirectory: Bundle.main.resourceURL?.appendingPathComponent("Models"), computeUnits: .all)
+        #endif
+    }()
     let superRes = SuperResolution(modelsDirectory: Bundle.main.resourceURL?.appendingPathComponent("Models"),
                                    computeUnits: MachineProfile.detect().mlComputeUnits)
 
@@ -142,6 +150,18 @@ final class AppModel {
     var duplicateStrictness = 0.5 { didSet { save("duplicateStrictness", duplicateStrictness) } }
     var faceStrictness = 0.5 { didSet { save("faceStrictness", faceStrictness) } }
     var classifyEnabled = true { didSet { save("classifyEnabled", classifyEnabled) } }
+    /// Private review: find photos with nudity or a lot of bare skin.
+    var sensitiveEnabled = true { didSet { save("sensitiveEnabled", sensitiveEnabled) } }
+    /// Score at or above which a photo goes into the review.
+    var sensitiveLevel = 0.6 { didSet { save("sensitiveLevel", sensitiveLevel); recomputeSensitive() } }
+    /// The review's name in the sidebar (a word of your choosing).
+    var reviewName: String = UserDefaults.standard.string(forKey: "review.name") ?? "Skin" {
+        didSet { UserDefaults.standard.set(reviewName, forKey: "review.name") }
+    }
+    /// Detector scores and your decisions, per item.
+    var sensitiveScores: [Int64: (score: Double?, override: Bool?)] = [:]
+    /// Items currently in the private review.
+    var sensitiveIDs: Set<Int64> = [] { didSet { dataVersion &+= 1 } }
 
     var currentJob: UUID?
     private var loadingSettings = false
@@ -277,7 +297,7 @@ final class AppModel {
             }
             ThumbnailCache.shared.removeAll()
             assets = []; assetsByID = [:]; duplicateGroups = []; allDuplicateGroups = []; people = []; reviewFaces = []; storedFaces = []
-            userTags = [:]; smartAlbumMembers = [:]
+            userTags = [:]; smartAlbumMembers = [:]; sensitiveScores = [:]; sensitiveIDs = []
             faceGraph = FaceNeighborCache(k: 30, minSimilarity: 0.2)
             categoryMembers = [:]; folderTree = []; folderIndex = [:]; albums = []
             if selection == .iCloudOnly || selection == .sharedAlbums { selection = .allPhotos }
@@ -486,6 +506,7 @@ final class AppModel {
             (try db.assets(sourceID: sid), try db.stats(sourceID: sid), try db.removalQueue(sourceID: sid), try db.activity())
         }
         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
+        if let sc = try? await Offload.run({ try db.sensitiveScores(sourceID: sid) }) { sensitiveScores = sc; recomputeSensitive() }
         if let raw = try? await Offload.run { try db.categoryMembers(sourceID: sid) } {
             var m: [PhotoCategory: Set<Int64>] = [:]
             for (k, v) in raw { if let c = PhotoCategory(rawValue: k) { m[c] = v } }
@@ -603,7 +624,9 @@ final class AppModel {
 
     // MARK: Slideshow
 
-    func startSlideshow(_ rows: [AssetRow], title: String, startAt: Int64? = nil) {
+    func startSlideshow(_ rows: [AssetRow], title: String, startAt: Int64? = nil, includeSensitive: Bool = false) {
+        // Photos in the private review never appear in slideshows started elsewhere.
+        let rows = includeSensitive ? rows : rows.filter { !sensitiveIDs.contains($0.id) }
         let keys = rows.filter { $0.mediaType == "image" }.map(\.localIdentifier)
         guard !keys.isEmpty else { banner = "There are no photos to show."; return }
         let start = startAt.flatMap { id in rows.firstIndex { $0.id == id } } ?? 0
@@ -618,7 +641,8 @@ final class AppModel {
                                       sceneSimilarity: sceneSimilarityEnabled, allowICloudDownloads: allowICloudDownloads,
                                       faceCropDirectory: faceCropDir, face: faceModel, classify: classifyEnabled,
                                       maxConcurrency: analysisConcurrency, ocrAccurate: machine.ocrAccurate && performanceMode != .batterySaver,
-                                      classifyImageSize: machine.classifyImageSize, faceImageSize: machine.faceImageSize)
+                                      classifyImageSize: machine.classifyImageSize, faceImageSize: machine.faceImageSize,
+                                      sensitive: sensitiveEnabled ? sensitiveDetector : nil)
         let job = AnalysisJob(db: db, source: mediaSource, sourceID: sid, cipher: cipher, options: options)
         status = IndexStatus(running: true, message: "Starting…")
         currentJob = await jobs.enqueue(job)
@@ -1023,6 +1047,8 @@ final class AppModel {
         duplicateStrictness = dbl("duplicateStrictness", 0.5)
         faceStrictness = dbl("faceStrictness", 0.5)
         classifyEnabled = bool("classifyEnabled", true)
+        sensitiveEnabled = bool("sensitiveEnabled", true)
+        sensitiveLevel = dbl("sensitiveLevel", 0.6)
     }
 
     private func save(_ key: String, _ value: Bool) {

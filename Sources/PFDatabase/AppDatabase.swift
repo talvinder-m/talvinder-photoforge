@@ -93,6 +93,9 @@ public final class AppDatabase: Sendable {
         m.registerMigration("0007_smart_albums_tags") { db in
             try db.execute(sql: Migrations.v0007_smart_albums_tags)
         }
+        m.registerMigration("0008_sensitive") { db in
+            try db.execute(sql: Migrations.v0008_sensitive)
+        }
         return m
     }
 

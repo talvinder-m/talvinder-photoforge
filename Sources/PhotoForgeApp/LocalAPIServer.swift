@@ -252,7 +252,7 @@ final class LocalAPIServer {
                     if let e = need(.read) { return e }
                     return .json(try await listAssets(req.query, db: db, sid: sid, model: model))
                 }
-                guard let id = Int64(rest[1]), let asset = model.assetsByID[id] else { return .error(404, "No such item") }
+                guard let id = Int64(rest[1]), let asset = model.assetsByID[id], !model.sensitiveIDs.contains(id) else { return .error(404, "No such item") }
                 if rest.count == 2 {
                     if let e = need(.read) { return e }
                     var item = Self.item(asset, categories: model.categoryMembers)
@@ -289,7 +289,8 @@ final class LocalAPIServer {
     }
 
     private func listAssets(_ q: [String: String], db: AppDatabase, sid: Int64, model: AppModel) async throws -> [String: Any] {
-        var rows = model.assets
+        // Photos in the private review are never shared with other apps.
+        var rows = model.assets.filter { !model.sensitiveIDs.contains($0.id) }
         if let t = q["type"], ["image", "video"].contains(t) { rows = rows.filter { $0.mediaType == t } }
         if let c = q["category"], let cat = PhotoCategory(rawValue: c) { let ids = model.categoryMembers[cat] ?? []; rows = rows.filter { ids.contains($0.id) } }
         if let t = q["tag"] { let ids = model.userTags.first { $0.key.caseInsensitiveCompare(t) == .orderedSame }?.value ?? []; rows = rows.filter { ids.contains($0.id) } }

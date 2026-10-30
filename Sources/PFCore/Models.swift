@@ -35,9 +35,10 @@ public struct IndexStage: OptionSet, Sendable, Hashable {
     public static let sceneEmbedding  = IndexStage(rawValue: 1 << 5)
     public static let ocr             = IndexStage(rawValue: 1 << 6)
     public static let classification  = IndexStage(rawValue: 1 << 7)  // categories, OCR text, scene labels
+    public static let sensitive       = IndexStage(rawValue: 1 << 8)  // private review score
 
     public static let all: IndexStage = [.metadata, .thumbnailHashes, .fileHash, .faces,
-                                         .faceEmbeddings, .sceneEmbedding, .ocr, .classification]
+                                         .faceEmbeddings, .sceneEmbedding, .ocr, .classification, .sensitive]
 }
 
 // MARK: - Common enums (mirror CHECK constraints in 0001_initial.sql)

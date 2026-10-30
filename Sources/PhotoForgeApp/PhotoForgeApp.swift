@@ -272,6 +272,10 @@ struct MainView: View {
                     }
                     Label("Removal Queue", systemImage: "tray.full")
                         .badge(model.removalQueue.count).tag(SidebarItem.removalQueue)
+                    if model.sensitiveEnabled && model.reviewAvailable {
+                        Label(model.reviewName, systemImage: "eye.slash")
+                            .badge(model.sensitiveIDs.count).tag(SidebarItem.sensitive)
+                    }
                     Label("People", systemImage: "person.2.crop.square.stack")
                         .badge(model.people.count).tag(SidebarItem.people)
                 }
@@ -288,6 +292,7 @@ struct MainView: View {
             case .folder(let id): PhotoGridView(filter: .folder(id))
             case .album(let id): PhotoGridView(filter: .album(id))
             case .tag(let t): PhotoGridView(filter: .tag(t))
+            case .sensitive: PhotoGridView(filter: .sensitive)
             case .dashboard: DashboardView()
             case .allPhotos: PhotoGridView(filter: .onThisMac)
             case .videos: PhotoGridView(filter: .videos)

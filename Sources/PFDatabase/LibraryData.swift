@@ -87,6 +87,48 @@ public extension AppDatabase {
         }
     }
 
+    // MARK: Private review (sensitive photos)
+
+    func saveSensitive(assetID: Int64, score: Double?) throws {
+        try writer.write { db in
+            try db.execute(sql: "UPDATE assets SET sensitiveScore = ?, analysisStage = analysisStage | ? WHERE id = ?",
+                           arguments: [score, IndexStage.sensitive.rawValue, assetID])
+        }
+    }
+
+    /// Your decision overrides the detector: true = belongs in the review, false = doesn't, nil = automatic.
+    func setSensitiveOverride(_ assetIDs: [Int64], _ value: Bool?) throws {
+        try writer.write { db in
+            for id in assetIDs {
+                try db.execute(sql: "UPDATE assets SET sensitiveOverride = ? WHERE id = ?", arguments: [value.map { $0 ? 1 : 0 }, id])
+            }
+        }
+    }
+
+    /// Items with a score or a decision: id → (score, decision).
+    func sensitiveScores(sourceID: Int64?) throws -> [Int64: (score: Double?, override: Bool?)] {
+        try writer.read { db in
+            var out: [Int64: (score: Double?, override: Bool?)] = [:]
+            for r in try Row.fetchAll(db, sql: """
+                SELECT id, sensitiveScore, sensitiveOverride FROM assets
+                WHERE isDeletedInSource = 0 AND (sensitiveScore IS NOT NULL OR sensitiveOverride IS NOT NULL)
+                  AND (? IS NULL OR sourceLibraryID = ?)
+                """, arguments: [sourceID, sourceID]) {
+                let o: Int? = r["sensitiveOverride"]
+                out[r["id"]] = (r["sensitiveScore"], o.map { $0 != 0 })
+            }
+            return out
+        }
+    }
+
+    /// Forget all scores (e.g. the review is turned off), keeping your own decisions.
+    func clearSensitiveScores(sourceID: Int64?) throws {
+        try writer.write { db in
+            try db.execute(sql: "UPDATE assets SET sensitiveScore = NULL, analysisStage = analysisStage & ~? WHERE (? IS NULL OR sourceLibraryID = ?)",
+                           arguments: [IndexStage.sensitive.rawValue, sourceID, sourceID])
+        }
+    }
+
     // MARK: Tags you add (stored in `tags` with source 'user')
 
     /// Tag → items, for the given library.
@@ -319,9 +361,11 @@ public extension AppDatabase {
         guard !mapping.isEmpty else { return 0 }
         let oldIDs = Array(mapping.keys)
         let copyCols = ["perceptualHash", "differenceHash", "sharpnessScore", "noiseScore", "exposureScore", "qualityScore",
-                        "laplacianVariance", "noiseSigma", "meanLuma", "clippedFraction", "title", "burstIdentifier"]
+                        "laplacianVariance", "noiseSigma", "meanLuma", "clippedFraction", "title", "burstIdentifier",
+                        "sensitiveScore", "sensitiveOverride"]
         let stageMask = IndexStage.thumbnailHashes.rawValue | IndexStage.sceneEmbedding.rawValue | IndexStage.ocr.rawValue
             | IndexStage.classification.rawValue | IndexStage.faces.rawValue | IndexStage.faceEmbeddings.rawValue
+            | IndexStage.sensitive.rawValue
 
         // Read everything from the source first.
         typealias FaceRow = (id: Int64, asset: Int64, box: [Double], quality: Double?, pixel: Double?, yaw: Double?, pitch: Double?,
