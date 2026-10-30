@@ -7,13 +7,17 @@ Universal app that runs natively on Intel Macs and on every Apple silicon Mac (M
 
 ## Install
 
+The same download works on every Mac: Intel Macs and Apple silicon Macs (M1, M2, M3, M4, M5), on macOS 14 Sonoma or later, including the newest macOS. It runs natively on each, with no Rosetta needed, and tunes itself to the Mac it's on.
+
 1. Download the zip from the latest release and double-click it to unzip.
 2. Drag **PhotoForge.app** into your **Applications** folder.
-3. **First launch only:** right-click (or Control-click) PhotoForge → **Open** → **Open**.
-   macOS warns because the app isn't notarized with a paid Apple Developer ID. If there's no Open button, go to System Settings → Privacy & Security, scroll down, and click **Open Anyway**.
-4. Click **Connect Apple Photos** and allow access.
+3. **First launch only.** The app isn't notarized with a paid Apple Developer ID, so macOS blocks it the first time:
+   - **macOS 15 Sequoia and later (including the newest macOS):** double-click PhotoForge and click **Done** on the warning. Then open **System Settings › Privacy & Security**, scroll down to the "PhotoForge was blocked" message, click **Open Anyway** and confirm with your password or Touch ID.
+   - **macOS 14 Sonoma:** right-click (or Control-click) PhotoForge › **Open** › **Open**.
+   - **Alternative, any version:** in Terminal, run `xattr -dr com.apple.quarantine /Applications/PhotoForge.app`, then open it normally.
+4. Click **Connect Apple Photos** and allow access, or create or open a PhotoForge Library.
 
-Each new build is a new unsigned version, so macOS may ask for Photos permission again after an update.
+Each new build is a new unsigned version, so after an update macOS may ask again: repeat step 3 and allow Photos access again. Your libraries and analysis are kept, and nothing is rescanned.
 
 ## What it does
 

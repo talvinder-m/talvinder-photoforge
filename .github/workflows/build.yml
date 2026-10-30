@@ -202,8 +202,41 @@ jobs:
         run: |
           TAG="build-${GITHUB_RUN_NUMBER}"
           gh release create "$TAG" dist/*.zip --title "PhotoForge build ${GITHUB_RUN_NUMBER}" \
-            --notes "Automated build of ${GITHUB_SHA}. Universal (Intel + Apple Silicon). First launch: right-click the app → Open." --latest
+            --notes "Automated build of ${GITHUB_SHA}. One app for every Mac: Intel and Apple silicon (M1 to M5), macOS 14 Sonoma or later including the newest macOS. First launch: see Install in the README (System Settings › Privacy & Security › Open Anyway)." --latest
 
       - name: Fail job if build or tests failed
         if: steps.build.outcome != 'success' || steps.test.outcome != 'success' || steps.selftest.outcome != 'success'
         run: exit 1
+
+  # Runs the finished app on the newest macOS (Apple silicon) so new Macs — M4, M5 — on the
+  # latest OS are checked on every build, alongside the Intel slice tested above.
+  latest-macos:
+    needs: build
+    runs-on: macos-26
+    continue-on-error: true
+    timeout-minutes: 30
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: PhotoForge-app
+          path: dist
+      - name: Self-test on the newest macOS
+        id: latest
+        run: |
+          set -o pipefail
+          { echo "commit: ${GITHUB_SHA}"; sw_vers; echo "arch: $(uname -m)"; sysctl -n machdep.cpu.brand_string; } | tee latest-macos.log
+          cd dist && ditto -x -k PhotoForge-*.zip . && cd ..
+          APP=dist/PhotoForge.app/Contents/MacOS/PhotoForge
+          codesign --verify --deep --strict dist/PhotoForge.app 2>&1 | tee -a latest-macos.log
+          lipo -archs "$APP" | tee -a latest-macos.log
+          "$APP" --selftest 2>&1 | tee -a latest-macos.log
+      - name: Publish result to ci-latest-macos branch
+        if: always()
+        run: |
+          mkdir -p /tmp/latest && cp latest-macos.log /tmp/latest/ 2>/dev/null || echo "no log" > /tmp/latest/latest-macos.log
+          echo "latest-macos selftest: ${{ steps.latest.outcome }}" >> /tmp/latest/latest-macos.log
+          cd /tmp/latest
+          git init -q -b ci-latest-macos
+          git config user.name "ci"; git config user.email "ci@users.noreply.github.com"
+          git add -A; git commit -qm "Newest-macOS check for ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" ci-latest-macos
