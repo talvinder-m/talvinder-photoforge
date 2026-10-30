@@ -1,0 +1,41 @@
+wrote 96 images for 12 people to build/lfw
+FACECAL: 12 people, 96 faces aligned, 0 images without a usable face
+
+== sface: 336 same-person pairs, 4224 different-person pairs
+   same   p5 0.513  p50 0.701  p95 0.828
+   diff   p5 -0.045  p50 0.120  p95 0.262  p99 0.328
+   best pairwise threshold 0.42 → balanced accuracy 100.0%
+   clusterer sweep (base threshold → clusters, precision, recall, faces sent to review):
+     0.24 → 11 clusters, precision  84.3%, recall  89.6%, review 5 (lowQuality 5)
+     0.27 → 12 clusters, precision 100.0%, recall  89.6%, review 5 (lowQuality 5)
+     0.30 → 12 clusters, precision 100.0%, recall  89.6%, review 5 (lowQuality 5)
+     0.33 → 12 clusters, precision 100.0%, recall  89.6%, review 5 (lowQuality 5)
+     0.36 → 12 clusters, precision 100.0%, recall  89.6%, review 5 (lowQuality 5)
+     0.39 → 12 clusters, precision 100.0%, recall  89.6%, review 5 (lowQuality 5)
+     0.42 → 12 clusters, precision 100.0%, recall  89.6%, review 5 (lowQuality 5)
+     0.45 → 12 clusters, precision 100.0%, recall  89.6%, review 5 (lowQuality 5)
+     0.48 → 12 clusters, precision 100.0%, recall  89.6%, review 5 (lowQuality 5)
+     0.51 → 12 clusters, precision 100.0%, recall  89.6%, review 5 (lowQuality 5)
+     0.54 → 12 clusters, precision 100.0%, recall  87.5%, review 6 (belowClusterThreshold 1, lowQuality 5)
+     0.57 → 13 clusters, precision 100.0%, recall  79.8%, review 8 (belowClusterThreshold 3, lowQuality 5)
+     0.60 → 14 clusters, precision 100.0%, recall  69.0%, review 12 (belowClusterThreshold 7, lowQuality 5)
+
+== vision-featureprint: 336 same-person pairs, 4224 different-person pairs
+   same   p5 0.745  p50 0.848  p95 0.921
+   diff   p5 0.588  p50 0.743  p95 0.848  p99 0.876
+   best pairwise threshold 0.81 → balanced accuracy 79.4%
+   clusterer sweep (base threshold → clusters, precision, recall, faces sent to review):
+     0.63 →  1 clusters, precision   7.3%, recall  87.5%, review 6 (belowClusterThreshold 1, lowQuality 5)
+     0.66 →  2 clusters, precision   8.6%, recall  85.4%, review 7 (ambiguousBetweenClusters 2, lowQuality 5)
+     0.69 →  2 clusters, precision   8.8%, recall  85.7%, review 7 (ambiguousBetweenClusters 2, lowQuality 5)
+     0.72 →  2 clusters, precision   8.8%, recall  83.9%, review 8 (ambiguousBetweenClusters 2, belowClusterThreshold 1, lowQuality 5)
+     0.75 →  3 clusters, precision   9.6%, recall  78.0%, review 10 (ambiguousBetweenClusters 4, belowClusterThreshold 1, lowQuality 5)
+     0.78 →  5 clusters, precision  31.1%, recall  45.8%, review 37 (ambiguousBetweenClusters 28, belowClusterThreshold 4, lowQuality 5)
+     0.81 → 13 clusters, precision  66.9%, recall  33.0%, review 39 (ambiguousBetweenClusters 8, belowClusterThreshold 26, lowQuality 5)
+     0.84 → 14 clusters, precision  97.2%, recall  10.4%, review 59 (ambiguousBetweenClusters 3, belowClusterThreshold 51, lowQuality 5)
+     0.87 →  7 clusters, precision 100.0%, recall   3.6%, review 80 (ambiguousBetweenClusters 1, belowClusterThreshold 74, lowQuality 5)
+     0.90 →  1 clusters, precision 100.0%, recall   0.3%, review 94 (belowClusterThreshold 89, lowQuality 5)
+     0.93 →  0 clusters, precision   0.0%, recall   0.0%, review 96 (belowClusterThreshold 91, lowQuality 5)
+     0.96 →  0 clusters, precision   0.0%, recall   0.0%, review 96 (belowClusterThreshold 91, lowQuality 5)
+     0.99 →  0 clusters, precision   0.0%, recall   0.0%, review 96 (belowClusterThreshold 91, lowQuality 5)
+

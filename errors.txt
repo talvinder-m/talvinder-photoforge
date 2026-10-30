@@ -1,0 +1,5 @@
+    |                 `- warning: capture of 'manager' with non-sendable type 'PHCachingImageManager' in a '@Sendable' closure
+    | `- warning: add '@preconcurrency' to suppress 'Sendable'-related warnings from module 'Photos'
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/PhotoLibraryService.swift:259:17: warning: capture of 'manager' with non-sendable type 'PHCachingImageManager' in a '@Sendable' closure
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/PhotoLibraryService.swift:287:17: warning: capture of 'manager' with non-sendable type 'PHCachingImageManager' in a '@Sendable' closure
+/Users/runner/work/talvinder-photoforge/talvinder-photoforge/Sources/PFPhotosBridge/PhotoLibraryService.swift:3:1: warning: add '@preconcurrency' to suppress 'Sendable'-related warnings from module 'Photos'
