@@ -56,6 +56,7 @@ struct GridActions {
     var queueForRemoval: ([Int64]) -> Void
     var tag: ([Int64]) -> Void
     var copy: ([Int64]) -> Void
+    var quickLook: (AssetRow) -> Void = { _ in }
     var export: ([Int64]) -> Void
     var makeAlbum: (_ title: String, _ ids: [Int64]) -> Void
     var isSmartAlbum = false
@@ -77,6 +78,7 @@ struct PhotoGridView: View {
     @State private var newAlbum: NewAlbumRequest?
     @State private var tagRequest: TagRequest?
     @FocusState private var gridFocused: Bool
+    @State private var quickLook: AssetRow?
 
     private var title: String {
         switch filter {
@@ -210,6 +212,7 @@ struct PhotoGridView: View {
             queueForRemoval: { ids in queue(ids) },
             tag: { ids in tagRequest = TagRequest(assetIDs: ids) },
             copy: { ids in Task { await model.copyToPasteboard(ids) } },
+            quickLook: { row in withAnimation(.easeOut(duration: 0.12)) { quickLook = row } },
             export: { ids in Task { await model.exportWithPanel(ids) } },
             makeAlbum: { t, ids in newAlbum = NewAlbumRequest(isFolder: false, assetIDs: ids, initialTitle: t) },
             isSmartAlbum: { if case .album(let id) = filter { return model.albums.first { $0.id == id }?.isSmart ?? false }; return false }())
@@ -241,6 +244,12 @@ struct PhotoGridView: View {
                         return .handled
                     }
                     .onKeyPress(.escape) { sel.clear(); return .handled }
+                    .onKeyPress(.space) {
+                        // Space: preview the focused photo (or the first one) full size.
+                        guard let f = sel.focused ?? sel.order.first.flatMap({ sel.rowsByID[$0] }) else { return .ignored }
+                        withAnimation(.easeOut(duration: 0.12)) { quickLook = f }
+                        return .handled
+                    }
                     .onKeyPress(.return) {
                         guard let f = sel.focused else { return .ignored }
                         if f.isVideo { model.playRequest = f } else { model.editingAsset = f }
@@ -262,6 +271,7 @@ struct PhotoGridView: View {
                     .onAppear { gridFocused = true }
             }
         }
+        .overlay { QuickPreview(sel: sel, current: $quickLook) }
         .navigationTitle(title)
         .navigationSubtitle(sel.ids.count > 1 ? "\(sel.ids.count.formatted()) selected of \(rows.count.formatted())"
                             : "\(rows.count.formatted()) \(filter == .videos ? "videos" : "items")")
@@ -308,7 +318,7 @@ struct PhotoGridView: View {
                     .help(showPreview ? "Hide the preview pane" : "Show the preview pane")
             }
         }
-        .onChange(of: filter) { sel.ids = []; sel.focused = nil }
+        .onChange(of: filter) { sel.ids = []; sel.focused = nil; quickLook = nil }
         .task(id: key) { await recompute() }
         .searchable(text: $search, placement: .toolbar, prompt: "Search text in photos, file names")
         .task(id: search) {
@@ -468,6 +478,7 @@ struct GridCell: View {
 
     @ViewBuilder private var menu: some View {
         let ids = sel.ids.contains(row.id) ? Array(sel.ids) : [row.id]
+        Button("Quick Look (Space)") { sel.click(row, modifiers: []); actions.quickLook(row) }
         if row.isVideo { Button("Play") { model.playRequest = row } } else { Button("Edit…") { model.editingAsset = row } }
         Button(ids.count > 1 ? "Copy \(ids.count) Items" : "Copy") { actions.copy(ids) }
         Button(ids.count > 1 ? "Export \(ids.count) Items…" : "Export…") { actions.export(ids) }
