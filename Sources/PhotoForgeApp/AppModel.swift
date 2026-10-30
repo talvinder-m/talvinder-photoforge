@@ -506,7 +506,10 @@ final class AppModel {
             (try db.assets(sourceID: sid), try db.stats(sourceID: sid), try db.removalQueue(sourceID: sid), try db.activity())
         }
         if let t = try? await Offload.run { try db.userTags(sourceID: sid) } { userTags = t }
-        if let sc = try? await Offload.run({ try db.sensitiveScores(sourceID: sid) }) { sensitiveScores = sc; recomputeSensitive() }
+        let scores: [Int64: (score: Double?, override: Bool?)]? = try? await Offload.run { () throws -> [Int64: (score: Double?, override: Bool?)] in
+            try db.sensitiveScores(sourceID: sid)
+        }
+        if let scores { sensitiveScores = scores; recomputeSensitive() }
         if let raw = try? await Offload.run { try db.categoryMembers(sourceID: sid) } {
             var m: [PhotoCategory: Set<Int64>] = [:]
             for (k, v) in raw { if let c = PhotoCategory(rawValue: k) { m[c] = v } }
